@@ -1,5 +1,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DAILY_COPILOT_QUERY_LIMIT, startOfUtcDayIso } from '../src/constants/copilotQuota';
+
+const DAILY_COPILOT_QUERY_LIMIT = 5;
+
+function startOfUtcDayIso(): string {
+  const now = new Date();
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+  );
+  return start.toISOString();
+}
 
 let supabaseServerClient: SupabaseClient | null = null;
 
