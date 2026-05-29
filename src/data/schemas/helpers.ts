@@ -7,7 +7,13 @@ export type FieldOptions = {
   isPrimaryKey?: boolean;
   isNullable?: boolean;
   relatesTo?: FieldRelation[];
+  isDynamicProfileAttribute?: boolean;
 };
+
+export const DYNAMIC_PROFILE_ATTRIBUTE_FIELD_NAME = '(Profile Attributes)';
+
+export const PROFILE_ATTRIBUTE_HELP_TEXT =
+  'Dynamic Profile Attribute: This column represents a custom field. Data structure and contents are defined in your specific Business Unit configuration.';
 
 export const rel = (table: string, field: string): FieldRelation => ({ table, field });
 
@@ -66,7 +72,23 @@ export function field(
     isNullable: options.isNullable ?? false,
     ...(options.length !== undefined ? { length: options.length } : {}),
     ...(options.relatesTo !== undefined ? { relatesTo: options.relatesTo } : {}),
+    ...(options.isDynamicProfileAttribute === true
+      ? { isDynamicProfileAttribute: true }
+      : {}),
   };
+}
+
+/** Documents Enterprise 2.0 profile columns that appear at query time (not in fixed schema). */
+export function appendDynamicProfileAttributeField(fields: DataViewField[]): DataViewField[] {
+  return [
+    ...fields,
+    field(
+      DYNAMIC_PROFILE_ATTRIBUTE_FIELD_NAME,
+      'Text',
+      'Custom profile and preference attributes from Email Studio. Column names and types vary by Business Unit; bracket-wrap names that contain spaces.',
+      { isNullable: true, isDynamicProfileAttribute: true },
+    ),
+  ];
 }
 
 /** Composite engagement event keys shared by Sent, Open, Click, Bounce, etc. */

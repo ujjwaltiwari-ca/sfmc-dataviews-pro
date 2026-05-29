@@ -1,4 +1,5 @@
 import { KeyRound, Link2 } from 'lucide-react';
+import { ProfileAttributeHelp } from './ProfileAttributeHelp';
 import type { DataViewField, DataViewTable } from '../data/sfmcSchema';
 import type { HoveredRelation } from '../utils/schemaExplorer';
 import {
@@ -12,81 +13,167 @@ import {
 type DataViewCategory = DataViewTable['category'];
 
 type CategoryTheme = {
-  accent: string;
-  badge: string;
-  headerTint: string;
+  badgeBorder: string;
+  badgeBg: string;
+  cardHover: string;
+  pathInset: string;
+  pathRowBg: string;
+  pathText: string;
+  pathIcon: string;
+  linkHover: string;
 };
 
 const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
   Sending: {
-    accent: 'bg-blue-500',
-    badge: 'bg-blue-500/15 text-blue-700 ring-blue-500/25 dark:text-blue-300',
-    headerTint: 'from-blue-500/10 to-transparent dark:from-blue-500/15',
+    badgeBorder: 'border-blue-500/25',
+    badgeBg: 'bg-blue-500/[0.05] dark:bg-blue-500/10',
+    cardHover:
+      'hover:border-blue-200/60 hover:bg-gradient-to-b hover:from-white hover:to-blue-50/40 hover:shadow-[0_14px_44px_-10px_rgba(59,130,246,0.14)] dark:hover:border-blue-500/20 dark:hover:from-slate-900 dark:hover:to-blue-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(59,130,246,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(59,130,246)]',
+    pathRowBg: 'bg-blue-50/70 dark:bg-blue-950/35',
+    pathText: 'text-blue-950 dark:text-blue-50',
+    pathIcon: 'text-blue-600 dark:text-blue-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-blue-600 dark:group-hover/row:text-blue-400',
   },
   Tracking: {
-    accent: 'bg-emerald-500',
-    badge: 'bg-emerald-500/15 text-emerald-800 ring-emerald-500/25 dark:text-emerald-300',
-    headerTint: 'from-emerald-500/10 to-transparent dark:from-emerald-500/15',
+    badgeBorder: 'border-emerald-500/25',
+    badgeBg: 'bg-emerald-500/[0.05] dark:bg-emerald-500/10',
+    cardHover:
+      'hover:border-emerald-200/60 hover:bg-gradient-to-b hover:from-white hover:to-emerald-50/40 hover:shadow-[0_14px_44px_-10px_rgba(16,185,129,0.14)] dark:hover:border-emerald-500/20 dark:hover:from-slate-900 dark:hover:to-emerald-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(16,185,129,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(16,185,129)]',
+    pathRowBg: 'bg-emerald-50/70 dark:bg-emerald-950/35',
+    pathText: 'text-emerald-950 dark:text-emerald-50',
+    pathIcon: 'text-emerald-600 dark:text-emerald-400',
+    linkHover:
+      'group-hover/row:opacity-100 group-hover/row:text-emerald-600 dark:group-hover/row:text-emerald-400',
   },
   Journey: {
-    accent: 'bg-violet-500',
-    badge: 'bg-violet-500/15 text-violet-800 ring-violet-500/25 dark:text-violet-300',
-    headerTint: 'from-violet-500/10 to-transparent dark:from-violet-500/15',
+    badgeBorder: 'border-violet-500/25',
+    badgeBg: 'bg-violet-500/[0.05] dark:bg-violet-500/10',
+    cardHover:
+      'hover:border-violet-200/60 hover:bg-gradient-to-b hover:from-white hover:to-violet-50/40 hover:shadow-[0_14px_44px_-10px_rgba(139,92,246,0.14)] dark:hover:border-violet-500/20 dark:hover:from-slate-900 dark:hover:to-violet-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(139,92,246,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(139,92,246)]',
+    pathRowBg: 'bg-violet-50/70 dark:bg-violet-950/35',
+    pathText: 'text-violet-950 dark:text-violet-50',
+    pathIcon: 'text-violet-600 dark:text-violet-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
   },
   Subscribers: {
-    accent: 'bg-amber-500',
-    badge: 'bg-amber-500/15 text-amber-900 ring-amber-500/25 dark:text-amber-300',
-    headerTint: 'from-amber-500/10 to-transparent dark:from-amber-500/15',
+    badgeBorder: 'border-amber-500/25',
+    badgeBg: 'bg-amber-500/[0.05] dark:bg-amber-500/10',
+    cardHover:
+      'hover:border-amber-200/60 hover:bg-gradient-to-b hover:from-white hover:to-amber-50/40 hover:shadow-[0_14px_44px_-10px_rgba(245,158,11,0.14)] dark:hover:border-amber-500/20 dark:hover:from-slate-900 dark:hover:to-amber-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(245,158,11,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(245,158,11)]',
+    pathRowBg: 'bg-amber-50/70 dark:bg-amber-950/35',
+    pathText: 'text-amber-950 dark:text-amber-50',
+    pathIcon: 'text-amber-600 dark:text-amber-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-amber-600 dark:group-hover/row:text-amber-400',
   },
   Subscription: {
-    accent: 'bg-rose-500',
-    badge: 'bg-rose-500/15 text-rose-800 ring-rose-500/25 dark:text-rose-300',
-    headerTint: 'from-rose-500/10 to-transparent dark:from-rose-500/15',
+    badgeBorder: 'border-rose-500/25',
+    badgeBg: 'bg-rose-500/[0.05] dark:bg-rose-500/10',
+    cardHover:
+      'hover:border-rose-200/60 hover:bg-gradient-to-b hover:from-white hover:to-rose-50/40 hover:shadow-[0_14px_44px_-10px_rgba(244,63,94,0.14)] dark:hover:border-rose-500/20 dark:hover:from-slate-900 dark:hover:to-rose-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(244,63,94,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(244,63,94)]',
+    pathRowBg: 'bg-rose-50/70 dark:bg-rose-950/35',
+    pathText: 'text-rose-950 dark:text-rose-50',
+    pathIcon: 'text-rose-600 dark:text-rose-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-rose-600 dark:group-hover/row:text-rose-400',
   },
   Automation: {
-    accent: 'bg-slate-500',
-    badge: 'bg-slate-500/15 text-slate-800 ring-slate-500/25 dark:text-slate-300',
-    headerTint: 'from-slate-500/10 to-transparent dark:from-slate-500/15',
+    badgeBorder: 'border-violet-500/25',
+    badgeBg: 'bg-violet-500/[0.05] dark:bg-violet-500/10',
+    cardHover:
+      'hover:border-violet-200/60 hover:bg-gradient-to-b hover:from-white hover:to-violet-50/40 hover:shadow-[0_14px_44px_-10px_rgba(139,92,246,0.14)] dark:hover:border-violet-500/20 dark:hover:from-slate-900 dark:hover:to-violet-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(139,92,246,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(139,92,246)]',
+    pathRowBg: 'bg-violet-50/70 dark:bg-violet-950/35',
+    pathText: 'text-violet-950 dark:text-violet-50',
+    pathIcon: 'text-violet-600 dark:text-violet-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
   },
   Mobile: {
-    accent: 'bg-cyan-500',
-    badge: 'bg-cyan-500/15 text-cyan-800 ring-cyan-500/25 dark:text-cyan-300',
-    headerTint: 'from-cyan-500/10 to-transparent dark:from-cyan-500/15',
+    badgeBorder: 'border-cyan-500/25',
+    badgeBg: 'bg-cyan-500/[0.05] dark:bg-cyan-500/10',
+    cardHover:
+      'hover:border-cyan-200/60 hover:bg-gradient-to-b hover:from-white hover:to-cyan-50/40 hover:shadow-[0_14px_44px_-10px_rgba(6,182,212,0.14)] dark:hover:border-cyan-500/20 dark:hover:from-slate-900 dark:hover:to-cyan-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(6,182,212,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(6,182,212)]',
+    pathRowBg: 'bg-cyan-50/70 dark:bg-cyan-950/35',
+    pathText: 'text-cyan-950 dark:text-cyan-50',
+    pathIcon: 'text-cyan-600 dark:text-cyan-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-cyan-600 dark:group-hover/row:text-cyan-400',
   },
   GroupConnect: {
-    accent: 'bg-lime-500',
-    badge: 'bg-lime-500/15 text-lime-900 ring-lime-500/25 dark:text-lime-300',
-    headerTint: 'from-lime-500/10 to-transparent dark:from-lime-500/15',
+    badgeBorder: 'border-lime-500/25',
+    badgeBg: 'bg-lime-500/[0.05] dark:bg-lime-500/10',
+    cardHover:
+      'hover:border-lime-200/60 hover:bg-gradient-to-b hover:from-white hover:to-lime-50/40 hover:shadow-[0_14px_44px_-10px_rgba(132,204,22,0.14)] dark:hover:border-lime-500/20 dark:hover:from-slate-900 dark:hover:to-lime-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(132,204,22,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(132,204,22)]',
+    pathRowBg: 'bg-lime-50/70 dark:bg-lime-950/35',
+    pathText: 'text-lime-950 dark:text-lime-50',
+    pathIcon: 'text-lime-600 dark:text-lime-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-lime-600 dark:group-hover/row:text-lime-400',
   },
   Social: {
-    accent: 'bg-pink-500',
-    badge: 'bg-pink-500/15 text-pink-800 ring-pink-500/25 dark:text-pink-300',
-    headerTint: 'from-pink-500/10 to-transparent dark:from-pink-500/15',
+    badgeBorder: 'border-pink-500/25',
+    badgeBg: 'bg-pink-500/[0.05] dark:bg-pink-500/10',
+    cardHover:
+      'hover:border-pink-200/60 hover:bg-gradient-to-b hover:from-white hover:to-pink-50/40 hover:shadow-[0_14px_44px_-10px_rgba(236,72,153,0.14)] dark:hover:border-pink-500/20 dark:hover:from-slate-900 dark:hover:to-pink-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(236,72,153,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(236,72,153)]',
+    pathRowBg: 'bg-pink-50/70 dark:bg-pink-950/35',
+    pathText: 'text-pink-950 dark:text-pink-50',
+    pathIcon: 'text-pink-600 dark:text-pink-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-pink-600 dark:group-hover/row:text-pink-400',
   },
   Other: {
-    accent: 'bg-stone-500',
-    badge: 'bg-stone-500/15 text-stone-800 ring-stone-500/25 dark:text-stone-300',
-    headerTint: 'from-stone-500/10 to-transparent dark:from-stone-500/15',
+    badgeBorder: 'border-stone-500/25',
+    badgeBg: 'bg-stone-500/[0.05] dark:bg-stone-500/10',
+    cardHover:
+      'hover:border-stone-300/60 hover:bg-gradient-to-b hover:from-white hover:to-stone-50/40 hover:shadow-[0_14px_44px_-10px_rgba(120,113,108,0.12)] dark:hover:border-stone-500/20 dark:hover:from-slate-900 dark:hover:to-stone-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(120,113,108,0.15)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(120,113,108)]',
+    pathRowBg: 'bg-stone-50/70 dark:bg-stone-950/35',
+    pathText: 'text-stone-950 dark:text-stone-50',
+    pathIcon: 'text-stone-600 dark:text-stone-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-stone-600 dark:group-hover/row:text-stone-400',
   },
   SendLog: {
-    accent: 'bg-orange-500',
-    badge: 'bg-orange-500/15 text-orange-900 ring-orange-500/25 dark:text-orange-300',
-    headerTint: 'from-orange-500/10 to-transparent dark:from-orange-500/15',
+    badgeBorder: 'border-orange-500/25',
+    badgeBg: 'bg-orange-500/[0.05] dark:bg-orange-500/10',
+    cardHover:
+      'hover:border-orange-200/60 hover:bg-gradient-to-b hover:from-white hover:to-orange-50/40 hover:shadow-[0_14px_44px_-10px_rgba(249,115,22,0.14)] dark:hover:border-orange-500/20 dark:hover:from-slate-900 dark:hover:to-orange-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(249,115,22,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
+    pathRowBg: 'bg-orange-50/70 dark:bg-orange-950/35',
+    pathText: 'text-orange-950 dark:text-orange-50',
+    pathIcon: 'text-orange-600 dark:text-orange-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-orange-600 dark:group-hover/row:text-orange-400',
   },
   Synchronized: {
-    accent: 'bg-indigo-500',
-    badge: 'bg-indigo-500/15 text-indigo-800 ring-indigo-500/25 dark:text-indigo-300',
-    headerTint: 'from-indigo-500/10 to-transparent dark:from-indigo-500/15',
+    badgeBorder: 'border-indigo-500/25',
+    badgeBg: 'bg-indigo-500/[0.05] dark:bg-indigo-500/10',
+    cardHover:
+      'hover:border-indigo-200/60 hover:bg-gradient-to-b hover:from-white hover:to-indigo-50/40 hover:shadow-[0_14px_44px_-10px_rgba(99,102,241,0.14)] dark:hover:border-indigo-500/20 dark:hover:from-slate-900 dark:hover:to-indigo-950/25 dark:hover:shadow-[0_14px_44px_-10px_rgba(99,102,241,0.2)]',
+    pathInset: 'shadow-[inset_3px_0_0_0_rgb(99,102,241)]',
+    pathRowBg: 'bg-indigo-50/70 dark:bg-indigo-950/35',
+    pathText: 'text-indigo-950 dark:text-indigo-50',
+    pathIcon: 'text-indigo-600 dark:text-indigo-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-indigo-600 dark:group-hover/row:text-indigo-400',
   },
 };
 
-const typeBadgeStyles: Record<DataViewField['type'], string> = {
-  Text: 'bg-sky-500/15 text-sky-800 ring-sky-500/30 dark:text-sky-300',
-  Number: 'bg-violet-500/15 text-violet-800 ring-violet-500/30 dark:text-violet-300',
-  Date: 'bg-amber-500/15 text-amber-900 ring-amber-500/30 dark:text-amber-300',
-  Boolean: 'bg-rose-500/15 text-rose-800 ring-rose-500/30 dark:text-rose-300',
-  Decimal: 'bg-teal-500/15 text-teal-800 ring-teal-500/30 dark:text-teal-300',
-};
+const CARD_HEADER_HEIGHT = 'h-[5.5rem]';
+
+const FIELD_GRID_COLS =
+  'grid-cols-[minmax(0,1fr)_minmax(4.75rem,auto)_2.25rem]';
+
+const TYPE_BADGE_CLASS =
+  'inline-flex whitespace-nowrap rounded border border-slate-200/60 bg-white px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-slate-600 transition-colors duration-100 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-400';
+
+const MUTED_ICON = 'text-slate-400 transition-colors duration-100 dark:text-slate-500';
+
+const LINK_ICON_IDLE =
+  'opacity-25 text-slate-300 transition-all duration-100 dark:text-slate-600';
+
+const CARD_MOTION =
+  'transition-[transform,box-shadow,background-color,border-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]';
 
 function formatFieldType(field: DataViewField): string {
   if (field.type === 'Text' && field.length !== undefined) {
@@ -136,71 +223,76 @@ export function DataViewCard({
 
   return (
     <article
-      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md shadow-slate-200/50 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-slate-300/60 dark:border-slate-700/90 dark:bg-slate-900 dark:shadow-black/30 dark:hover:shadow-black/50 ${
+      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-lg border border-slate-200/50 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] will-change-transform hover:-translate-y-1 dark:border-slate-800/50 dark:bg-slate-900 dark:shadow-black/20 ${CARD_MOTION} ${theme.cardHover} ${
         isSelected
-          ? 'ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950'
+          ? 'border-slate-300/80 ring-1 ring-slate-900/10 ring-offset-2 ring-offset-[#f8fafc] dark:border-slate-600 dark:ring-white/10 dark:ring-offset-slate-950'
           : ''
       } ${isCardDimmed ? 'opacity-30' : 'opacity-100'}`}
     >
-      <div className={`h-1.5 w-full shrink-0 ${theme.accent}`} aria-hidden />
-
       <header
-        className={`relative shrink-0 border-b border-slate-100 bg-gradient-to-b px-4 py-3 dark:border-slate-800 ${theme.headerTint}`}
+        className={`${CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100 px-4 py-3 transition-colors duration-500 group-hover/card:border-slate-200/80 dark:border-slate-800 dark:group-hover/card:border-slate-700/80`}
       >
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-h-[1.5rem] items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
             <input
               type="checkbox"
               checked={isSelected}
               onChange={() => onToggleSelect(table.name)}
-              className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-cyan-600 focus:ring-2 focus:ring-cyan-500/40 dark:border-slate-600 dark:bg-slate-800"
+              className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-400/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               aria-label={`Include ${table.name} in SQL query`}
             />
-            <h2 className="truncate font-mono text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-lg">
+            <h2 className="truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-50">
               {table.name}
             </h2>
           </div>
           <span
-            className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${theme.badge}`}
+            className={`inline-flex shrink-0 items-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 ${theme.badgeBorder} ${theme.badgeBg}`}
           >
             {table.category}
           </span>
         </div>
-        <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-slate-600 dark:text-slate-400">
+        <p className="line-clamp-2 h-8 text-xs leading-4 text-slate-500 dark:text-slate-400">
           {table.description}
         </p>
       </header>
 
-      <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 py-2 pr-2 sm:px-4">
-        <table className="w-full min-w-[240px] border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-white dark:bg-slate-900">
-            <tr className="border-b border-slate-100 dark:border-slate-800">
-              <th
-                scope="col"
-                className="pb-2 pl-1 pr-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
-              >
-                Field
-              </th>
-              <th
-                scope="col"
-                className="pb-2 px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
-              >
-                Type
-              </th>
-              <th
-                scope="col"
-                className="w-9 pb-2 pl-2 pr-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
-              >
-                PK
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+      <div className="flex min-h-0 flex-1 flex-col bg-slate-50/50 transition-colors duration-500 group-hover/card:bg-slate-50/30 dark:bg-slate-950/25 dark:group-hover/card:bg-slate-950/15">
+        <div
+          className={`grid shrink-0 gap-x-2 border-b border-slate-100/80 px-3 pb-1 pt-2 dark:border-slate-800/80 sm:px-4 ${FIELD_GRID_COLS}`}
+          role="row"
+        >
+          <span
+            className="pl-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+            role="columnheader"
+          >
+            Field
+          </span>
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+            role="columnheader"
+          >
+            Type
+          </span>
+          <span
+            className="text-center text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+            role="columnheader"
+          >
+            PK
+          </span>
+        </div>
+
+        <div
+          className="scrollbar-card-fields min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+          role="table"
+          aria-label={`${table.name} fields`}
+        >
+          <div role="rowgroup">
             {table.fields.map((field, fieldIndex) => (
               <FieldRow
                 key={`${table.name}-${field.name}-${fieldIndex}`}
                 tableName={table.name}
                 field={field}
+                categoryTheme={theme}
                 normalizedSearchQuery={normalizedSearchQuery}
                 isSearchActive={isSearchActive}
                 tableMatches={tableMatches}
@@ -211,8 +303,8 @@ export function DataViewCard({
                 schemaTables={schemaTables}
               />
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -221,6 +313,7 @@ export function DataViewCard({
 interface FieldRowProps {
   tableName: string;
   field: DataViewField;
+  categoryTheme: CategoryTheme;
   normalizedSearchQuery: string;
   isSearchActive: boolean;
   tableMatches: boolean;
@@ -234,6 +327,7 @@ interface FieldRowProps {
 function FieldRow({
   tableName,
   field,
+  categoryTheme,
   normalizedSearchQuery,
   isSearchActive,
   tableMatches,
@@ -252,17 +346,29 @@ function FieldRow({
   );
   const isSource = isRelationSource(hoveredRelation, tableName, field.name);
   const isTargetGlow = isRelationHighlighted && !isSource;
+  const isPathActive = isSource || isTargetGlow;
   const isRelationInteractive =
+    !field.isDynamicProfileAttribute &&
     buildRelationHighlight(tableName, field, schemaTables) !== null;
+  const isProfileAttribute = field.isDynamicProfileAttribute === true;
+
+  const fieldNameClass = isProfileAttribute
+    ? 'italic text-slate-500 group-hover/row:text-slate-600 dark:text-slate-400 dark:group-hover/row:text-slate-300'
+    : isPathActive
+      ? categoryTheme.pathText
+      : 'text-slate-800 group-hover/row:text-slate-950 dark:text-slate-200 dark:group-hover/row:text-white';
+
+  const descriptionClass = isPathActive
+    ? `${categoryTheme.pathText} opacity-80`
+    : 'text-slate-500 group-hover/row:text-slate-600 dark:text-slate-400 dark:group-hover/row:text-slate-300';
 
   return (
-    <tr
-      className={`transition-[background-color,box-shadow,opacity] ease-out ${
-        isSource ? 'bg-indigo-600/20 duration-75' : 'duration-200'
-      } ${
-        isTargetGlow
-          ? 'shadow-[inset_0_0_0_2px_rgba(99,102,241,0.55),0_0_14px_rgba(99,102,241,0.2)] ring-1 ring-inset ring-indigo-400/50 dark:shadow-[inset_0_0_0_2px_rgba(129,140,248,0.5),0_0_16px_rgba(99,102,241,0.25)]'
-          : ''
+    <div
+      role="row"
+      className={`group/row grid gap-x-2 border-b border-slate-100/80 px-3 py-2.5 transition-[background-color,color,opacity] duration-100 ease-out last:border-b-0 dark:border-slate-800/50 sm:px-4 ${FIELD_GRID_COLS} ${
+        isPathActive
+          ? `${categoryTheme.pathRowBg} ${categoryTheme.pathInset}`
+          : 'bg-transparent hover:bg-white dark:hover:bg-slate-900/80'
       } ${isFieldDimmed ? 'opacity-30' : 'opacity-100'} ${
         isRelationInteractive ? 'cursor-pointer' : ''
       }`}
@@ -277,25 +383,26 @@ function FieldRow({
         }
       }}
     >
-      <td className="py-2 pl-1 pr-2 align-top">
+      <div role="cell" className="min-w-0">
         <div className="flex min-w-0 items-start gap-1.5">
           {isRelationInteractive && (
             <Link2
               className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                isRelationHighlighted ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-600'
+                isPathActive
+                  ? `opacity-100 ${categoryTheme.pathIcon}`
+                  : `${LINK_ICON_IDLE} ${categoryTheme.linkHover}`
               }`}
               aria-hidden
             />
           )}
           <div className="min-w-0 flex-1">
-            <span
-              className={`block truncate font-mono text-xs font-medium sm:text-sm ${
-                isRelationHighlighted
-                  ? 'text-indigo-950 dark:text-indigo-100'
-                  : 'text-slate-800 dark:text-slate-200'
-              }`}
-            >
-              {field.name}
+            <span className="flex min-w-0 items-center gap-1">
+              <span
+                className={`truncate font-mono text-xs font-medium transition-colors duration-100 ${fieldNameClass}`}
+              >
+                {field.name}
+              </span>
+              {isProfileAttribute && <ProfileAttributeHelp />}
             </span>
             <div
               className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-in-out ${
@@ -303,37 +410,43 @@ function FieldRow({
               }`}
             >
               <div className="overflow-hidden">
-                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                <p className={`text-xs leading-relaxed transition-colors duration-100 ${descriptionClass}`}>
                   {field.description}
                 </p>
               </div>
             </div>
           </div>
         </div>
-      </td>
-      <td className="px-2 py-2 align-top">
-        <span
-          className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold ring-1 ring-inset sm:text-xs ${typeBadgeStyles[field.type]}`}
-        >
-          {formatFieldType(field)}
-        </span>
-      </td>
-      <td className="py-2 pl-2 pr-1 text-center align-top">
+      </div>
+      <div role="cell" className="self-start">
+        {isProfileAttribute ? (
+          <span className={`${TYPE_BADGE_CLASS} italic`}>dynamic</span>
+        ) : (
+          <span
+            className={`${TYPE_BADGE_CLASS} ${
+              isPathActive
+                ? `${categoryTheme.pathText} border-current/20 bg-white/80 dark:bg-slate-900/80`
+                : 'group-hover/row:border-slate-300 group-hover/row:text-slate-700 dark:group-hover/row:text-slate-200'
+            }`}
+          >
+            {formatFieldType(field)}
+          </span>
+        )}
+      </div>
+      <div role="cell" className="flex items-start justify-center self-start">
         {field.isPrimaryKey ? (
           <span className="inline-flex" title="Primary key">
             <KeyRound
-              className={`mx-auto h-4 w-4 ${
-                isRelationHighlighted
-                  ? 'text-indigo-500 dark:text-indigo-400'
-                  : 'text-amber-500 dark:text-amber-400'
+              className={`h-3.5 w-3.5 transition-colors duration-100 ${
+                isPathActive ? categoryTheme.pathIcon : MUTED_ICON
               }`}
               aria-label="Primary key"
             />
           </span>
         ) : (
-          <span className="inline-block h-4 w-4" aria-hidden />
+          <span className="inline-block h-3.5 w-3.5" aria-hidden />
         )}
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }

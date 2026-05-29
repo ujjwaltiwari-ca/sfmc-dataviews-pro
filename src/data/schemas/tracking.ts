@@ -1,5 +1,6 @@
 import type { DataViewTable } from './types';
 import {
+  appendDynamicProfileAttributeField,
   ENGAGEMENT_JOB,
   ENGAGEMENT_LIST,
   ENGAGEMENT_SUBSCRIBER_ID,
@@ -15,24 +16,24 @@ export const trackingDataViews: DataViewTable[] = [
     description:
       'Email open events (image pixel). Seven-day retention in SFMC; six months in standard documentation. IsUnique flags first open per job.',
     category: 'Tracking',
-    fields: [
+    fields: appendDynamicProfileAttributeField([
       ...engagementEventFields('EventDate', 'Timestamp when the open was recorded.'),
       field('IsUnique', 'Boolean', 'Whether this is the first open for the subscriber on this job.', {
         isNullable: true,
       }),
-    ],
+    ]),
   },
   {
     name: '_Click',
     description: 'Email link click events with URL, link name, and resolved link content.',
     category: 'Tracking',
-    fields: [
+    fields: appendDynamicProfileAttributeField([
       ...engagementEventFields('EventDate', 'Timestamp when the click occurred.'),
       field('URL', 'Text', 'Tracked URL with AMPscript placeholders.', { length: 900, isNullable: true }),
       field('LinkName', 'Text', 'Link alias from the email.', { length: 1024, isNullable: true }),
       field('LinkContent', 'Text', 'Resolved link URL after personalization.', { isNullable: true }),
       field('IsUnique', 'Boolean', 'Whether this is the first click for the subscriber on this job.'),
-    ],
+    ]),
   },
   {
     name: '_Bounce',

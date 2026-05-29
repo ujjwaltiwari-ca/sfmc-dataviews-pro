@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
+import { SiteFooter } from './components/SiteFooter';
 import { SqlGenerator } from './components/SqlGenerator';
 import type { DataViewField } from './data/sfmcSchema';
 import {
@@ -115,7 +116,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50 text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#f8fafc] text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
       <div className="z-40 shrink-0">
         <Header />
         <CommandToolbar
@@ -129,14 +130,14 @@ function App() {
       </div>
 
       <div
-        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#f8fafc] dark:bg-slate-950 ${
           sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
         }`}
       >
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-7xl p-6 sm:p-8">
           <div
             key={activeSegment}
-            className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"
           >
             {activeTables.map((table) => (
               <DataViewCard
@@ -153,6 +154,7 @@ function App() {
               />
             ))}
           </div>
+          <SiteFooter />
         </main>
       </div>
 

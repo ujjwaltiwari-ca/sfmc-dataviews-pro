@@ -1,5 +1,6 @@
 import type { DataViewTable } from './types';
 import {
+  appendDynamicProfileAttributeField,
   ENGAGEMENT_JOB,
   ENGAGEMENT_SUBSCRIBER_ID,
   ENGAGEMENT_SUBSCRIBER_KEY,
@@ -66,7 +67,9 @@ export const sendingDataViews: DataViewTable[] = [
     description:
       'Per-subscriber email send events. Parent BU sees all child BU sends. Six-month retention; updates asynchronously.',
     category: 'Sending',
-    fields: engagementEventFields('EventDate', 'Timestamp when the send occurred.'),
+    fields: appendDynamicProfileAttributeField(
+      engagementEventFields('EventDate', 'Timestamp when the send occurred.'),
+    ),
   },
   {
     name: '_ReconcilableDispositionView',

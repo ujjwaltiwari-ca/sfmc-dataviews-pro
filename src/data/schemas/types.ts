@@ -6,6 +6,8 @@ export interface DataViewField {
   isNullable: boolean;
   description: string;
   relatesTo?: { table: string; field: string }[];
+  /** When true, shows contextual help for BU-specific profile attribute columns. */
+  isDynamicProfileAttribute?: boolean;
 }
 
 export type DataViewCategory =
