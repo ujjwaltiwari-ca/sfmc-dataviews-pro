@@ -156,6 +156,52 @@ export function applySqlKeywordCase(sql: string, keywordCase: SqlKeywordCase): s
     .join('\n');
 }
 
+const SCAFFOLD_DIVIDER = '-- ========================================================';
+
+function formatScaffoldingProse(text: string, keywordCase: SqlKeywordCase): string {
+  return keywordCase === 'upper' ? text.toUpperCase() : text.toLowerCase();
+}
+
+/** Builds the Automation Studio target DE header block for prepending to generated SQL. */
+export function buildTargetDeScaffolding(
+  rootTable: string,
+  keywordCase: SqlKeywordCase = 'upper',
+): string {
+  const targetObject = `${rootTable}_Target_Log`;
+  const title = formatScaffoldingProse('Automation Target Data Extension Configuration', keywordCase);
+  const targetLabel = formatScaffoldingProse('Target Object', keywordCase);
+  const actionLabel = formatScaffoldingProse('Action Type', keywordCase);
+  const actionValue = formatScaffoldingProse('Update / Overwrite', keywordCase);
+  const schemaLabel = formatScaffoldingProse('Required Field Binding Schema', keywordCase);
+  const primaryKeyNote = formatScaffoldingProse('Mark As Primary Key', keywordCase);
+
+  return [
+    SCAFFOLD_DIVIDER,
+    `-- ${title}`,
+    `-- ${targetLabel}: ${targetObject}`,
+    `-- ${actionLabel}: ${actionValue}`,
+    '--',
+    `-- ${schemaLabel}:`,
+    `--   * SubscriberKey (Text) -> [${primaryKeyNote}]`,
+    '--   * EventDate (Date)',
+    SCAFFOLD_DIVIDER,
+  ].join('\n');
+}
+
+/** Prepends the target DE scaffolding comment block above the generated query. */
+export function applyTargetDeScaffolding(
+  sql: string,
+  rootTable: string,
+  keywordCase: SqlKeywordCase = 'upper',
+  enabled = true,
+): string {
+  if (!enabled || !rootTable.trim()) {
+    return sql;
+  }
+
+  return `${buildTargetDeScaffolding(rootTable, keywordCase)}\n${sql}`;
+}
+
 
 /** Prefer these bridges when multiple equal-length paths exist. */
 const BRIDGE_TABLE_PRIORITY: string[] = [

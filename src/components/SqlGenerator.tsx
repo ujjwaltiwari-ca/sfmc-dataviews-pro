@@ -8,6 +8,7 @@ import {
   ChevronUp,
   Copy,
   Database,
+  FileText,
   GitBranch,
   Route,
   Shield,
@@ -18,6 +19,7 @@ import type { DataViewTable } from '../data/sfmcSchema';
 import {
   applySqlKeywordCase,
   applySqlUtilityFilters,
+  applyTargetDeScaffolding,
   buildActiveSubscriberPredicate,
   generateSfmcSql,
   type SqlKeywordCase,
@@ -138,6 +140,7 @@ export function SqlGenerator({
   const [limitPast30Days, setLimitPast30Days] = useState(false);
   const [excludeTestSends, setExcludeTestSends] = useState(false);
   const [filterActiveSubscribersOnly, setFilterActiveSubscribersOnly] = useState(false);
+  const [includeTargetDeScaffolding, setIncludeTargetDeScaffolding] = useState(false);
   const [keywordCase, setKeywordCase] = useState<SqlKeywordCase>('upper');
 
   const generation = useMemo(
@@ -184,9 +187,20 @@ export function SqlGenerator({
     ],
   );
 
-  const displaySql = useMemo(
+  const casedSql = useMemo(
     () => applySqlKeywordCase(filteredSql, keywordCase),
     [filteredSql, keywordCase],
+  );
+
+  const displaySql = useMemo(
+    () =>
+      applyTargetDeScaffolding(
+        casedSql,
+        architecture.rootTable,
+        keywordCase,
+        includeTargetDeScaffolding,
+      ),
+    [casedSql, architecture.rootTable, keywordCase, includeTargetDeScaffolding],
   );
 
   const formatUtilityPreview = (expression: string) =>
@@ -440,6 +454,14 @@ export function SqlGenerator({
                           the current selection. Choose a table with a subscriber join path.
                         </p>
                       )}
+                      <UtilityToggle
+                        id="include-target-de-scaffolding"
+                        label="Include Automation Target Header"
+                        description="Prepends target schema configurations and data binding rules."
+                        checked={includeTargetDeScaffolding}
+                        onChange={setIncludeTargetDeScaffolding}
+                        icon={FileText}
+                      />
                     </section>
                   </aside>
 
@@ -477,9 +499,10 @@ export function SqlGenerator({
                         <div className="flex items-center gap-2">
                           {(limitPast30Days ||
                             excludeTestSends ||
-                            (filterActiveSubscribersOnly && subscribersInJoinPath)) && (
+                            (filterActiveSubscribersOnly && subscribersInJoinPath) ||
+                            includeTargetDeScaffolding) && (
                             <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
-                              filters active
+                              utilities active
                             </span>
                           )}
                           <button
