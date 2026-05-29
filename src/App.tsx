@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
-import { JoinPathVisualizer } from './components/JoinPathVisualizer';
 import { SiteFooter } from './components/SiteFooter';
 import { SqlGenerator } from './components/SqlGenerator';
-import type { DataViewCategory, DataViewField } from './data/sfmcSchema';
+import type { DataViewField } from './data/sfmcSchema';
 import {
   dedupeTablesByName,
   getTablesForSegment,
@@ -13,14 +12,8 @@ import {
   VIEW_SEGMENT_STORAGE_KEY,
   type ViewSegmentId,
 } from './data/viewSegments';
-import type { StructuralPathLink } from './utils/joinPathVisualizer';
-import {
-  buildStructuralPathsForSelection,
-  buildStructuralPathsFromHoveredRelation,
-} from './utils/joinPathVisualizer';
 import type { HoveredRelation } from './utils/schemaExplorer';
 import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExplorer';
-import { generateSfmcSql } from './utils/sqlGenerator';
 
 const RELATION_LEAVE_DELAY_MS = 40;
 const SHOW_DETAILS_STORAGE_KEY = 'sfmc-show-details';
@@ -42,8 +35,6 @@ function App() {
   const [hoveredRelation, setHoveredRelation] = useState<HoveredRelation | null>(null);
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const canvasScrollRef = useRef<HTMLDivElement>(null);
-  const canvasContentRef = useRef<HTMLDivElement>(null);
 
   const activeTables = useMemo(
     () => dedupeTablesByName(getTablesForSegment(activeSegment)),
@@ -90,26 +81,6 @@ function App() {
   );
 
   const sandboxOpen = selectedTableNames.length > 0;
-
-  const tableCategoryMap = useMemo(() => {
-    const map: Record<string, DataViewCategory> = {};
-    for (const table of activeTables) {
-      map[table.name] = table.category;
-    }
-    return map;
-  }, [activeTables]);
-
-  const selectionJoinArchitecture = useMemo(
-    () => generateSfmcSql(selectedTableNames, activeTables).architecture,
-    [selectedTableNames, activeTables],
-  );
-
-  const structuralPaths = useMemo((): StructuralPathLink[] => {
-    if (hoveredRelation) {
-      return buildStructuralPathsFromHoveredRelation(hoveredRelation);
-    }
-    return buildStructuralPathsForSelection(selectedTableNames, selectionJoinArchitecture);
-  }, [hoveredRelation, selectedTableNames, activeTables, selectionJoinArchitecture]);
 
   const clearRelationLeaveTimer = () => {
     if (relationLeaveTimerRef.current !== null) {
@@ -159,41 +130,32 @@ function App() {
       </div>
 
       <div
-        ref={canvasScrollRef}
-        className={`relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#f8fafc] dark:bg-slate-950 ${
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#f8fafc] dark:bg-slate-950 ${
           sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
         }`}
       >
-        <div ref={canvasContentRef} className="relative">
-          <JoinPathVisualizer
-            structuralPaths={structuralPaths}
-            tableCategories={tableCategoryMap}
-            containerRef={canvasContentRef}
-            scrollContainerRef={canvasScrollRef}
-          />
-          <main className="relative z-[1] mx-auto w-full max-w-7xl p-6 sm:p-8">
-            <div
-              key={activeSegment}
-              className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"
-            >
-              {activeTables.map((table) => (
-                <DataViewCard
-                  key={table.name}
-                  table={table}
-                  isSelected={selectedTables.has(table.name)}
-                  onToggleSelect={handleToggleTableSelect}
-                  normalizedSearchQuery={normalizedSearchQuery}
-                  hoveredRelation={hoveredRelation}
-                  onFieldRelationHover={handleFieldRelationHover}
-                  onFieldRelationLeave={handleFieldRelationLeave}
-                  showDetails={showDetails}
-                  schemaTables={activeTables}
-                />
-              ))}
-            </div>
-            <SiteFooter />
-          </main>
-        </div>
+        <main className="mx-auto w-full max-w-7xl p-6 sm:p-8">
+          <div
+            key={activeSegment}
+            className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {activeTables.map((table) => (
+              <DataViewCard
+                key={table.name}
+                table={table}
+                isSelected={selectedTables.has(table.name)}
+                onToggleSelect={handleToggleTableSelect}
+                normalizedSearchQuery={normalizedSearchQuery}
+                hoveredRelation={hoveredRelation}
+                onFieldRelationHover={handleFieldRelationHover}
+                onFieldRelationLeave={handleFieldRelationLeave}
+                showDetails={showDetails}
+                schemaTables={activeTables}
+              />
+            ))}
+          </div>
+          <SiteFooter />
+        </main>
       </div>
 
       <SqlGenerator selectedTableNames={selectedTableNames} schemaTables={activeTables} />

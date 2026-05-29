@@ -77,15 +77,4 @@
   .dark .group\/card:hover .scrollbar-card-fields::-webkit-scrollbar-thumb:hover {
     background-color: rgb(148 163 184);
   }
-
-  .join-path-flow {
-    stroke-dasharray: 7 9;
-    animation: join-path-dash 1.35s linear infinite;
-  }
-
-  @keyframes join-path-dash {
-    to {
-      stroke-dashoffset: -32;
-    }
-  }
 }

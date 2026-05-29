@@ -226,7 +226,6 @@ export function DataViewCard({
 
   return (
     <article
-      data-table-card={table.name}
       className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-lg border border-slate-200/50 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] will-change-transform hover:-translate-y-1 dark:border-slate-800/50 dark:bg-slate-900 dark:shadow-black/20 ${CARD_MOTION} ${theme.cardHover} ${
         isSelected
           ? 'border-slate-300/80 ring-1 ring-slate-900/10 ring-offset-2 ring-offset-[#f8fafc] dark:border-slate-600 dark:ring-white/10 dark:ring-offset-slate-950'
