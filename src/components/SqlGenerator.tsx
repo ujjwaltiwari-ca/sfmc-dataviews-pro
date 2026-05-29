@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Braces,
   Calendar,
+  CaseSensitive,
   Check,
   ChevronDown,
   ChevronUp,
@@ -11,9 +12,16 @@ import {
   Route,
   Shield,
   Terminal,
+  Users,
 } from 'lucide-react';
 import type { DataViewTable } from '../data/sfmcSchema';
-import { applySqlUtilityFilters, generateSfmcSql } from '../utils/sqlGenerator';
+import {
+  applySqlKeywordCase,
+  applySqlUtilityFilters,
+  buildActiveSubscriberPredicate,
+  generateSfmcSql,
+  type SqlKeywordCase,
+} from '../utils/sqlGenerator';
 import { SqlStyledCode } from './SqlStyledCode';
 
 const COPIED_FEEDBACK_MS = 2200;
@@ -69,6 +77,58 @@ function UtilityToggle({
   );
 }
 
+function KeywordCaseToggle({
+  value,
+  onChange,
+}: {
+  value: SqlKeywordCase;
+  onChange: (value: SqlKeywordCase) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-700/80 bg-slate-800/40 px-3 py-2.5">
+      <div className="flex items-start gap-3">
+        <CaseSensitive className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-slate-100">Keyword case</p>
+          <p className="mt-0.5 text-[10px] leading-snug text-slate-500">
+            Switch core SQL keywords between uppercase and lowercase in the output.
+          </p>
+          <div
+            className="mt-2 inline-flex rounded-md border border-slate-700 bg-slate-950/80 p-0.5"
+            role="group"
+            aria-label="SQL keyword case"
+          >
+            <button
+              type="button"
+              onClick={() => onChange('upper')}
+              aria-pressed={value === 'upper'}
+              className={`rounded px-2.5 py-1 font-mono text-[10px] font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/40 ${
+                value === 'upper'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              UPPERCASE
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('lower')}
+              aria-pressed={value === 'lower'}
+              className={`rounded px-2.5 py-1 font-mono text-[10px] font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/40 ${
+                value === 'lower'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              lowercase
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SqlGenerator({
   selectedTableNames,
   schemaTables,
@@ -77,10 +137,15 @@ export function SqlGenerator({
   const [copied, setCopied] = useState(false);
   const [limitPast30Days, setLimitPast30Days] = useState(false);
   const [excludeTestSends, setExcludeTestSends] = useState(false);
+  const [filterActiveSubscribersOnly, setFilterActiveSubscribersOnly] = useState(false);
+  const [keywordCase, setKeywordCase] = useState<SqlKeywordCase>('upper');
 
   const generation = useMemo(
-    () => generateSfmcSql(selectedTableNames, schemaTables),
-    [selectedTableNames, schemaTables],
+    () =>
+      generateSfmcSql(selectedTableNames, schemaTables, {
+        requireSubscribersJoin: filterActiveSubscribersOnly,
+      }),
+    [selectedTableNames, schemaTables, filterActiveSubscribersOnly],
   );
 
   const {
@@ -90,13 +155,42 @@ export function SqlGenerator({
     userSelectedTables,
     architecture,
     filterAlias,
+    joinTables,
   } = generation;
 
-  const displaySql = useMemo(
+  const subscribersInJoinPath = joinTables.includes('_Subscribers');
+
+  const filteredSql = useMemo(
     () =>
-      applySqlUtilityFilters(baseSql, { limitPast30Days, excludeTestSends }, filterAlias),
-    [baseSql, limitPast30Days, excludeTestSends, filterAlias],
+      applySqlUtilityFilters(
+        baseSql,
+        {
+          limitPast30Days,
+          excludeTestSends,
+          filterActiveSubscribersOnly:
+            filterActiveSubscribersOnly && subscribersInJoinPath,
+        },
+        filterAlias,
+        keywordCase,
+      ),
+    [
+      baseSql,
+      limitPast30Days,
+      excludeTestSends,
+      filterActiveSubscribersOnly,
+      subscribersInJoinPath,
+      filterAlias,
+      keywordCase,
+    ],
   );
+
+  const displaySql = useMemo(
+    () => applySqlKeywordCase(filteredSql, keywordCase),
+    [filteredSql, keywordCase],
+  );
+
+  const formatUtilityPreview = (expression: string) =>
+    applySqlKeywordCase(expression, keywordCase);
 
   const isVisible = selectedTableNames.length > 0;
 
@@ -305,14 +399,15 @@ export function SqlGenerator({
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                         SQL utilities
                       </p>
+                      <KeywordCaseToggle value={keywordCase} onChange={setKeywordCase} />
                       <UtilityToggle
                         id="limit-30-days"
                         label="Limit past 30 days"
-                        description={
+                        description={formatUtilityPreview(
                           filterAlias
                             ? `${filterAlias}.EventDate >= DATEADD(day, -30, GETDATE())`
-                            : 'EventDate >= DATEADD(day, -30, GETDATE())'
-                        }
+                            : 'EventDate >= DATEADD(day, -30, GETDATE())',
+                        )}
                         checked={limitPast30Days}
                         onChange={setLimitPast30Days}
                         icon={Calendar}
@@ -320,15 +415,31 @@ export function SqlGenerator({
                       <UtilityToggle
                         id="exclude-test-sends"
                         label="Exclude test send records"
-                        description={
+                        description={formatUtilityPreview(
                           filterAlias
                             ? `${filterAlias}.TestStormObjID IS NULL`
-                            : 'TestStormObjID IS NULL'
-                        }
+                            : 'TestStormObjID IS NULL',
+                        )}
                         checked={excludeTestSends}
                         onChange={setExcludeTestSends}
                         icon={Shield}
                       />
+                      <UtilityToggle
+                        id="filter-active-subscribers"
+                        label="Filter Active Subscribers Only"
+                        description={formatUtilityPreview(
+                          `AND ${buildActiveSubscriberPredicate(keywordCase)}`,
+                        )}
+                        checked={filterActiveSubscribersOnly}
+                        onChange={setFilterActiveSubscribersOnly}
+                        icon={Users}
+                      />
+                      {filterActiveSubscribersOnly && !subscribersInJoinPath && (
+                        <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-[10px] leading-snug text-amber-200">
+                          Could not auto-link <span className="font-mono">_Subscribers</span> from
+                          the current selection. Choose a table with a subscriber join path.
+                        </p>
+                      )}
                     </section>
                   </aside>
 
@@ -364,7 +475,9 @@ export function SqlGenerator({
                           query.sql
                         </span>
                         <div className="flex items-center gap-2">
-                          {(limitPast30Days || excludeTestSends) && (
+                          {(limitPast30Days ||
+                            excludeTestSends ||
+                            (filterActiveSubscribersOnly && subscribersInJoinPath)) && (
                             <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
                               filters active
                             </span>

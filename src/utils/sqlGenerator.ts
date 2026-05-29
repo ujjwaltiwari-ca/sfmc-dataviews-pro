@@ -46,6 +46,114 @@ export interface SqlGenerationResult {
 export interface SqlUtilityFilterOptions {
   limitPast30Days: boolean;
   excludeTestSends: boolean;
+  filterActiveSubscribersOnly: boolean;
+}
+
+export interface SqlGenerationOptions {
+  /** When true, ensures _Subscribers is linked into the BFS join path for status filtering. */
+  requireSubscribersJoin?: boolean;
+}
+
+const SUBSCRIBERS_TABLE = '_Subscribers';
+
+export type SqlKeywordCase = 'upper' | 'lower';
+
+/** Core SQL keywords emitted by the generator and utility filters. */
+export const SQL_CORE_KEYWORDS = [
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'AND',
+  'OR',
+  'INNER',
+  'JOIN',
+  'ON',
+  'AS',
+  'IS',
+  'NULL',
+  'DATEADD',
+  'GETDATE',
+] as const;
+
+const SQL_CORE_KEYWORD_SET = new Set<string>(SQL_CORE_KEYWORDS);
+
+function applyKeywordCaseToSegment(segment: string, keywordCase: SqlKeywordCase): string {
+  let result = '';
+  let index = 0;
+
+  while (index < segment.length) {
+    const rest = segment.slice(index);
+    const wordMatch = /^[A-Za-z_][\w]*/.exec(rest);
+    if (wordMatch) {
+      const word = wordMatch[0];
+      const upper = word.toUpperCase();
+      if (SQL_CORE_KEYWORD_SET.has(upper)) {
+        result += keywordCase === 'upper' ? upper : upper.toLowerCase();
+      } else {
+        result += word;
+      }
+      index += word.length;
+      continue;
+    }
+
+    result += segment[index];
+    index += 1;
+  }
+
+  return result;
+}
+
+function applyKeywordCaseToLine(line: string, keywordCase: SqlKeywordCase): string {
+  let result = '';
+  let index = 0;
+
+  while (index < line.length) {
+    if (line.startsWith('--', index)) {
+      result += applyKeywordCaseToSegment(line.slice(index), keywordCase);
+      break;
+    }
+
+    if (line[index] === "'") {
+      let end = index + 1;
+      while (end < line.length && line[end] !== "'") {
+        end += 1;
+      }
+      result += line.slice(index, end + 1);
+      index = end + 1;
+      continue;
+    }
+
+    const rest = line.slice(index);
+    const wordMatch = /^[A-Za-z_][\w]*/.exec(rest);
+    if (wordMatch) {
+      const word = wordMatch[0];
+      const upper = word.toUpperCase();
+      if (SQL_CORE_KEYWORD_SET.has(upper)) {
+        result += keywordCase === 'upper' ? upper : upper.toLowerCase();
+      } else {
+        result += word;
+      }
+      index += word.length;
+      continue;
+    }
+
+    result += line[index];
+    index += 1;
+  }
+
+  return result;
+}
+
+/** Rewrites core SQL keywords to the requested case without touching identifiers or string literals. */
+export function applySqlKeywordCase(sql: string, keywordCase: SqlKeywordCase): string {
+  if (keywordCase === 'upper') {
+    return sql;
+  }
+
+  return sql
+    .split('\n')
+    .map((line) => applyKeywordCaseToLine(line, keywordCase))
+    .join('\n');
 }
 
 
@@ -233,6 +341,63 @@ export function resolveJoinTablesWithBridges(
     joinTables,
     bridgingTables,
     disconnectedTables: [...disconnectedTables],
+  };
+}
+
+/**
+ * When a utility requires a table that is not yet in the join graph, find the
+ * shortest BFS path from any connected table and merge it into the join set.
+ */
+export function ensureRequiredTableInJoinPath(
+  joinTableNames: string[],
+  requiredTable: string,
+  tables: DataViewTable[] = sfmcDataViews,
+): { joinTables: string[]; additionalBridgingTables: string[]; requiredTableLinked: boolean } {
+  if (joinTableNames.length === 0) {
+    return { joinTables: joinTableNames, additionalBridgingTables: [], requiredTableLinked: false };
+  }
+
+  if (joinTableNames.includes(requiredTable)) {
+    return { joinTables: joinTableNames, additionalBridgingTables: [], requiredTableLinked: true };
+  }
+
+  const graph = buildSchemaAdjacency(tables);
+  let bestPath: string[] | null = null;
+
+  for (const source of joinTableNames) {
+    const path = bfsShortestPath(source, requiredTable, graph);
+    if (!path) {
+      continue;
+    }
+    if (!bestPath || path.length < bestPath.length) {
+      bestPath = path;
+      continue;
+    }
+    if (path.length === bestPath.length) {
+      const pathBridgeCount = path.filter((name) => !joinTableNames.includes(name)).length;
+      const bestBridgeCount = bestPath.filter((name) => !joinTableNames.includes(name)).length;
+      if (
+        pathBridgeCount < bestBridgeCount ||
+        (pathBridgeCount === bestBridgeCount &&
+          bridgePriority(path[1] ?? path[0]) < bridgePriority(bestPath[1] ?? bestPath[0]))
+      ) {
+        bestPath = path;
+      }
+    }
+  }
+
+  if (!bestPath) {
+    return { joinTables: joinTableNames, additionalBridgingTables: [], requiredTableLinked: false };
+  }
+
+  const allNeeded = new Set([...joinTableNames, ...bestPath]);
+  const joinTables = tables.map((table) => table.name).filter((name) => allNeeded.has(name));
+  const additionalBridgingTables = joinTables.filter((name) => !joinTableNames.includes(name));
+
+  return {
+    joinTables,
+    additionalBridgingTables,
+    requiredTableLinked: joinTables.includes(requiredTable),
   };
 }
 
@@ -444,12 +609,39 @@ export function resolveFilterAlias(
   return null;
 }
 
+/** Builds the active-subscriber status predicate for utility filters. */
+export function buildActiveSubscriberPredicate(keywordCase: SqlKeywordCase = 'upper'): string {
+  const statusValue = keywordCase === 'upper' ? 'Active' : 'active';
+  return `${tableToAlias(SUBSCRIBERS_TABLE)}.Status = '${statusValue}'`;
+}
+
+function appendWherePredicates(baseSql: string, predicates: string[]): string {
+  if (predicates.length === 0) {
+    return baseSql;
+  }
+
+  const predicateBlock = predicates.join('\n  AND ');
+  const whereMatch = baseSql.match(/\nWHERE\s+([\s\S]*?)(?=\n--|\n*$)/i);
+
+  if (whereMatch) {
+    const existing = whereMatch[1].trim();
+    return baseSql.replace(whereMatch[0], `\nWHERE ${existing}\n  AND ${predicateBlock}`);
+  }
+
+  return `${baseSql}\nWHERE ${predicateBlock}`;
+}
+
 export function applySqlUtilityFilters(
   baseSql: string,
   options: SqlUtilityFilterOptions,
   filterAlias: string | null,
+  keywordCase: SqlKeywordCase = 'upper',
 ): string {
-  if (!options.limitPast30Days && !options.excludeTestSends) {
+  if (
+    !options.limitPast30Days &&
+    !options.excludeTestSends &&
+    !options.filterActiveSubscribersOnly
+  ) {
     return baseSql;
   }
 
@@ -469,23 +661,17 @@ export function applySqlUtilityFilters(
     );
   }
 
-  const predicateBlock = predicates.join('\n  AND ');
-  const whereMatch = baseSql.match(/\nWHERE\s+([\s\S]*?)(?=\n--|\n*$)/i);
-
-  if (whereMatch) {
-    const existing = whereMatch[1].trim();
-    return baseSql.replace(
-      whereMatch[0],
-      `\nWHERE ${existing}\n  AND ${predicateBlock}`,
-    );
+  if (options.filterActiveSubscribersOnly) {
+    predicates.push(buildActiveSubscriberPredicate(keywordCase));
   }
 
-  return `${baseSql}\nWHERE ${predicateBlock}`;
+  return appendWherePredicates(baseSql, predicates);
 }
 
 export function generateSfmcSql(
   userSelectedTableNames: string[],
   tables: DataViewTable[] = sfmcDataViews,
+  options: SqlGenerationOptions = {},
 ): SqlGenerationResult {
   const userSelected = tables
     .map((table) => table.name)
@@ -510,8 +696,19 @@ export function generateSfmcSql(
     };
   }
 
-  const { joinTables, bridgingTables, disconnectedTables: unresolvedFromBfs } =
+  const { joinTables: resolvedJoinTables, bridgingTables: resolvedBridging, disconnectedTables: unresolvedFromBfs } =
     resolveJoinTablesWithBridges(userSelected, tables);
+
+  let joinTables = resolvedJoinTables;
+  let bridgingTables = [...resolvedBridging];
+
+  if (options.requireSubscribersJoin) {
+    const ensured = ensureRequiredTableInJoinPath(joinTables, SUBSCRIBERS_TABLE, tables);
+    joinTables = ensured.joinTables;
+    if (ensured.additionalBridgingTables.length > 0) {
+      bridgingTables = [...new Set([...bridgingTables, ...ensured.additionalBridgingTables])];
+    }
+  }
 
   const bridgingSet = new Set(bridgingTables);
   const userSelectedSet = new Set(userSelected);

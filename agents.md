@@ -156,3 +156,8 @@ export const sfmcDataViews: DataViewTable[] = [
 - [x] Schema structure and foundational component cards established.
 - [x] Graph Search (BFS) multi-hop auto-join routing implemented inside `SqlGenerator.tsx`.
 - [ ] Task Phase: System-wide expansion of data view array to comprehensive global coverage.
+
+## Progress Checkpoint
+- [x] Expanded schema to 27+ Data Views including MobilePush.
+- [x] Resolved global viewport scrolling layout and fixed bottom-docked SQL Sandbox.
+- [ ] Next Task: Implement Advanced SQL Utility Enhancements (Case toggles, Subscriber filters, and Target DE headers).

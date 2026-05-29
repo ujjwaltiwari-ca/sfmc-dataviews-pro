@@ -1,19 +1,12 @@
+import { SQL_CORE_KEYWORDS } from '../utils/sqlGenerator';
+
 type TokenKind = 'keyword' | 'comment' | 'string' | 'function' | 'punctuation' | 'plain';
 
 type Token = { kind: TokenKind; text: string };
 
-const KEYWORDS = new Set([
-  'SELECT',
-  'FROM',
-  'WHERE',
-  'AND',
-  'OR',
-  'INNER',
-  'JOIN',
-  'ON',
-  'AS',
-  'NULL',
-]);
+const KEYWORDS = new Set<string>(
+  SQL_CORE_KEYWORDS.filter((keyword) => keyword !== 'DATEADD' && keyword !== 'GETDATE'),
+);
 
 const FUNCTIONS = new Set(['DATEADD', 'GETDATE']);
 
