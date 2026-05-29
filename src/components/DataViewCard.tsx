@@ -172,6 +172,9 @@ const MUTED_ICON = 'text-slate-400 transition-colors duration-100 dark:text-slat
 const LINK_ICON_IDLE =
   'opacity-25 text-slate-300 transition-all duration-100 dark:text-slate-600';
 
+/** Positions link icon in row padding without shifting field name text. */
+const FIELD_LINK_ICON_CLASS = 'absolute left-0 top-0.5 z-[1] h-3.5 w-3.5 -translate-x-[calc(100%+0.25rem)]';
+
 const CARD_MOTION =
   'transition-[transform,box-shadow,background-color,border-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]';
 
@@ -383,37 +386,35 @@ function FieldRow({
         }
       }}
     >
-      <div role="cell" className="min-w-0">
-        <div className="flex min-w-0 items-start gap-1.5">
-          {isRelationInteractive && (
-            <Link2
-              className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                isPathActive
-                  ? `opacity-100 ${categoryTheme.pathIcon}`
-                  : `${LINK_ICON_IDLE} ${categoryTheme.linkHover}`
-              }`}
-              aria-hidden
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <span className="flex min-w-0 items-center gap-1">
-              <span
-                className={`truncate font-mono text-xs font-medium transition-colors duration-100 ${fieldNameClass}`}
-              >
-                {field.name}
-              </span>
-              {isProfileAttribute && <ProfileAttributeHelp />}
-            </span>
-            <div
-              className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-in-out ${
-                showDetails ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0'
-              }`}
+      <div role="cell" className="relative min-w-0">
+        {isRelationInteractive && (
+          <Link2
+            className={`${FIELD_LINK_ICON_CLASS} ${
+              isPathActive
+                ? `opacity-100 ${categoryTheme.pathIcon}`
+                : `${LINK_ICON_IDLE} ${categoryTheme.linkHover}`
+            }`}
+            aria-hidden
+          />
+        )}
+        <div className="min-w-0">
+          <span className="flex min-w-0 items-center gap-1">
+            <span
+              className={`truncate font-mono text-xs font-medium transition-colors duration-100 ${fieldNameClass}`}
             >
-              <div className="overflow-hidden">
-                <p className={`text-xs leading-relaxed transition-colors duration-100 ${descriptionClass}`}>
-                  {field.description}
-                </p>
-              </div>
+              {field.name}
+            </span>
+            {isProfileAttribute && <ProfileAttributeHelp />}
+          </span>
+          <div
+            className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-in-out ${
+              showDetails ? 'mt-1.5 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0'
+            }`}
+          >
+            <div className="overflow-hidden">
+              <p className={`text-xs leading-relaxed transition-colors duration-100 ${descriptionClass}`}>
+                {field.description}
+              </p>
             </div>
           </div>
         </div>
