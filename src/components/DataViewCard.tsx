@@ -39,6 +39,42 @@ const categoryStyles: Record<
     badge: 'bg-amber-100 text-amber-900 ring-amber-600/20',
     type: 'bg-amber-50 text-amber-800 ring-amber-500/20',
   },
+  Subscription: {
+    border: 'border-rose-500',
+    header: 'bg-rose-50 border-rose-200',
+    badge: 'bg-rose-100 text-rose-800 ring-rose-600/20',
+    type: 'bg-rose-50 text-rose-700 ring-rose-500/20',
+  },
+  Automation: {
+    border: 'border-slate-500',
+    header: 'bg-slate-50 border-slate-200',
+    badge: 'bg-slate-100 text-slate-800 ring-slate-600/20',
+    type: 'bg-slate-50 text-slate-700 ring-slate-500/20',
+  },
+  Mobile: {
+    border: 'border-cyan-500',
+    header: 'bg-cyan-50 border-cyan-200',
+    badge: 'bg-cyan-100 text-cyan-800 ring-cyan-600/20',
+    type: 'bg-cyan-50 text-cyan-700 ring-cyan-500/20',
+  },
+  GroupConnect: {
+    border: 'border-lime-500',
+    header: 'bg-lime-50 border-lime-200',
+    badge: 'bg-lime-100 text-lime-900 ring-lime-600/20',
+    type: 'bg-lime-50 text-lime-800 ring-lime-500/20',
+  },
+  Social: {
+    border: 'border-pink-500',
+    header: 'bg-pink-50 border-pink-200',
+    badge: 'bg-pink-100 text-pink-800 ring-pink-600/20',
+    type: 'bg-pink-50 text-pink-700 ring-pink-500/20',
+  },
+  Other: {
+    border: 'border-stone-500',
+    header: 'bg-stone-50 border-stone-200',
+    badge: 'bg-stone-100 text-stone-800 ring-stone-600/20',
+    type: 'bg-stone-50 text-stone-700 ring-stone-500/20',
+  },
 };
 
 function formatFieldType(field: DataViewField): string {

@@ -150,3 +150,9 @@ export const sfmcDataViews: DataViewTable[] = [
     ]
   }
 ];
+
+## Current Status & Roadmap
+- [x] Environment Initialization, React + Tailwind context loaded.
+- [x] Schema structure and foundational component cards established.
+- [x] Graph Search (BFS) multi-hop auto-join routing implemented inside `SqlGenerator.tsx`.
+- [ ] Task Phase: System-wide expansion of data view array to comprehensive global coverage.

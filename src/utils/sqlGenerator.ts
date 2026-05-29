@@ -22,11 +22,17 @@ const BRIDGE_TABLE_PRIORITY: string[] = [
   '_Sent',
   '_Job',
   '_Subscribers',
+  '_ListSubscribers',
   '_Open',
   '_Click',
   '_Bounce',
+  '_Unsubscribe',
   '_Journey',
   '_JourneyActivity',
+  '_SMSMessageTracking',
+  '_SMSSubscriptionLog',
+  '_AutomationInstance',
+  '_AutomationActivityInstance',
 ];
 
 export function tableToAlias(tableName: string): string {
