@@ -103,7 +103,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
 
   return (
     <>
-      <header className="relative overflow-hidden border-b border-slate-200/80 bg-white dark:border-slate-800/80 dark:bg-slate-950">
+      <header className="relative overflow-hidden border-b border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-950">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.12),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.08),transparent)]"
           aria-hidden
@@ -130,10 +130,10 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
                 onClick={onToggleCopilot}
                 aria-pressed={isCopilotOpen}
                 aria-expanded={isCopilotOpen}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
                   isCopilotOpen
                     ? 'border-violet-400/80 bg-violet-50 text-violet-950 shadow-violet-500/20 ring-1 ring-violet-400/30 dark:border-violet-500/60 dark:bg-violet-950/50 dark:text-violet-100 dark:shadow-violet-500/10'
-                    : 'border-slate-200/90 bg-slate-50/80 text-slate-700 hover:-translate-y-px hover:border-violet-300/70 hover:bg-violet-50/90 hover:text-violet-950 hover:shadow-md hover:shadow-violet-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-600/70 dark:hover:bg-violet-950/40 dark:hover:text-violet-100'
+                    : 'border-slate-200/90 bg-slate-50/80 text-slate-700 hover:-translate-y-px hover:scale-[1.02] hover:border-violet-300/70 hover:bg-violet-50/90 hover:text-violet-950 hover:shadow-md hover:shadow-violet-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-600/70 dark:hover:bg-violet-950/40 dark:hover:text-violet-100'
                 }`}
               >
                 <Sparkles
@@ -147,7 +147,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
               <button
                 type="button"
                 onClick={() => setIsDocsOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-cyan-300/80 hover:bg-cyan-50 hover:text-cyan-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/50 dark:hover:text-cyan-100"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-px hover:scale-[1.02] hover:border-cyan-300/80 hover:bg-cyan-50 hover:text-cyan-950 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/50 dark:hover:text-cyan-100"
                 aria-haspopup="dialog"
                 aria-expanded={isDocsOpen}
               >
@@ -159,7 +159,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50/80 text-slate-700 shadow-sm transition hover:border-amber-300/80 hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50/80 text-slate-700 shadow-sm transition-all duration-200 ease-in-out hover:scale-105 hover:border-amber-300/80 hover:bg-amber-50 hover:text-amber-900 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {isDark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
@@ -202,7 +202,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
                 <button
                   type="button"
                   onClick={() => setIsDocsOpen(false)}
-                  className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="rounded-lg p-2 text-slate-500 transition-all duration-200 ease-in-out hover:scale-105 hover:bg-slate-100 dark:hover:bg-slate-800"
                   aria-label="Close panel"
                 >
                   <X className="h-5 w-5" aria-hidden />
@@ -218,7 +218,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
                 {GUIDE_WORKFLOW.map(({ title, icon: Icon, body }) => (
                   <article
                     key={title}
-                    className="rounded-xl border border-slate-200/90 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50"
+                    className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 ease-in-out hover:border-slate-300/80 hover:shadow-card dark:border-slate-800 dark:bg-slate-900/50"
                   >
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-cyan-600 dark:text-cyan-400" aria-hidden />

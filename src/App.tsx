@@ -137,7 +137,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#f8fafc] text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex h-screen w-screen flex-col overflow-hidden surface-canvas text-slate-900 transition-colors duration-300 ease-in-out dark:text-slate-100">
       <div className="z-40 shrink-0">
         <Header
           onToggleCopilot={handleToggleCopilot}
@@ -154,7 +154,7 @@ function App() {
       </div>
 
       <div
-        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#f8fafc] dark:bg-slate-950 ${
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden surface-canvas ${
           sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
         }`}
       >

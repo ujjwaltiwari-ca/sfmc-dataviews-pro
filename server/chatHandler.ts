@@ -62,6 +62,48 @@ function extractBearerToken(request: Request): string | null {
   return token || null;
 }
 
+/** Reject malformed tokens before hitting Supabase auth (avoids noisy throws). */
+function isPlausibleJwt(token: string): boolean {
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return false;
+  }
+
+  return parts.every((part) => part.length > 0 && /^[A-Za-z0-9_-]+$/.test(part));
+}
+
+async function resolveAuthenticatedUser(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  accessToken: string,
+): Promise<{ user: { id: string } } | { error: Response }> {
+  if (!isPlausibleJwt(accessToken)) {
+    console.error('[chatHandler] Rejected request: malformed JWT structure');
+    return { error: jsonError('Unauthorized: invalid or expired session', 401) };
+  }
+
+  try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(accessToken);
+
+    if (authError || !user) {
+      console.error(
+        '[chatHandler] Rejected request: invalid session token',
+        authError?.message ?? 'no user',
+      );
+      return { error: jsonError('Unauthorized: invalid or expired session', 401) };
+    }
+
+    return { user };
+  } catch (authFailure) {
+    const message =
+      authFailure instanceof Error ? authFailure.message : 'Token verification failed';
+    console.error('[chatHandler] Auth verification threw unexpectedly', message);
+    return { error: jsonError('Unauthorized: invalid or expired session', 401) };
+  }
+}
+
 function startOfUtcDayIso(): string {
   const now = new Date();
   const start = new Date(
@@ -169,15 +211,12 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     return jsonError('Unauthorized: valid Bearer token required', 401);
   }
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (authError || !user) {
-    console.error('[chatHandler] Rejected request: invalid session token', authError?.message ?? 'no user');
-    return jsonError('Unauthorized: invalid or expired session', 401);
+  const authResult = await resolveAuthenticatedUser(supabase, accessToken);
+  if ('error' in authResult) {
+    return authResult.error;
   }
+
+  const { user } = authResult;
 
   let todayUsageCount: number;
   try {

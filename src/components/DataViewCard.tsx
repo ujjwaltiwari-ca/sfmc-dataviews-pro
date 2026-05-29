@@ -226,9 +226,9 @@ export function DataViewCard({
 
   return (
     <article
-      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-lg border border-slate-200/50 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] will-change-transform hover:-translate-y-1 dark:border-slate-800/50 dark:bg-slate-900 dark:shadow-black/20 ${CARD_MOTION} ${theme.cardHover} ${
+      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm will-change-transform hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-black/20 ${CARD_MOTION} ${theme.cardHover} ${
         isSelected
-          ? 'border-slate-300/80 ring-1 ring-slate-900/10 ring-offset-2 ring-offset-[#f8fafc] dark:border-slate-600 dark:ring-white/10 dark:ring-offset-slate-950'
+          ? 'border-slate-300/90 shadow-card-hover ring-1 ring-slate-900/10 ring-offset-2 ring-offset-slate-50 dark:border-slate-600 dark:ring-white/10 dark:ring-offset-slate-950'
           : ''
       } ${isCardDimmed ? 'opacity-30' : 'opacity-100'}`}
     >
@@ -241,7 +241,7 @@ export function DataViewCard({
               type="checkbox"
               checked={isSelected}
               onChange={() => onToggleSelect(table.name)}
-              className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-400/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 text-slate-900 transition-all duration-200 ease-in-out hover:border-slate-400 focus:ring-2 focus:ring-slate-400/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               aria-label={`Include ${table.name} in SQL query`}
             />
             <h2 className="truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-50">

@@ -10,7 +10,7 @@ export function SiteFooter() {
           href={LINKEDIN_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+          className="font-medium text-blue-600 transition-all duration-200 ease-in-out hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
         >
           LinkedIn
         </a>
