@@ -69,7 +69,12 @@ const SHORTCUTS = [
   { keys: ['Ctrl', 'C'], action: 'Copy SQL from Sandbox (when open)' },
 ] as const;
 
-export function Header() {
+type HeaderProps = {
+  onToggleCopilot: () => void;
+  isCopilotOpen?: boolean;
+};
+
+export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const docsPanelRef = useRef<HTMLDivElement>(null);
@@ -120,6 +125,25 @@ export function Header() {
             </a>
 
             <nav className="flex shrink-0 items-center gap-2" aria-label="Global">
+              <button
+                type="button"
+                onClick={onToggleCopilot}
+                aria-pressed={isCopilotOpen}
+                aria-expanded={isCopilotOpen}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
+                  isCopilotOpen
+                    ? 'border-violet-400/80 bg-violet-50 text-violet-950 shadow-violet-500/20 ring-1 ring-violet-400/30 dark:border-violet-500/60 dark:bg-violet-950/50 dark:text-violet-100 dark:shadow-violet-500/10'
+                    : 'border-slate-200/90 bg-slate-50/80 text-slate-700 hover:-translate-y-px hover:border-violet-300/70 hover:bg-violet-50/90 hover:text-violet-950 hover:shadow-md hover:shadow-violet-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-600/70 dark:hover:bg-violet-950/40 dark:hover:text-violet-100'
+                }`}
+              >
+                <Sparkles
+                  className={`h-4 w-4 ${isCopilotOpen ? 'text-violet-600 dark:text-violet-400' : 'text-violet-500 dark:text-violet-400'}`}
+                  aria-hidden
+                />
+                <span className="hidden sm:inline">AI Copilot</span>
+                <span className="sm:hidden">AI</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsDocsOpen(true)}

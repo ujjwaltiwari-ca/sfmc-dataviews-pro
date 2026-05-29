@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AiCopilot } from './components/AiCopilot';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
@@ -34,7 +35,17 @@ function App() {
   const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
   const [hoveredRelation, setHoveredRelation] = useState<HoveredRelation | null>(null);
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [sandboxSql, setSandboxSql] = useState('');
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleToggleCopilot = useCallback(() => {
+    setIsCopilotOpen((open) => !open);
+  }, []);
+
+  const handleApplyToSandbox = useCallback((sql: string) => {
+    setSandboxSql(sql.trim());
+  }, []);
 
   const activeTables = useMemo(
     () => dedupeTablesByName(getTablesForSegment(activeSegment)),
@@ -118,7 +129,10 @@ function App() {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#f8fafc] text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
       <div className="z-40 shrink-0">
-        <Header />
+        <Header
+          onToggleCopilot={handleToggleCopilot}
+          isCopilotOpen={isCopilotOpen}
+        />
         <CommandToolbar
           activeSegment={activeSegment}
           onSegmentChange={setActiveSegment}
@@ -158,7 +172,18 @@ function App() {
         </main>
       </div>
 
-      <SqlGenerator selectedTableNames={selectedTableNames} schemaTables={activeTables} />
+      <SqlGenerator
+        selectedTableNames={selectedTableNames}
+        schemaTables={activeTables}
+        sql={sandboxSql}
+        onSqlChange={setSandboxSql}
+      />
+
+      <AiCopilot
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        onApplyToSandbox={handleApplyToSandbox}
+      />
     </div>
   );
 }

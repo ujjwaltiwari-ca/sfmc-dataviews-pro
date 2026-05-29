@@ -24,8 +24,6 @@ import {
   generateSfmcSql,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
-import { SqlStyledCode } from './SqlStyledCode';
-
 const COPIED_FEEDBACK_MS = 2200;
 /** Expanded drawer height — keep in sync with App canvas bottom padding. */
 const SANDBOX_DRAWER_HEIGHT_PX = 450;
@@ -33,6 +31,8 @@ const SANDBOX_DRAWER_HEIGHT_PX = 450;
 interface SqlGeneratorProps {
   selectedTableNames: string[];
   schemaTables?: DataViewTable[];
+  sql: string;
+  onSqlChange: (sql: string) => void;
 }
 
 function UtilityToggle({
@@ -134,6 +134,8 @@ function KeywordCaseToggle({
 export function SqlGenerator({
   selectedTableNames,
   schemaTables,
+  sql,
+  onSqlChange,
 }: SqlGeneratorProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -208,6 +210,10 @@ export function SqlGenerator({
 
   const isVisible = selectedTableNames.length > 0;
 
+  useEffect(() => {
+    onSqlChange(displaySql);
+  }, [displaySql, onSqlChange]);
+
   const fieldsByTable = useMemo(() => {
     const groups = new Map<string, typeof architecture.selectFields>();
     for (const field of architecture.selectFields) {
@@ -228,7 +234,7 @@ export function SqlGenerator({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(displaySql);
+      await navigator.clipboard.writeText(sql);
       setCopied(true);
     } catch {
       setCopied(false);
@@ -529,10 +535,15 @@ export function SqlGenerator({
                           </button>
                         </div>
                       </div>
-                      <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-auto">
-                        <div className="p-4">
-                          <SqlStyledCode sql={displaySql} />
-                        </div>
+                      <div className="scrollbar-card min-h-0 flex-1 overflow-hidden">
+                        <textarea
+                          value={sql}
+                          onChange={(event) => onSqlChange(event.target.value)}
+                          spellCheck={false}
+                          className="h-full min-h-[10rem] w-full resize-none bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-500/30 sm:text-sm"
+                          aria-label="SQL query editor"
+                          placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
+                        />
                       </div>
                     </div>
                   </div>
