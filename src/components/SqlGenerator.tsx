@@ -17,6 +17,8 @@ import { applySqlUtilityFilters, generateSfmcSql } from '../utils/sqlGenerator';
 import { SqlStyledCode } from './SqlStyledCode';
 
 const COPIED_FEEDBACK_MS = 2200;
+/** Expanded drawer height — keep in sync with App canvas bottom padding. */
+const SANDBOX_DRAWER_HEIGHT_PX = 450;
 
 interface SqlGeneratorProps {
   selectedTableNames: string[];
@@ -127,15 +129,21 @@ export function SqlGenerator({
 
   return (
     <div
-      className={`pointer-events-none fixed inset-x-0 bottom-0 z-50 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+      className={`pointer-events-none fixed bottom-0 left-0 right-0 z-50 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
         isVisible ? 'translate-y-0' : 'translate-y-full'
       }`}
       aria-hidden={!isVisible}
     >
-      <div className="pointer-events-auto border-t border-slate-700/80 bg-gradient-to-b from-slate-900 to-slate-950 shadow-[0_-12px_48px_rgba(0,0,0,0.45)]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Dashboard chrome */}
-          <div className="flex items-center justify-between gap-4 border-b border-slate-800 py-3">
+      <div
+        className="pointer-events-auto flex flex-col border-t border-slate-700/80 bg-gradient-to-b from-slate-900 to-slate-950 shadow-[0_-12px_48px_rgba(0,0,0,0.45)]"
+        style={{
+          height: isExpanded ? `${SANDBOX_DRAWER_HEIGHT_PX}px` : 'auto',
+          maxHeight: isExpanded ? `${SANDBOX_DRAWER_HEIGHT_PX}px` : '4.5rem',
+        }}
+      >
+        <div className="mx-auto flex h-full w-full max-w-7xl min-h-0 flex-col px-4 sm:px-6 lg:px-8">
+          {/* Dashboard chrome — always visible */}
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-800 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30">
                 <Terminal className="h-4 w-4" aria-hidden />
@@ -195,14 +203,9 @@ export function SqlGenerator({
             </div>
           </div>
 
-          <div
-            className={`grid overflow-hidden transition-[grid-template-rows] duration-500 ease-in-out ${
-              isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-            }`}
-          >
-            <div className="min-h-0 overflow-hidden">
-              <div className="pb-5 pt-4">
-                <div className="grid gap-4 lg:grid-cols-12">
+          {isExpanded && (
+            <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4 pt-4">
+              <div className="grid gap-4 lg:grid-cols-12">
                   {/* Architecture breakdown */}
                   <aside className="space-y-3 lg:col-span-4 xl:col-span-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -355,26 +358,51 @@ export function SqlGenerator({
                       </div>
                     )}
 
-                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-700/80 bg-slate-950 shadow-inner ring-1 ring-white/5">
-                      <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+                    <div className="flex h-[min(280px,100%)] min-h-[10rem] flex-col overflow-hidden rounded-xl border border-slate-700/80 bg-slate-950 shadow-inner ring-1 ring-white/5">
+                      <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 px-3 py-2">
                         <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500">
                           query.sql
                         </span>
-                        {(limitPast30Days || excludeTestSends) && (
-                          <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
-                            filters active
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {(limitPast30Days || excludeTestSends) && (
+                            <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                              filters active
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleCopy}
+                            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 ${
+                              copied
+                                ? 'bg-emerald-600/90 text-white'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                            }`}
+                            aria-live="polite"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="h-3.5 w-3.5" aria-hidden />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3.5 w-3.5" aria-hidden />
+                                Copy SQL
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                      <div className="max-h-[min(22rem,45vh)] overflow-auto p-4">
-                        <SqlStyledCode sql={displaySql} />
+                      <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-auto">
+                        <div className="p-4">
+                          <SqlStyledCode sql={displaySql} />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

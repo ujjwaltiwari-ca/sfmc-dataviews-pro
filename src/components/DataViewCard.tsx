@@ -136,7 +136,7 @@ export function DataViewCard({
 
   return (
     <article
-      className={`group/card flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md shadow-slate-200/50 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-slate-300/60 dark:border-slate-700/90 dark:bg-slate-900 dark:shadow-black/30 dark:hover:shadow-black/50 ${
+      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-md shadow-slate-200/50 transition-all duration-300 ease-out hover:shadow-lg hover:shadow-slate-300/60 dark:border-slate-700/90 dark:bg-slate-900 dark:shadow-black/30 dark:hover:shadow-black/50 ${
         isSelected
           ? 'ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950'
           : ''
@@ -145,7 +145,7 @@ export function DataViewCard({
       <div className={`h-1.5 w-full shrink-0 ${theme.accent}`} aria-hidden />
 
       <header
-        className={`relative border-b border-slate-100 bg-gradient-to-b px-4 py-3.5 dark:border-slate-800 ${theme.headerTint}`}
+        className={`relative shrink-0 border-b border-slate-100 bg-gradient-to-b px-4 py-3 dark:border-slate-800 ${theme.headerTint}`}
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -166,12 +166,14 @@ export function DataViewCard({
             {table.category}
           </span>
         </div>
-        <p className="mt-2 text-sm leading-snug text-slate-600 dark:text-slate-400">{table.description}</p>
+        <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-slate-600 dark:text-slate-400">
+          {table.description}
+        </p>
       </header>
 
-      <div className="flex-1 overflow-x-auto px-3 py-3 sm:px-4">
+      <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-auto px-3 py-2 pr-2 sm:px-4">
         <table className="w-full min-w-[240px] border-collapse text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white dark:bg-slate-900">
             <tr className="border-b border-slate-100 dark:border-slate-800">
               <th
                 scope="col"
@@ -194,9 +196,9 @@ export function DataViewCard({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {table.fields.map((field) => (
+            {table.fields.map((field, fieldIndex) => (
               <FieldRow
-                key={field.name}
+                key={`${table.name}-${field.name}-${fieldIndex}`}
                 tableName={table.name}
                 field={field}
                 normalizedSearchQuery={normalizedSearchQuery}

@@ -5,6 +5,7 @@ export {
   groupConnectDataViews,
   journeyDataViews,
   mobileDataViews,
+  mobilePushDataViews,
   otherDataViews,
   sendLogDataViews,
   sendingDataViews,
@@ -18,6 +19,7 @@ export {
 
 export type { ViewSegmentId } from './viewSegments';
 export {
+  dedupeTablesByName,
   getTablesForSegment,
   VIEW_SEGMENTS,
   VIEW_SEGMENT_STORAGE_KEY,

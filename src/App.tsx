@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
 import { SqlGenerator } from './components/SqlGenerator';
-import { ViewSegmentNav } from './components/ViewSegmentNav';
 import type { DataViewField } from './data/sfmcSchema';
 import {
+  dedupeTablesByName,
   getTablesForSegment,
   readViewSegmentPreference,
   VIEW_SEGMENT_STORAGE_KEY,
@@ -15,6 +16,8 @@ import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExpl
 
 const RELATION_LEAVE_DELAY_MS = 40;
 const SHOW_DETAILS_STORAGE_KEY = 'sfmc-show-details';
+/** Matches SqlGenerator expanded drawer height so cards clear the sandbox. */
+const SANDBOX_CANVAS_PADDING = 'pb-[450px]';
 
 function readShowDetailsPreference(): boolean {
   try {
@@ -33,7 +36,7 @@ function App() {
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeTables = useMemo(
-    () => getTablesForSegment(activeSegment),
+    () => dedupeTablesByName(getTablesForSegment(activeSegment)),
     [activeSegment],
   );
 
@@ -76,9 +79,7 @@ function App() {
     [activeTables, selectedTables],
   );
 
-  const handleSegmentChange = (segment: ViewSegmentId) => {
-    setActiveSegment(segment);
-  };
+  const sandboxOpen = selectedTableNames.length > 0;
 
   const clearRelationLeaveTimer = () => {
     if (relationLeaveTimerRef.current !== null) {
@@ -114,31 +115,25 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
-      <Header
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        showDetails={showDetails}
-        onShowDetailsChange={setShowDetails}
-      />
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-50 text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
+      <div className="z-40 shrink-0">
+        <Header />
+        <CommandToolbar
+          activeSegment={activeSegment}
+          onSegmentChange={setActiveSegment}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          showDetails={showDetails}
+          onShowDetailsChange={setShowDetails}
+        />
+      </div>
 
-      <div className="flex flex-1 flex-col lg:flex-row">
-        <ViewSegmentNav activeSegment={activeSegment} onSegmentChange={handleSegmentChange} />
-
-        <main
-          className={`min-w-0 flex-1 px-4 py-6 transition-[padding] duration-500 sm:px-6 lg:px-8 lg:py-8 ${
-            selectedTableNames.length > 0 ? 'pb-72' : ''
-          }`}
-        >
-          <div className="mb-6 lg:hidden">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Active segment
-            </p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {activeTables.length} table{activeTables.length === 1 ? '' : 's'} on canvas
-            </p>
-          </div>
-
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${
+          sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
+        }`}
+      >
+        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div
             key={activeSegment}
             className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"

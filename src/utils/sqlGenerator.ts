@@ -63,6 +63,8 @@ const BRIDGE_TABLE_PRIORITY: string[] = [
   '_JourneyActivity',
   '_SMSMessageTracking',
   '_SMSSubscriptionLog',
+  '_PushAddress',
+  '_PushTag',
   '_AutomationInstance',
   '_AutomationActivityInstance',
 ];
@@ -409,8 +411,14 @@ function buildSelectFields(
   return fields;
 }
 
+const SQL_INDENT = '    ';
+
 function buildSelectClause(selectFields: SqlSelectField[]): string {
-  return selectFields.map((item) => `  ${item.expression}`).join(',\n');
+  return selectFields.map((item) => `${SQL_INDENT}${item.expression}`).join(',\n');
+}
+
+function formatGeneratedSql(lines: string[]): string {
+  return lines.join('\n');
 }
 
 function tableHasField(tableName: string, fieldName: string, tables: DataViewTable[]): boolean {
@@ -531,26 +539,37 @@ export function generateSfmcSql(
     );
   }
 
-  lines.push('SELECT', selectClause, `FROM ${rootTable} AS ${tableToAlias(rootTable)}`);
+  const rootAlias = tableToAlias(rootTable);
+
+  lines.push('SELECT');
+  lines.push(selectClause);
+  lines.push('FROM');
+  lines.push(`${SQL_INDENT}${rootTable} AS ${rootAlias}`);
 
   for (const step of steps) {
     const alias = tableToAlias(step.table);
-    if (step.isBridgingTable) {
-      lines.push(`INNER JOIN ${step.table} AS ${alias} -- bridge`);
+    const bridgeNote = step.isBridgingTable ? ' -- bridge' : '';
+    lines.push('INNER JOIN');
+    lines.push(`${SQL_INDENT}${step.table} AS ${alias}${bridgeNote}`);
+    if (step.conditions.length === 1) {
+      lines.push(`    ON ${step.conditions[0]}`);
     } else {
-      lines.push(`INNER JOIN ${step.table} AS ${alias}`);
+      lines.push(`    ON ${step.conditions[0]}`);
+      for (let i = 1; i < step.conditions.length; i += 1) {
+        lines.push(`    AND ${step.conditions[i]}`);
+      }
     }
-    lines.push(`  ON ${step.conditions.join('\n  AND ')}`);
   }
 
   for (const tableName of disconnectedTables) {
     const alias = tableToAlias(tableName);
     lines.push(`-- WARNING: No relatesTo path found for ${tableName}; add manually if needed.`);
-    lines.push(`-- INNER JOIN ${tableName} AS ${alias} ON ...`);
+    lines.push(`-- INNER JOIN`);
+    lines.push(`-- ${SQL_INDENT}${tableName} AS ${alias}`);
+    lines.push(`-- ${SQL_INDENT}ON ...`);
   }
 
-  const baseSql = lines.join('\n');
-  const rootAlias = rootTable ? tableToAlias(rootTable) : '';
+  const baseSql = formatGeneratedSql(lines);
   const joinSteps: SqlJoinStepDetail[] = steps.map((step, index) => ({
     order: index + 1,
     table: step.table,

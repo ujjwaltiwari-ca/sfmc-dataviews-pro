@@ -2,6 +2,7 @@ import { automationDataViews } from './automation';
 import { groupConnectDataViews } from './groupConnect';
 import { journeyDataViews } from './journey';
 import { mobileDataViews } from './mobile';
+import { mobilePushDataViews } from './mobilePush';
 import { otherDataViews } from './other';
 import { sendingDataViews } from './sending';
 import { socialDataViews } from './social';
@@ -19,14 +20,26 @@ export { trackingDataViews } from './tracking';
 export { journeyDataViews } from './journey';
 export { automationDataViews } from './automation';
 export { mobileDataViews } from './mobile';
+export { mobilePushDataViews } from './mobilePush';
 export { groupConnectDataViews } from './groupConnect';
 export { socialDataViews } from './social';
 export { otherDataViews } from './other';
 export { sendLogDataViews } from './sendLog';
 export { synchronizedDeDataViews } from './synchronizedDe';
 
-/** All SFMC system data views in display order. */
-export const sfmcDataViews: DataViewTable[] = [
+function uniqueTablesByName(tables: DataViewTable[]): DataViewTable[] {
+  const seen = new Set<string>();
+  return tables.filter((table) => {
+    if (seen.has(table.name)) {
+      return false;
+    }
+    seen.add(table.name);
+    return true;
+  });
+}
+
+/** All SFMC system data views in display order (unique by name). */
+export const sfmcDataViews: DataViewTable[] = uniqueTablesByName([
   ...subscriberDataViews,
   ...subscriptionDataViews,
   ...sendingDataViews,
@@ -34,7 +47,8 @@ export const sfmcDataViews: DataViewTable[] = [
   ...journeyDataViews,
   ...automationDataViews,
   ...mobileDataViews,
+  ...mobilePushDataViews,
   ...groupConnectDataViews,
   ...socialDataViews,
   ...otherDataViews,
-];
+]);

@@ -1,81 +1,88 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   BookOpen,
-  Copy,
-  HelpCircle,
+  CheckSquare,
+  ExternalLink,
   Keyboard,
+  Lightbulb,
   Link2,
-  ListTree,
   Moon,
   Search,
   Sparkles,
   Sun,
   Table2,
+  Terminal,
   X,
+  ZoomOut,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
-type HeaderProps = {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  showDetails: boolean;
-  onShowDetailsChange: (value: boolean) => void;
-};
-
-const GUIDE_SECTIONS = [
+const GUIDE_WORKFLOW = [
   {
-    title: 'Schema explorer',
+    title: 'Explore the schema canvas',
     icon: Table2,
-    body: 'Browse every SFMC system data view with field types, primary keys, and inline descriptions. Category colors group Sending, Tracking, Journey, and related views at a glance.',
+    body: 'Data Views are system tables that expose subscribers, sends, tracking, journeys, and more. Browse cards by segment, inspect field types, and trace primary keys without leaving the workspace.',
   },
   {
-    title: 'Field search',
+    title: 'Search across every table',
     icon: Search,
-    body: 'Use the search bar to filter cards by field name (for example JobID or SubscriberKey). Matching fields stay visible; non-matching cards dim until they contain a hit.',
+    body: 'Type a field name (for example JobID or SubscriberKey) in the command toolbar. Matching tables stay in focus; unrelated cards fade so you can spot where a column lives instantly.',
   },
   {
-    title: 'Display details',
-    icon: ListTree,
-    body: 'Toggle Display Details in the header to expand every field row and show inline descriptions without leaving the schema grid.',
-  },
-  {
-    title: 'Relationship highlights',
-    icon: Link2,
-    body: 'Hover a field that declares relatesTo links to highlight connected tables and join columns across the grid — useful when tracing multi-hop paths before writing SQL.',
-  },
-  {
-    title: 'SQL generator',
+    title: 'Expand field details',
     icon: Sparkles,
-    body: 'Select one or more tables with the checkbox on each card. A docked panel builds JOIN SQL with BFS bridge tables when your selection spans disconnected views. Copy the query for Query Studio or Automation Studio.',
+    body: 'Enable Expand Field Details to reveal inline descriptions and datatype badges on every row — the fastest way to validate a query before you write it.',
+  },
+  {
+    title: 'Highlight relationships',
+    icon: Link2,
+    body: 'Hover any field with join metadata to cross-highlight linked tables and foreign keys across the grid. Perfect for planning multi-hop JOIN paths.',
+  },
+  {
+    title: 'Build SQL in the Sandbox',
+    icon: Terminal,
+    body: 'Check tables to include, then use the SQL Sandbox for BFS join paths, bridge tables, and one-click copy into Automation Studio or Query Studio. If a query times out, narrow the date range with sandbox utilities.',
+  },
+  {
+    title: 'Select tables for SQL',
+    icon: CheckSquare,
+    body: 'When selections do not share direct keys, the pathfinder injects bridge tables automatically in the JOIN section — your checkboxes stay limited to what you chose.',
+  },
+] as const;
+
+const PRO_TIPS = [
+  {
+    icon: ZoomOut,
+    title: 'Card zoom / scale',
+    body: 'Pro-tip: Press Ctrl + minus (-) to zoom out your browser layout and see more data views on your screen simultaneously. On Mac, use ⌘ + minus.',
+  },
+  {
+    icon: Lightbulb,
+    title: 'Query performance',
+    body: 'Large joins against _Open or _Click can time out in Query Studio. Use the Sandbox “Limit past 30 days” utility or filter on EventDate early.',
   },
 ] as const;
 
 const SHORTCUTS = [
-  { keys: ['Esc'], action: 'Close the user guide panel' },
-  { keys: ['/'], action: 'Focus the field search input' },
-  { keys: ['Ctrl', 'C'], action: 'Copy generated SQL (when the generator panel is open)' },
+  { keys: ['Esc'], action: 'Close documentation panel' },
+  { keys: ['/'], action: 'Focus field search' },
+  { keys: ['Ctrl', 'C'], action: 'Copy SQL from Sandbox (when open)' },
 ] as const;
 
-export function Header({
-  searchQuery,
-  onSearchChange,
-  showDetails,
-  onShowDetailsChange,
-}: HeaderProps) {
+export function Header() {
   const { isDark, toggleTheme } = useTheme();
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const guidePanelRef = useRef<HTMLDivElement>(null);
-  const guideTitleId = useId();
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const docsPanelRef = useRef<HTMLDivElement>(null);
+  const docsTitleId = useId();
 
   useEffect(() => {
-    if (!isGuideOpen) {
+    if (!isDocsOpen) {
       return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsGuideOpen(false);
+        setIsDocsOpen(false);
       }
     };
 
@@ -87,154 +94,111 @@ export function Header({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [isGuideOpen]);
-
-  useEffect(() => {
-    const handleGlobalShortcut = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const isTyping =
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.isContentEditable;
-
-      if (event.key === '/' && !isTyping && !event.metaKey && !event.ctrlKey) {
-        event.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalShortcut);
-    return () => window.removeEventListener('keydown', handleGlobalShortcut);
-  }, []);
+  }, [isDocsOpen]);
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 shadow-sm backdrop-blur-md transition-colors duration-300 dark:border-slate-800/80 dark:bg-slate-900/85 dark:shadow-slate-950/50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
-                Salesforce Marketing Cloud
-              </p>
-              <h1 className="mt-0.5 truncate bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-800 bg-clip-text text-lg font-bold tracking-tight text-transparent dark:from-slate-50 dark:via-slate-200 dark:to-cyan-300 sm:text-xl">
-                SFMC Data Views Architect Pro
-              </h1>
-            </div>
+      <header className="relative overflow-hidden border-b border-slate-200/80 bg-white dark:border-slate-800/80 dark:bg-slate-950">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.12),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.08),transparent)]"
+          aria-hidden
+        />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between gap-4">
+            <a href="/" className="group flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 ring-1 ring-white/20">
+                SA
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-400">
+                  DataViews.pro
+                </p>
+                <h1 className="truncate text-base font-bold tracking-tight text-slate-900 dark:text-white sm:text-lg">
+                  SFMC Schema Architect
+                </h1>
+              </div>
+            </a>
 
-            <div className="flex items-center gap-2 sm:shrink-0">
+            <nav className="flex shrink-0 items-center gap-2" aria-label="Global">
               <button
                 type="button"
-                onClick={() => onShowDetailsChange(!showDetails)}
-                aria-pressed={showDetails}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 ${
-                  showDetails
-                    ? 'border-indigo-300 bg-indigo-50 text-indigo-900 dark:border-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-200'
-                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40'
-                }`}
-              >
-                <ListTree className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="hidden sm:inline">Display details</span>
-                <span className="sm:hidden">Details</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsGuideOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/50 dark:hover:text-cyan-100"
+                onClick={() => setIsDocsOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-cyan-300/80 hover:bg-cyan-50 hover:text-cyan-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/50 dark:hover:text-cyan-100"
                 aria-haspopup="dialog"
-                aria-expanded={isGuideOpen}
+                aria-expanded={isDocsOpen}
               >
-                <HelpCircle className="h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-400" aria-hidden />
-                <span className="hidden sm:inline">User guide</span>
-                <span className="sm:hidden">Help</span>
+                <BookOpen className="h-4 w-4 text-cyan-600 dark:text-cyan-400" aria-hidden />
+                <span className="hidden sm:inline">Documentation &amp; User Guide</span>
+                <span className="sm:hidden">Docs</span>
               </button>
 
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50/80 text-slate-700 shadow-sm transition hover:border-amber-300/80 hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                {isDark ? (
-                  <Sun className="h-4 w-4" aria-hidden />
-                ) : (
-                  <Moon className="h-4 w-4" aria-hidden />
-                )}
+                {isDark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
               </button>
-            </div>
-          </div>
-
-          <div className="relative pb-4 sm:max-w-xl">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-              aria-hidden
-            />
-            <input
-              ref={searchInputRef}
-              type="search"
-              value={searchQuery}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search fields — JobID, SubscriberKey…"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-16 text-sm text-slate-900 shadow-inner transition placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500 dark:focus:bg-slate-800"
-              aria-label="Search fields by name"
-            />
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-500 sm:inline">
-              /
-            </kbd>
+            </nav>
           </div>
         </div>
       </header>
 
-      {isGuideOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
+      {isDocsOpen && (
+        <div className="fixed inset-0 z-[60] flex justify-end" role="presentation">
           <button
             type="button"
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] transition-opacity dark:bg-black/60"
-            aria-label="Close user guide"
-            onClick={() => setIsGuideOpen(false)}
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+            aria-label="Close documentation"
+            onClick={() => setIsDocsOpen(false)}
           />
 
           <div
-            ref={guidePanelRef}
+            ref={docsPanelRef}
             role="dialog"
             aria-modal="true"
-            aria-labelledby={guideTitleId}
-            className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out dark:border-slate-800 dark:bg-slate-900 sm:max-w-lg"
+            aria-labelledby={docsTitleId}
+            className="relative flex h-full w-full max-w-lg flex-col border-l border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 dark:border-slate-800">
-              <div className="flex gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300">
-                  <BookOpen className="h-5 w-5" aria-hidden />
-                </div>
+            <div className="border-b border-slate-200 bg-gradient-to-r from-cyan-50/80 to-white px-6 py-5 dark:border-slate-800 dark:from-cyan-950/40 dark:to-slate-950">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 id={guideTitleId} className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                    User guide
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
+                    SFMC Schema Architect
+                  </p>
+                  <h2 id={docsTitleId} className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                    Documentation &amp; User Guide
                   </h2>
-                  <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
-                    How to explore schemas and ship JOIN-ready SQL faster.
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    Workspace instructions inspired by the DataViews.pro workflow — redesigned for this
+                    open-source architect.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDocsOpen(false)}
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Close panel"
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsGuideOpen(false)}
-                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                aria-label="Close panel"
-              >
-                <X className="h-5 w-5" aria-hidden />
-              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-5">
-              <section className="space-y-4">
-                {GUIDE_SECTIONS.map(({ title, icon: Icon, body }) => (
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  How to use the workspace
+                </h3>
+                {GUIDE_WORKFLOW.map(({ title, icon: Icon, body }) => (
                   <article
                     key={title}
-                    className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-800/50"
+                    className="rounded-xl border border-slate-200/90 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50"
                   >
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-cyan-600 dark:text-cyan-400" aria-hidden />
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h4>
                     </div>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{body}</p>
                   </article>
@@ -242,24 +206,58 @@ export function Header({
               </section>
 
               <section className="mt-8">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Layout &amp; canvas
+                </h3>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                  <li>
+                    <strong className="font-medium text-slate-800 dark:text-slate-200">Pro-tip:</strong>{' '}
+                    Press <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-800">Ctrl</kbd>{' '}
+                    + <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-800">minus (-)</kbd>{' '}
+                    to zoom out your browser layout and see more data views on your screen simultaneously.
+                  </li>
+                </ul>
+              </section>
+
+              <section className="mt-8 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Pro-tips
+                </h3>
+                {PRO_TIPS.map(({ title, icon: Icon, body }) => (
+                  <div
+                    key={title}
+                    className="flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50/60 p-4 dark:border-amber-900/50 dark:bg-amber-950/30"
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">{title}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+                        {body}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </section>
+
+              <section className="mt-8">
                 <div className="mb-3 flex items-center gap-2">
-                  <Keyboard className="h-4 w-4 text-slate-500 dark:text-slate-400" aria-hidden />
+                  <Keyboard className="h-4 w-4 text-slate-500" aria-hidden />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    Operational shortcuts
+                    Keyboard shortcuts
                   </h3>
                 </div>
                 <ul className="space-y-2">
                   {SHORTCUTS.map(({ keys, action }) => (
                     <li
                       key={action}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/60"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900"
                     >
                       <span className="text-sm text-slate-600 dark:text-slate-400">{action}</span>
-                      <span className="flex shrink-0 items-center gap-1">
+                      <span className="flex gap-1">
                         {keys.map((key) => (
                           <kbd
                             key={key}
-                            className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-medium dark:border-slate-700 dark:bg-slate-800"
                           >
                             {key}
                           </kbd>
@@ -270,16 +268,10 @@ export function Header({
                 </ul>
               </section>
 
-              <section className="mt-8 rounded-xl border border-dashed border-cyan-300/60 bg-cyan-50/50 p-4 dark:border-cyan-800 dark:bg-cyan-950/30">
-                <div className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-                  <Copy className="h-4 w-4" aria-hidden />
-                  <h3 className="text-sm font-semibold">Query Studio tip</h3>
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-cyan-900/80 dark:text-cyan-200/80">
-                  Paste generated SQL into an Automation Studio or Query Activity. Data views are read-only
-                  system tables — always qualify names exactly as shown (including the leading underscore).
-                </p>
-              </section>
+              <p className="mt-8 flex items-center gap-2 text-xs text-slate-500">
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                Field descriptions align with official SFMC Data View documentation.
+              </p>
             </div>
           </div>
         </div>

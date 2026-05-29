@@ -2,6 +2,21 @@ type TokenKind = 'keyword' | 'comment' | 'string' | 'function' | 'punctuation' |
 
 type Token = { kind: TokenKind; text: string };
 
+const KEYWORDS = new Set([
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'AND',
+  'OR',
+  'INNER',
+  'JOIN',
+  'ON',
+  'AS',
+  'NULL',
+]);
+
+const FUNCTIONS = new Set(['DATEADD', 'GETDATE']);
+
 function tokenizeSqlLine(line: string): Token[] {
   const tokens: Token[] = [];
   let index = 0;
@@ -27,13 +42,9 @@ function tokenizeSqlLine(line: string): Token[] {
     if (wordMatch) {
       const word = wordMatch[0];
       const upper = word.toUpperCase();
-      if (
-        ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'INNER', 'JOIN', 'ON', 'AS', 'NULL'].includes(
-          upper,
-        )
-      ) {
+      if (KEYWORDS.has(upper)) {
         tokens.push({ kind: 'keyword', text: word });
-      } else if (['DATEADD', 'GETDATE'].includes(upper)) {
+      } else if (FUNCTIONS.has(upper)) {
         tokens.push({ kind: 'function', text: word });
       } else {
         tokens.push({ kind: 'plain', text: word });
@@ -71,6 +82,22 @@ const tokenClass: Record<TokenKind, string> = {
   plain: 'text-emerald-100/95',
 };
 
+function CodeLine({ line }: { line: string }) {
+  if (line.length === 0) {
+    return <span className="text-emerald-100/40">{'\u00a0'}</span>;
+  }
+
+  return (
+    <>
+      {tokenizeSqlLine(line).map((token, tokenIndex) => (
+        <span key={tokenIndex} className={tokenClass[token.kind]}>
+          {token.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
 type SqlStyledCodeProps = {
   sql: string;
   className?: string;
@@ -78,31 +105,36 @@ type SqlStyledCodeProps = {
 
 export function SqlStyledCode({ sql, className = '' }: SqlStyledCodeProps) {
   const lines = sql.split('\n');
+  const gutterWidth = Math.max(2, String(lines.length).length);
 
   return (
-    <pre
-      className={`overflow-auto font-mono text-xs leading-relaxed sm:text-sm ${className}`}
+    <div
+      className={`flex min-h-0 w-full font-mono text-xs leading-[1.65] sm:text-sm ${className}`}
     >
-      <code>
-        {lines.map((line, lineIndex) => (
-          <div key={`${lineIndex}-${line.slice(0, 12)}`} className="table-row">
-            <span
-              className="table-cell select-none pr-4 text-right text-[10px] text-slate-600 sm:text-xs"
-              aria-hidden
-            >
-              {lineIndex + 1}
-            </span>
-            <span className="table-cell whitespace-pre">
-              {tokenizeSqlLine(line).map((token, tokenIndex) => (
-                <span key={tokenIndex} className={tokenClass[token.kind]}>
-                  {token.text}
-                </span>
-              ))}
-              {line.length === 0 ? '\u00a0' : null}
-            </span>
+      <div
+        className="shrink-0 select-none border-r border-slate-800/80 bg-slate-950 py-0.5 pr-3 text-right text-slate-600"
+        aria-hidden
+      >
+        {lines.map((_, lineIndex) => (
+          <div
+            key={`gutter-${lineIndex}`}
+            className="tabular-nums"
+            style={{ minWidth: `${gutterWidth}ch` }}
+          >
+            {lineIndex + 1}
           </div>
         ))}
-      </code>
-    </pre>
+      </div>
+
+      <pre className="min-w-0 flex-1 py-0.5 pl-4">
+        <code className="block whitespace-pre text-slate-100">
+          {lines.map((line, lineIndex) => (
+            <div key={`code-${lineIndex}`} className="whitespace-pre">
+              <CodeLine line={line} />
+            </div>
+          ))}
+        </code>
+      </pre>
+    </div>
   );
 }
