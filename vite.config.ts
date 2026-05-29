@@ -16,52 +16,6 @@ function readAuthorizationHeader(req: IncomingMessage): string | undefined {
   return undefined;
 }
 
-function readRequestBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-
-    req.on('data', (chunk: Buffer) => {
-      chunks.push(chunk);
-    });
-
-    req.on('end', () => {
-      resolve(Buffer.concat(chunks).toString('utf8'));
-    });
-
-    req.on('error', reject);
-  });
-}
-
-async function pipeWebResponseToNode(response: Response, res: ServerResponse): Promise<void> {
-  res.statusCode = response.status;
-
-  response.headers.forEach((value, key) => {
-    if (key.toLowerCase() === 'connection') {
-      return;
-    }
-    res.setHeader(key, value);
-  });
-
-  if (!response.body) {
-    res.end();
-    return;
-  }
-
-  const reader = response.body.getReader();
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      res.write(value);
-    }
-  } finally {
-    res.end();
-  }
-}
-
 async function withServerEnv<T>(
   server: ViteDevServer,
   run: () => Promise<T>,
@@ -161,43 +115,18 @@ async function handleLocalApiRoutes(
   }
 
   const authorization = readAuthorizationHeader(req);
-  const requestHeaders: Record<string, string> = {};
   if (authorization) {
-    requestHeaders.Authorization = authorization;
+    req.headers.authorization = authorization;
   }
 
   try {
     await withServerEnv(server, async () => {
       if (pathname === '/api/usage') {
-        const response = await handleUsageRequest(
-          new Request('http://localhost/api/usage', {
-            method: req.method ?? 'GET',
-            headers: requestHeaders,
-          }),
-        );
-        await pipeWebResponseToNode(response, res);
+        await handleUsageRequest(req, res);
         return;
       }
 
-      if (req.method !== 'POST') {
-        const response = await handleChatRequest(
-          new Request('http://localhost/api/chat', { method: req.method ?? 'GET' }),
-        );
-        await pipeWebResponseToNode(response, res);
-        return;
-      }
-
-      const rawBody = await readRequestBody(req);
-      requestHeaders['Content-Type'] = req.headers['content-type'] ?? 'application/json';
-
-      const response = await handleChatRequest(
-        new Request('http://localhost/api/chat', {
-          method: 'POST',
-          headers: requestHeaders,
-          body: rawBody,
-        }),
-      );
-      await pipeWebResponseToNode(response, res);
+      await handleChatRequest(req, res);
     });
   } catch (error) {
     if (!res.headersSent) {

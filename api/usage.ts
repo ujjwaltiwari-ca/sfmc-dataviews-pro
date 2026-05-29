@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
 
@@ -55,16 +56,24 @@ async function getTodayCopilotUsageCount(userId: string): Promise<number> {
   return count ?? 0;
 }
 
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+type NodeApiRequest = IncomingMessage & { body?: unknown };
+
+function sendJson(res: ServerResponse, status: number, payload: unknown): void {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
 }
 
-function extractBearerToken(request: Request): string | null {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+function sendJsonError(res: ServerResponse, message: string, status: number): void {
+  sendJson(res, status, { error: message });
+}
+
+function extractBearerToken(request: NodeApiRequest): string | null {
+  const raw =
+    request.headers['authorization'] ?? request.headers.authorization;
+  const authHeader = Array.isArray(raw) ? raw[0] : raw;
+
+  if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
     return null;
   }
 
@@ -81,23 +90,30 @@ function isPlausibleJwt(token: string): boolean {
   return parts.every((part) => part.length > 0 && /^[A-Za-z0-9_-]+$/.test(part));
 }
 
-export async function handleUsageRequest(request: Request): Promise<Response> {
-  if (request.method !== 'GET') {
-    return jsonError('Method not allowed', 405);
+export async function handleUsageRequest(
+  req: NodeApiRequest,
+  res: ServerResponse,
+): Promise<void> {
+  if (req.method !== 'GET') {
+    sendJsonError(res, 'Method not allowed', 405);
+    return;
   }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return jsonError('Supabase is not configured on the server', 500);
+    sendJsonError(res, 'Supabase is not configured on the server', 500);
+    return;
   }
 
-  const accessToken = extractBearerToken(request);
+  const accessToken = extractBearerToken(req);
   if (!accessToken) {
-    return jsonError('Unauthorized: valid Bearer token required', 401);
+    sendJsonError(res, 'Unauthorized: valid Bearer token required', 401);
+    return;
   }
 
   if (!isPlausibleJwt(accessToken)) {
-    return jsonError('Unauthorized: invalid or expired session', 401);
+    sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
+    return;
   }
 
   let user: { id: string };
@@ -112,7 +128,8 @@ export async function handleUsageRequest(request: Request): Promise<Response> {
         '[api/usage] Rejected request: invalid session token',
         authError?.message ?? 'no user',
       );
-      return jsonError('Unauthorized: invalid or expired session', 401);
+      sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
+      return;
     }
 
     user = authUser;
@@ -120,27 +137,22 @@ export async function handleUsageRequest(request: Request): Promise<Response> {
     const message =
       authFailure instanceof Error ? authFailure.message : 'Token verification failed';
     console.error('[api/usage] Auth verification threw unexpectedly', message);
-    return jsonError('Unauthorized: invalid or expired session', 401);
+    sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
+    return;
   }
 
   try {
     const count = await getTodayCopilotUsageCount(user.id);
-    return new Response(
-      JSON.stringify({
-        count,
-        limit: DAILY_COPILOT_QUERY_LIMIT,
-        isAtLimit: count >= DAILY_COPILOT_QUERY_LIMIT,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+    sendJson(res, 200, {
+      count,
+      limit: DAILY_COPILOT_QUERY_LIMIT,
+      isAtLimit: count >= DAILY_COPILOT_QUERY_LIMIT,
+    });
   } catch (usageError) {
     const message =
       usageError instanceof Error ? usageError.message : 'Failed to load usage count';
     console.error('[api/usage] Usage lookup failed for user', user.id, message);
-    return jsonError(`Usage verification failed: ${message}`, 503);
+    sendJsonError(res, `Usage verification failed: ${message}`, 503);
   }
 }
 

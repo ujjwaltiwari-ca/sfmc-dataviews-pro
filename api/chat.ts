@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
@@ -13,14 +14,15 @@ function startOfUtcDayIso(): string {
   );
   return start.toISOString();
 }
+
 const DAILY_LIMIT_MESSAGE =
   '⚠️ Daily limit reached. You have used your 5 free AI queries for today. Please return tomorrow!';
 
-const SSE_HEADERS = {
+const SSE_HEADERS: Record<string, string> = {
   'Content-Type': 'text/event-stream; charset=utf-8',
   'Cache-Control': 'no-cache, no-transform',
   Connection: 'keep-alive',
-} as const;
+};
 
 const COMPRESSED_SCHEMA = "Table: _Subscribers\nFields: SubscriberID, DateUndeliverable, DateJoined, DateUnsubscribed, Domain, EmailAddress, BounceCount, SubscriberKey, SubscriberType, Status, Locale, (Profile Attributes)\n\nTable: _EnterpriseAttribute\nFields: _SubscriberID, (Your Attribute Columns)\n\nTable: _ListSubscribers\nFields: AddedBy, AddMethod, CreatedDate, DateUnsubscribed, EmailAddress, ListID, ListName, ListType, Status, SubscriberID, SubscriberKey, SubscriberType\n\nTable: _BusinessUnitUnsubscribes\nFields: BusinessUnitID, SubscriberID, SubscriberKey, UnsubDateUTC, UnsubReason\n\nTable: _Unsubscribe\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, IsUnique\n\nTable: _Job\nFields: JobID, EmailID, AccountID, AccountUserID, FromName, FromEmail, SchedTime, PickupTime, DeliveredTime, EventID, IsMultipart, JobType, JobStatus, ModifiedBy, ModifiedDate, EmailName, EmailSubject, IsWrapped, TestEmailAddr, Category, BccEmail, OriginalSchedTime, CreatedDate, CharacterSet, IPAddress, SalesForceTotalSubscriberCount, SalesForceErrorSubscriberCount, SendType, DynamicEmailSubject, SuppressTracking, SendClassificationType, SendClassification, ResolveLinksWithCurrentData, EmailSendDefinition, DeduplicateByEmail, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey\n\nTable: _Sent\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, (Profile Attributes)\n\nTable: _ReconcilableDispositionView\nFields: JobId, Channel, Disposition, MessageKey, SubscriberKey, SubscriberID, ErrorCodeID, ErrorName, ErrorDescription, StartTime\n\nTable: _Open\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, IsUnique, (Profile Attributes)\n\nTable: _Click\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, URL, LinkName, LinkContent, IsUnique, (Profile Attributes)\n\nTable: _Bounce\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, IsUnique, BounceCategoryID, BounceCategory, BounceSubcategoryID, BounceSubcategory, BounceTypeID, BounceType, SMTPBounceReason, SMTPMessage, SMTPCode, IsFalseBounce\n\nTable: _Complaint\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, IsUnique\n\nTable: _FTAF\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, TransactionTime, Domain, IsUnique, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey\n\nTable: _SurveyResponse\nFields: AccountID, OYBAccountID, JobID, ListID, BatchID, SubscriberID, SubscriberKey, EventDate, Domain, TriggererSendDefinitionObjectID, TriggeredSendCustomerKey, SurveyID, SurveyName, IsUnique, QuestionID, QuestionName, Question, AnswerID, AnswerName, Answer, AnswerData\n\nTable: _Journey\nFields: VersionID, JourneyID, JourneyName, VersionNumber, CreatedDate, LastPublishedDate, ModifiedDate, JourneyStatus\n\nTable: _JourneyActivity\nFields: VersionID, ActivityID, ActivityName, ActivityExternalKey, JourneyActivityObjectID, ActivityType\n\nTable: _AutomationInstance\nFields: MemberID, AutomationName, AutomationDescription, AutomationCustomerKey, AutomationInstanceID, AutomationType, AutomationNotificationRecipient_Complete, AutomationNotificationRecipient_Error, AutomationNotificationRecipient_Skip, AutomationStepCount, AutomationInstanceIsRunOnce, FilenameFromTrigger, AutomationInstanceScheduledTime_UTC, AutomationInstanceStartTime_UTC, AutomationInstanceEndTime_UTC, AutomationInstanceStatus, AutomationInstanceActivityErrorDetails\n\nTable: _AutomationActivityInstance\nFields: MemberID, JobID, AutomationName, AutomationCustomerKey, AutomationInstanceID, ActivityCustomerKey, ActivityInstanceID, ActivityType, ActivityName, ActivityDescription, ActivityInstanceStep, ActivityInstanceStartTime_UTC, ActivityInstanceEndTime_UTC, ActivityInstanceStatus, ActivityInstanceStatusDetails\n\nTable: _SMSMessageTracking\nFields: MobileMessageTrackingID, EID, MID, Mobile, MessageID, KeywordID, CodeID, ConversationID, ConversationStateID, CampaignID, Sent, Delivered, Undelivered, Outbound, Inbound, CreateDateTime, ModifiedDateTime, ActionDateTime, MessageText, IsTest, MobileMessageRecurrenceID, ResponseToMobileMessageTrackingID, IsValid, InvalidationCode, SendID, SendSplitID, SendSegmentID, SendJobID, SendGroupID, SendPersonID, SubscriberID, SubscriberKey, SMSStandardStatusCodeId, Description, Name, ShortCode, SharedKeyword, Ordinal, FromName, JBDefinitionID, JBActivityID, SMSJobID, SMSBatchID\n\nTable: _SMSSubscriptionLog\nFields: LogDate, SubscriberKey, MobileSubscriptionID, SubscriptionDefinitionID, MobileNumber, OptOutStatusID, OptOutMethodID, OptOutDate, OptInStatusID, OptInMethodID, OptInDate, Source, CreatedDate, ModifiedDate\n\nTable: _UndeliverableSMS\nFields: MobileNumber, Undeliverable, BounceCount, FirstBounceDate, HoldDate\n\nTable: _MobileAddress\nFields: _MobileID, _ContactID, _MobileNumber, _Status, _Source, _SourceObjectId, _Priority, _Channel, _CarrierID, _CountryCode, _CreatedDate, _CreatedBy, _ModifiedBy, _City, _State, _ZipCode, _FirstName, _LastName, _UTCOffset, _IsHonorDST\n\nTable: _PushAddress\nFields: DeviceID, SubscriberID, SubscriberKey, DeviceType, SystemToken, OptInStatus, OptInDate, OptOutDate, CreatedDate, ModifiedDate, ApplicationID, ContactID, Platform, PlatformVersion, HardwareId, Badge, LocationEnabled, TimeZone, Source, Status\n\nTable: _PushTag\nFields: DeviceID, TagName, CreatedDate, ModifiedDate, Source, Active\n\nTable: _MobileLineAddressContactSubscriptionView\nFields: ChannelID, ContactID, ContactKey, AddressID, IsActive, CreatedDate, ModifiedDate\n\nTable: _MobileLineOrphanContactView\nFields: ContactID, ContactKey, AddressID, CreatedDate\n\nTable: _SocialNetworkImpressions\nFields: JobID, ListID, RegionTitle, RegionDescription, RegionHTML, ContentRegionID, SocialSharingSiteID, SiteName, CountryCode, ReferringURL, IPAddress, TransactionTime, PublishedSocialContentStatusID, ShortCode, PublishTime\n\nTable: _SocialNetworkTracking\nFields: SubscriberID, SubscriberKey, ListID, BatchID, SocialSharingSiteID, SiteName, CountryCode, PublishedSocialContentID, RegionTitle, RegionDescription, RegionHTML, ContentRegionID, OYBMemberID, TransactionTime, IsUnique, Domain, PublishedSocialContentStatusID, ShortCode, PublishTime\n\nTable: _Coupon\nFields: Name, ExternalKey, Description, BeginDate, ExpirationDate";
 
@@ -92,20 +94,24 @@ type ChatRequestBody = {
   messages?: ClientChatMessage[];
 };
 
-function resolveOpenAiApiKey(): string | undefined {
-  return process.env.OPENAI_API_KEY?.trim();
+type NodeApiRequest = IncomingMessage & { body?: unknown };
+
+function sendJson(res: ServerResponse, status: number, payload: unknown): void {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
 }
 
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+function sendJsonError(res: ServerResponse, message: string, status: number): void {
+  sendJson(res, status, { error: message });
 }
 
-function extractBearerToken(request: Request): string | null {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+function extractBearerToken(request: NodeApiRequest): string | null {
+  const raw =
+    request.headers['authorization'] ?? request.headers.authorization;
+  const authHeader = Array.isArray(raw) ? raw[0] : raw;
+
+  if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
     return null;
   }
 
@@ -125,10 +131,12 @@ function isPlausibleJwt(token: string): boolean {
 async function resolveAuthenticatedUser(
   supabase: SupabaseClient,
   accessToken: string,
-): Promise<{ user: { id: string } } | { error: Response }> {
+  res: ServerResponse,
+): Promise<{ user: { id: string } } | null> {
   if (!isPlausibleJwt(accessToken)) {
     console.error('[api/chat] Rejected request: malformed JWT structure');
-    return { error: jsonError('Unauthorized: invalid or expired session', 401) };
+    sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
+    return null;
   }
 
   try {
@@ -142,7 +150,8 @@ async function resolveAuthenticatedUser(
         '[api/chat] Rejected request: invalid session token',
         authError?.message ?? 'no user',
       );
-      return { error: jsonError('Unauthorized: invalid or expired session', 401) };
+      sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
+      return null;
     }
 
     return { user };
@@ -150,7 +159,8 @@ async function resolveAuthenticatedUser(
     const message =
       authFailure instanceof Error ? authFailure.message : 'Token verification failed';
     console.error('[api/chat] Auth verification threw unexpectedly', message);
-    return { error: jsonError('Unauthorized: invalid or expired session', 401) };
+    sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
+    return null;
   }
 }
 
@@ -252,21 +262,18 @@ async function logConversationAnalytics(
   }
 }
 
-function streamSseContent(content: string): Response {
-  const encoder = new TextEncoder();
+function writeSseData(res: ServerResponse, payload: unknown): void {
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
 
-  const sseBody = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-      controller.close();
-    },
-  });
-
-  return new Response(sseBody, {
-    status: 200,
-    headers: SSE_HEADERS,
-  });
+function streamSseContent(res: ServerResponse, content: string): void {
+  res.statusCode = 200;
+  for (const [key, value] of Object.entries(SSE_HEADERS)) {
+    res.setHeader(key, value);
+  }
+  writeSseData(res, { content });
+  res.write('data: [DONE]\n\n');
+  res.end();
 }
 
 function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | null {
@@ -304,48 +311,86 @@ function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | n
   return normalized;
 }
 
-export async function handleChatRequest(request: Request): Promise<Response> {
-  if (request.method !== 'POST') {
-    return jsonError('Method not allowed', 405);
+function readRequestBody(req: NodeApiRequest): Promise<string> {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'string') {
+      return Promise.resolve(req.body);
+    }
+    return Promise.resolve(JSON.stringify(req.body));
+  }
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+
+    req.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    req.on('end', () => {
+      resolve(Buffer.concat(chunks).toString('utf8'));
+    });
+
+    req.on('error', reject);
+  });
+}
+
+function isClientDisconnected(req: NodeApiRequest, res: ServerResponse): boolean {
+  return req.aborted === true || res.writableEnded || res.destroyed;
+}
+
+export async function handleChatRequest(
+  req: NodeApiRequest,
+  res: ServerResponse,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    sendJsonError(res, 'Method not allowed', 405);
+    return;
   }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return jsonError('Supabase is not configured on the server', 500);
+    sendJsonError(res, 'Supabase is not configured on the server', 500);
+    return;
   }
 
-  const accessToken = extractBearerToken(request);
+  const accessToken = extractBearerToken(req);
   if (!accessToken) {
     console.error('[api/chat] Rejected request: missing or unreadable Authorization Bearer token');
-    return jsonError('Unauthorized: valid Bearer token required', 401);
+    sendJsonError(res, 'Unauthorized: valid Bearer token required', 401);
+    return;
   }
 
-  const authResult = await resolveAuthenticatedUser(supabase, accessToken);
-  if ('error' in authResult) {
-    return authResult.error;
+  const authResult = await resolveAuthenticatedUser(supabase, accessToken, res);
+  if (!authResult) {
+    return;
   }
 
   const { user } = authResult;
 
-  const apiKey = resolveOpenAiApiKey();
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    return jsonError('OpenAI API key is not configured on the server', 500);
+    sendJsonError(res, 'OpenAI API key is not configured on the server', 500);
+    return;
   }
 
   let body: ChatRequestBody;
   try {
-    body = (await request.json()) as ChatRequestBody;
+    const rawBody = await readRequestBody(req);
+    body = rawBody ? (JSON.parse(rawBody) as ChatRequestBody) : {};
   } catch {
-    return jsonError('Invalid JSON body', 400);
+    sendJsonError(res, 'Invalid JSON body', 400);
+    return;
   }
 
   const clientMessages = normalizeClientMessages(body.messages);
   if (!clientMessages) {
-    return jsonError('Expected a messages array of { role, content } objects', 400);
+    sendJsonError(res, 'Expected a messages array of { role, content } objects', 400);
+    return;
   }
 
   if (clientMessages.length === 0) {
-    return jsonError('At least one non-empty message is required', 400);
+    sendJsonError(res, 'At least one non-empty message is required', 400);
+    return;
   }
 
   let usageReservation: UsageReservation;
@@ -355,16 +400,24 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     const message =
       usageError instanceof Error ? usageError.message : 'Failed to check daily usage limit';
     console.error('[api/chat] Rejected request: usage reservation failed', message);
-    return jsonError(`Usage verification failed: ${message}`, 503);
+    sendJsonError(res, `Usage verification failed: ${message}`, 503);
+    return;
   }
 
   if (!usageReservation.ok) {
-    return streamSseContent(DAILY_LIMIT_MESSAGE);
+    streamSseContent(res, DAILY_LIMIT_MESSAGE);
+    return;
   }
 
   const reservedUsageRowId = usageReservation.usageRowId;
-
   const openai = new OpenAI({ apiKey });
+
+  const abortController = new AbortController();
+  const onClientClose = () => {
+    abortController.abort();
+  };
+  req.on('aborted', onClientClose);
+  req.on('close', onClientClose);
 
   let completionStream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
   try {
@@ -377,62 +430,63 @@ export async function handleChatRequest(request: Request): Promise<Response> {
           ...clientMessages,
         ],
       },
-      { signal: request.signal },
+      { signal: abortController.signal },
     );
   } catch (error) {
+    req.off('aborted', onClientClose);
+    req.off('close', onClientClose);
     await releaseCopilotUsageSlot(reservedUsageRowId);
     const message =
       error instanceof Error ? error.message : 'Failed to start OpenAI completion stream';
-    return jsonError(message, 502);
+    sendJsonError(res, message, 502);
+    return;
   }
 
-  const encoder = new TextEncoder();
+  res.statusCode = 200;
+  for (const [key, value] of Object.entries(SSE_HEADERS)) {
+    res.setHeader(key, value);
+  }
+
   const latestUserPrompt = getLatestUserPrompt(clientMessages);
+  let accumulatedAssistantText = '';
 
-  const sseBody = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let accumulatedAssistantText = '';
+  try {
+    for await (const chunk of completionStream) {
+      if (isClientDisconnected(req, res)) {
+        break;
+      }
 
-      try {
-        for await (const chunk of completionStream) {
-          const delta = chunk.choices[0]?.delta?.content;
-          if (!delta) {
-            continue;
-          }
+      const delta = chunk.choices[0]?.delta?.content;
+      if (!delta) {
+        continue;
+      }
 
-          accumulatedAssistantText += delta;
-          const payload = JSON.stringify({ content: delta });
-          controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
-        }
+      accumulatedAssistantText += delta;
+      writeSseData(res, { content: delta });
+    }
 
-        await logConversationAnalytics(user.id, latestUserPrompt, accumulatedAssistantText);
+    if (!isClientDisconnected(req, res)) {
+      await logConversationAnalytics(user.id, latestUserPrompt, accumulatedAssistantText);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  } catch (streamError) {
+    if (!abortController.signal.aborted) {
+      await releaseCopilotUsageSlot(reservedUsageRowId);
 
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-      } catch (streamError) {
-        if (request.signal.aborted) {
-          controller.close();
-          return;
-        }
-
-        await releaseCopilotUsageSlot(reservedUsageRowId);
-
+      if (!isClientDisconnected(req, res)) {
         const message =
           streamError instanceof Error
             ? streamError.message
             : 'Stream interrupted while reading OpenAI response';
-
-        const payload = JSON.stringify({ error: message });
-        controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
-        controller.close();
+        writeSseData(res, { error: message });
+        res.end();
       }
-    },
-  });
-
-  return new Response(sseBody, {
-    status: 200,
-    headers: SSE_HEADERS,
-  });
+    }
+  } finally {
+    req.off('aborted', onClientClose);
+    req.off('close', onClientClose);
+  }
 }
 
 export default handleChatRequest;
