@@ -20,5 +20,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "server/chatHandler.ts", "server/supabaseClient.ts"]
+  "include": ["vite.config.ts", "api/chat.ts", "api/usage.ts"]
 }

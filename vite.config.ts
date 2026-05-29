@@ -1,9 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
-import { handleChatRequest } from './server/chatHandler';
-import { handleUsageRequest } from './server/usageHandler';
-import { resetSupabaseServerClient } from './server/supabaseClient';
+import { handleChatRequest, resetSupabaseServerClient } from './api/chat';
+import { handleUsageRequest } from './api/usage';
 
 function readAuthorizationHeader(req: IncomingMessage): string | undefined {
   const raw = req.headers.authorization;
