@@ -18,7 +18,9 @@ export type DataViewCategory =
   | 'Mobile'
   | 'GroupConnect'
   | 'Social'
-  | 'Other';
+  | 'Other'
+  | 'SendLog'
+  | 'Synchronized';
 
 export interface DataViewTable {
   name: string;

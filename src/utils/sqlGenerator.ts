@@ -8,14 +8,46 @@ export interface SqlJoinEdge {
   toField: string;
 }
 
+export interface SqlSelectField {
+  table: string;
+  alias: string;
+  field: string;
+  expression: string;
+}
+
+export interface SqlJoinStepDetail {
+  order: number;
+  table: string;
+  alias: string;
+  conditions: string[];
+  isBridgingTable: boolean;
+}
+
+export interface SqlArchitecture {
+  selectFields: SqlSelectField[];
+  rootTable: string;
+  rootAlias: string;
+  joinSteps: SqlJoinStepDetail[];
+}
+
 export interface SqlGenerationResult {
   sql: string;
+  baseSql: string;
   isEmpty: boolean;
   userSelectedTables: string[];
   bridgingTables: string[];
   joinTables: string[];
   disconnectedTables: string[];
+  architecture: SqlArchitecture;
+  /** Best alias for EventDate / test-send filters when present in the graph. */
+  filterAlias: string | null;
 }
+
+export interface SqlUtilityFilterOptions {
+  limitPast30Days: boolean;
+  excludeTestSends: boolean;
+}
+
 
 /** Prefer these bridges when multiple equal-length paths exist. */
 const BRIDGE_TABLE_PRIORITY: string[] = [
@@ -352,8 +384,11 @@ function buildJoinSteps(
   };
 }
 
-function buildSelectClause(userSelectedTableNames: string[], tables: DataViewTable[]): string {
-  const lines: string[] = [];
+function buildSelectFields(
+  userSelectedTableNames: string[],
+  tables: DataViewTable[],
+): SqlSelectField[] {
+  const fields: SqlSelectField[] = [];
 
   for (const tableName of userSelectedTableNames) {
     const table = getTableByName(tableName, tables);
@@ -362,11 +397,82 @@ function buildSelectClause(userSelectedTableNames: string[], tables: DataViewTab
     }
     const alias = tableToAlias(tableName);
     for (const field of table.fields) {
-      lines.push(`  ${alias}.${field.name}`);
+      fields.push({
+        table: tableName,
+        alias,
+        field: field.name,
+        expression: `${alias}.${field.name}`,
+      });
     }
   }
 
-  return lines.join(',\n');
+  return fields;
+}
+
+function buildSelectClause(selectFields: SqlSelectField[]): string {
+  return selectFields.map((item) => `  ${item.expression}`).join(',\n');
+}
+
+function tableHasField(tableName: string, fieldName: string, tables: DataViewTable[]): boolean {
+  const table = getTableByName(tableName, tables);
+  return table?.fields.some((field) => field.name === fieldName) ?? false;
+}
+
+/** Prefer user-selected tables, then join order, for filter column qualification. */
+export function resolveFilterAlias(
+  userSelected: string[],
+  joinTables: string[],
+  tables: DataViewTable[],
+  fieldNames: string[],
+): string | null {
+  const ordered = [...userSelected, ...joinTables.filter((name) => !userSelected.includes(name))];
+  for (const fieldName of fieldNames) {
+    for (const tableName of ordered) {
+      if (tableHasField(tableName, fieldName, tables)) {
+        return tableToAlias(tableName);
+      }
+    }
+  }
+  return null;
+}
+
+export function applySqlUtilityFilters(
+  baseSql: string,
+  options: SqlUtilityFilterOptions,
+  filterAlias: string | null,
+): string {
+  if (!options.limitPast30Days && !options.excludeTestSends) {
+    return baseSql;
+  }
+
+  const predicates: string[] = [];
+
+  if (options.limitPast30Days) {
+    predicates.push(
+      filterAlias
+        ? `${filterAlias}.EventDate >= DATEADD(day, -30, GETDATE())`
+        : 'EventDate >= DATEADD(day, -30, GETDATE())',
+    );
+  }
+
+  if (options.excludeTestSends) {
+    predicates.push(
+      filterAlias ? `${filterAlias}.TestStormObjID IS NULL` : 'TestStormObjID IS NULL',
+    );
+  }
+
+  const predicateBlock = predicates.join('\n  AND ');
+  const whereMatch = baseSql.match(/\nWHERE\s+([\s\S]*?)(?=\n--|\n*$)/i);
+
+  if (whereMatch) {
+    const existing = whereMatch[1].trim();
+    return baseSql.replace(
+      whereMatch[0],
+      `\nWHERE ${existing}\n  AND ${predicateBlock}`,
+    );
+  }
+
+  return `${baseSql}\nWHERE ${predicateBlock}`;
 }
 
 export function generateSfmcSql(
@@ -380,11 +486,19 @@ export function generateSfmcSql(
   if (userSelected.length === 0) {
     return {
       sql: '-- Select one or more data view cards to generate SQL.',
+      baseSql: '-- Select one or more data view cards to generate SQL.',
       isEmpty: true,
       userSelectedTables: [],
       bridgingTables: [],
       joinTables: [],
       disconnectedTables: [],
+      architecture: {
+        selectFields: [],
+        rootTable: '',
+        rootAlias: '',
+        joinSteps: [],
+      },
+      filterAlias: null,
     };
   }
 
@@ -394,7 +508,8 @@ export function generateSfmcSql(
   const bridgingSet = new Set(bridgingTables);
   const userSelectedSet = new Set(userSelected);
   const edges = collectJoinEdges(joinTables, tables);
-  const selectClause = buildSelectClause(userSelected, tables);
+  const selectFields = buildSelectFields(userSelected, tables);
+  const selectClause = buildSelectClause(selectFields);
   const { rootTable, steps, disconnected: disconnectedFromJoin } = buildJoinSteps(
     joinTables,
     bridgingSet,
@@ -434,12 +549,37 @@ export function generateSfmcSql(
     lines.push(`-- INNER JOIN ${tableName} AS ${alias} ON ...`);
   }
 
+  const baseSql = lines.join('\n');
+  const rootAlias = rootTable ? tableToAlias(rootTable) : '';
+  const joinSteps: SqlJoinStepDetail[] = steps.map((step, index) => ({
+    order: index + 1,
+    table: step.table,
+    alias: tableToAlias(step.table),
+    conditions: step.conditions,
+    isBridgingTable: step.isBridgingTable,
+  }));
+
+  const filterAlias = resolveFilterAlias(
+    userSelected,
+    joinTables,
+    tables,
+    ['EventDate', 'TestStormObjID'],
+  );
+
   return {
-    sql: lines.join('\n'),
+    sql: baseSql,
+    baseSql,
     isEmpty: false,
     userSelectedTables: userSelected,
     bridgingTables,
     joinTables,
     disconnectedTables,
+    architecture: {
+      selectFields,
+      rootTable,
+      rootAlias,
+      joinSteps,
+    },
+    filterAlias,
   };
 }

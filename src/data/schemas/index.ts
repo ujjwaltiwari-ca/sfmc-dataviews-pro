@@ -22,6 +22,8 @@ export { mobileDataViews } from './mobile';
 export { groupConnectDataViews } from './groupConnect';
 export { socialDataViews } from './social';
 export { otherDataViews } from './other';
+export { sendLogDataViews } from './sendLog';
+export { synchronizedDeDataViews } from './synchronizedDe';
 
 /** All SFMC system data views in display order. */
 export const sfmcDataViews: DataViewTable[] = [
