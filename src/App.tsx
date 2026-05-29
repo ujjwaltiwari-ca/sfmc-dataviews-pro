@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AuthProvider } from './context/AuthContext';
 import { AiCopilot } from './components/AiCopilot';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
@@ -136,12 +137,18 @@ function App() {
     });
   };
 
+  const handleSignInRequired = useCallback(() => {
+    setIsCopilotOpen(true);
+  }, []);
+
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden surface-canvas text-slate-900 transition-colors duration-300 ease-in-out dark:text-slate-100">
+    <AuthProvider>
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-100/90 text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
       <div className="z-40 shrink-0">
         <Header
           onToggleCopilot={handleToggleCopilot}
           isCopilotOpen={isCopilotOpen}
+          onSignInRequired={handleSignInRequired}
         />
         <CommandToolbar
           activeSegment={activeSegment}
@@ -154,7 +161,7 @@ function App() {
       </div>
 
       <div
-        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden surface-canvas ${
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/90 dark:bg-slate-950 ${
           sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
         }`}
       >
@@ -199,6 +206,7 @@ function App() {
         onApplyToSandbox={handleApplyToSandbox}
       />
     </div>
+    </AuthProvider>
   );
 }
 

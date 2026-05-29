@@ -15,7 +15,10 @@ import {
   X,
   ZoomOut,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { AccountProfileDropdown } from './AccountProfileDropdown';
+import { SchemaArchitectMark } from './SchemaArchitectMark';
 
 const GUIDE_WORKFLOW = [
   {
@@ -72,10 +75,16 @@ const SHORTCUTS = [
 type HeaderProps = {
   onToggleCopilot: () => void;
   isCopilotOpen?: boolean;
+  onSignInRequired?: () => void;
 };
 
-export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) {
+export function Header({
+  onToggleCopilot,
+  isCopilotOpen = false,
+  onSignInRequired,
+}: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
+  const { user, isAuthLoading } = useAuth();
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const docsPanelRef = useRef<HTMLDivElement>(null);
   const docsTitleId = useId();
@@ -103,7 +112,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
 
   return (
     <>
-      <header className="relative overflow-hidden border-b border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-950">
+      <header className="relative overflow-visible border-b border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-950">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.12),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.08),transparent)]"
           aria-hidden
@@ -111,9 +120,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4">
             <a href="/" className="group flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 ring-1 ring-white/20">
-                SA
-              </span>
+              <SchemaArchitectMark className="h-10 w-10 shrink-0 rounded-xl shadow-lg shadow-cyan-500/25 ring-1 ring-slate-900/5 transition-transform duration-200 ease-in-out group-hover:scale-[1.02] dark:ring-white/15" />
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-400">
                   DataViews.pro
@@ -124,7 +131,7 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
               </div>
             </a>
 
-            <nav className="flex shrink-0 items-center gap-2" aria-label="Global">
+            <nav className="relative z-50 flex shrink-0 items-center gap-2" aria-label="Global">
               <button
                 type="button"
                 onClick={onToggleCopilot}
@@ -143,6 +150,10 @@ export function Header({ onToggleCopilot, isCopilotOpen = false }: HeaderProps) 
                 <span className="hidden sm:inline">AI Copilot</span>
                 <span className="sm:hidden">AI</span>
               </button>
+
+              {!isAuthLoading && user ? (
+                <AccountProfileDropdown onSignedOut={onSignInRequired} />
+              ) : null}
 
               <button
                 type="button"

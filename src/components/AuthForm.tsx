@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Loader2, Lock, Mail } from 'lucide-react';
+import { isDisposableEmail } from '../utils/disposableEmail';
 import { supabase } from '../utils/supabaseClient';
+
+const DISPOSABLE_EMAIL_ERROR =
+  'Please use a permanent professional email address to register.';
 
 type AuthMode = 'signIn' | 'signUp';
 
@@ -16,6 +20,12 @@ export function AuthForm() {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+
+    if (mode === 'signUp' && isDisposableEmail(email)) {
+      setError(DISPOSABLE_EMAIL_ERROR);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

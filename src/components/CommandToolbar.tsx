@@ -40,7 +40,7 @@ export function CommandToolbar({
   }, []);
 
   return (
-    <div className="border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/95">
+    <div className="z-10 border-b border-slate-200/80 bg-white/95 shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/95 dark:shadow-[0_1px_3px_0_rgba(0,0,0,0.2)]">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div
           className="flex flex-wrap gap-1 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/50"

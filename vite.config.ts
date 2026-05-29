@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { handleChatRequest } from './server/chatHandler';
+import { handleUsageRequest } from './server/usageHandler';
 import { resetSupabaseServerClient } from './server/supabaseClient';
 
 function readAuthorizationHeader(req: IncomingMessage): string | undefined {
@@ -62,26 +63,10 @@ async function pipeWebResponseToNode(response: Response, res: ServerResponse): P
   }
 }
 
-async function handleLocalChatApi(
-  req: IncomingMessage,
-  res: ServerResponse,
-  next: () => void,
+async function withServerEnv<T>(
   server: ViteDevServer,
-): Promise<void> {
-  const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-  if (pathname !== '/api/chat') {
-    next();
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    const response = await handleChatRequest(
-      new Request('http://localhost/api/chat', { method: req.method ?? 'GET' }),
-    );
-    await pipeWebResponseToNode(response, res);
-    return;
-  }
-
+  run: () => Promise<T>,
+): Promise<T> {
   const env = loadEnv(server.config.mode, server.config.root, '');
   const apiKey =
     process.env.OPENAI_API_KEY?.trim() ||
@@ -129,34 +114,7 @@ async function handleLocalChatApi(
   resetSupabaseServerClient();
 
   try {
-    const rawBody = await readRequestBody(req);
-    const requestHeaders: Record<string, string> = {
-      'Content-Type': req.headers['content-type'] ?? 'application/json',
-    };
-
-    const authorization = readAuthorizationHeader(req);
-    if (authorization) {
-      requestHeaders.Authorization = authorization;
-    }
-
-    const request = new Request('http://localhost/api/chat', {
-      method: 'POST',
-      headers: requestHeaders,
-      body: rawBody,
-    });
-
-    const response = await handleChatRequest(request);
-    await pipeWebResponseToNode(response, res);
-  } catch (error) {
-    if (!res.headersSent) {
-      const message = error instanceof Error ? error.message : 'Local chat API failed';
-      res.statusCode = 500;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: message }));
-      return;
-    }
-
-    res.end();
+    return await run();
   } finally {
     if (previousOpenAiKey === undefined) {
       delete process.env.OPENAI_API_KEY;
@@ -202,13 +160,77 @@ async function handleLocalChatApi(
   }
 }
 
-function localChatApiPlugin(): Plugin {
+async function handleLocalApiRoutes(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void,
+  server: ViteDevServer,
+): Promise<void> {
+  const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+  if (pathname !== '/api/chat' && pathname !== '/api/usage') {
+    next();
+    return;
+  }
+
+  const authorization = readAuthorizationHeader(req);
+  const requestHeaders: Record<string, string> = {};
+  if (authorization) {
+    requestHeaders.Authorization = authorization;
+  }
+
+  try {
+    await withServerEnv(server, async () => {
+      if (pathname === '/api/usage') {
+        const response = await handleUsageRequest(
+          new Request('http://localhost/api/usage', {
+            method: req.method ?? 'GET',
+            headers: requestHeaders,
+          }),
+        );
+        await pipeWebResponseToNode(response, res);
+        return;
+      }
+
+      if (req.method !== 'POST') {
+        const response = await handleChatRequest(
+          new Request('http://localhost/api/chat', { method: req.method ?? 'GET' }),
+        );
+        await pipeWebResponseToNode(response, res);
+        return;
+      }
+
+      const rawBody = await readRequestBody(req);
+      requestHeaders['Content-Type'] = req.headers['content-type'] ?? 'application/json';
+
+      const response = await handleChatRequest(
+        new Request('http://localhost/api/chat', {
+          method: 'POST',
+          headers: requestHeaders,
+          body: rawBody,
+        }),
+      );
+      await pipeWebResponseToNode(response, res);
+    });
+  } catch (error) {
+    if (!res.headersSent) {
+      const message = error instanceof Error ? error.message : 'Local API route failed';
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: message }));
+      return;
+    }
+
+    res.end();
+  }
+}
+
+function localApiPlugin(): Plugin {
   return {
-    name: 'vite-plugin-local-chat-api',
+    name: 'vite-plugin-local-api-routes',
     apply: 'serve',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        void handleLocalChatApi(req, res, next, server);
+        void handleLocalApiRoutes(req, res, next, server);
       });
     },
   };
@@ -216,5 +238,5 @@ function localChatApiPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), localChatApiPlugin()],
+  plugins: [react(), localApiPlugin()],
 });

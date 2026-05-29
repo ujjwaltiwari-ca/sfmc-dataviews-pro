@@ -47,6 +47,9 @@ export interface SqlUtilityFilterOptions {
   limitPast30Days: boolean;
   excludeTestSends: boolean;
   filterActiveSubscribersOnly: boolean;
+  filterByCampaignJobId: boolean;
+  campaignJobId: string;
+  jobIdFilterAlias: string | null;
 }
 
 export interface SqlGenerationOptions {
@@ -683,10 +686,14 @@ export function applySqlUtilityFilters(
   filterAlias: string | null,
   keywordCase: SqlKeywordCase = 'upper',
 ): string {
+  const trimmedJobId = options.campaignJobId.trim();
+  const applyJobIdFilter = options.filterByCampaignJobId && trimmedJobId.length > 0;
+
   if (
     !options.limitPast30Days &&
     !options.excludeTestSends &&
-    !options.filterActiveSubscribersOnly
+    !options.filterActiveSubscribersOnly &&
+    !applyJobIdFilter
   ) {
     return baseSql;
   }
@@ -709,6 +716,15 @@ export function applySqlUtilityFilters(
 
   if (options.filterActiveSubscribersOnly) {
     predicates.push(buildActiveSubscriberPredicate(keywordCase));
+  }
+
+  if (applyJobIdFilter) {
+    const escapedJobId = trimmedJobId.replace(/'/g, "''");
+    predicates.push(
+      options.jobIdFilterAlias
+        ? `${options.jobIdFilterAlias}.JobID = '${escapedJobId}'`
+        : `JobID = '${escapedJobId}'`,
+    );
   }
 
   return appendWherePredicates(baseSql, predicates);

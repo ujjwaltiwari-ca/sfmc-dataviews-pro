@@ -1,10 +1,12 @@
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { sfmcDataViews } from '../src/data/sfmcSchema';
+import { DAILY_COPILOT_QUERY_LIMIT } from '../src/constants/copilotQuota';
+import { getTodayCopilotUsageCount } from './copilotUsage';
 import { getSupabaseServerClient } from './supabaseClient';
 
 const OPENAI_MODEL = 'gpt-4o-mini';
-const DAILY_QUERY_LIMIT = 5;
+const DAILY_QUERY_LIMIT = DAILY_COPILOT_QUERY_LIMIT;
 const DAILY_LIMIT_MESSAGE =
   '⚠️ Daily limit reached. You have used your 5 free AI queries for today. Please return tomorrow!';
 
@@ -104,33 +106,6 @@ async function resolveAuthenticatedUser(
   }
 }
 
-function startOfUtcDayIso(): string {
-  const now = new Date();
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
-  );
-  return start.toISOString();
-}
-
-async function getTodayUsageCount(userId: string): Promise<number> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    throw new Error('Supabase is not configured on the server');
-  }
-
-  const { count, error } = await supabase
-    .from('user_usage')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', startOfUtcDayIso());
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return count ?? 0;
-}
-
 async function logSuccessfulQuery(userId: string): Promise<void> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
@@ -140,6 +115,54 @@ async function logSuccessfulQuery(userId: string): Promise<void> {
   const { error } = await supabase.from('user_usage').insert({ user_id: userId });
   if (error) {
     throw new Error(`Failed to write user_usage row: ${error.message}`);
+  }
+}
+
+function getLatestUserPrompt(messages: ChatCompletionMessageParam[]): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === 'user' && typeof message.content === 'string') {
+      return message.content;
+    }
+  }
+
+  return '';
+}
+
+/** Analytics-only; failures are logged and never propagated to the client stream. */
+async function logConversationAnalytics(
+  userId: string,
+  userPrompt: string,
+  aiResponse: string,
+): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    console.error('[chatHandler] conversation_logs skipped: Supabase is not configured');
+    return;
+  }
+
+  try {
+    const { error } = await supabase.from('conversation_logs').insert({
+      user_id: userId,
+      user_prompt: userPrompt,
+      ai_response: aiResponse,
+    });
+
+    if (error) {
+      console.error(
+        '[chatHandler] Failed to write conversation_logs row for user',
+        userId,
+        error.message,
+      );
+    }
+  } catch (logFailure) {
+    const message =
+      logFailure instanceof Error ? logFailure.message : 'Unknown conversation logging error';
+    console.error(
+      '[chatHandler] conversation_logs insert threw unexpectedly for user',
+      userId,
+      message,
+    );
   }
 }
 
@@ -220,7 +243,7 @@ export async function handleChatRequest(request: Request): Promise<Response> {
 
   let todayUsageCount: number;
   try {
-    todayUsageCount = await getTodayUsageCount(user.id);
+    todayUsageCount = await getTodayCopilotUsageCount(user.id);
   } catch (usageError) {
     const message =
       usageError instanceof Error ? usageError.message : 'Failed to check daily usage limit';
@@ -276,8 +299,12 @@ export async function handleChatRequest(request: Request): Promise<Response> {
 
   const encoder = new TextEncoder();
 
+  const latestUserPrompt = getLatestUserPrompt(clientMessages);
+
   const sseBody = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let accumulatedAssistantText = '';
+
       try {
         for await (const chunk of completionStream) {
           const delta = chunk.choices[0]?.delta?.content;
@@ -285,11 +312,13 @@ export async function handleChatRequest(request: Request): Promise<Response> {
             continue;
           }
 
+          accumulatedAssistantText += delta;
           const payload = JSON.stringify({ content: delta });
           controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
         }
 
         await logSuccessfulQuery(user.id);
+        await logConversationAnalytics(user.id, latestUserPrompt, accumulatedAssistantText);
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         controller.close();

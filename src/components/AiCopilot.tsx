@@ -6,7 +6,6 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   AlertTriangle,
   Bot,
@@ -17,6 +16,11 @@ import {
   User,
   X,
 } from 'lucide-react';
+import {
+  DAILY_COPILOT_QUERY_LIMIT,
+  isDailyCopilotLimitMessage,
+} from '../constants/copilotQuota';
+import { useAuth } from '../context/AuthContext';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { logCopilotApiError } from '../utils/copilotFallback';
 import { supabase } from '../utils/supabaseClient';
@@ -191,7 +195,7 @@ async function streamChatFromProxy(
 }
 
 export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps) {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const { user, refreshUsage, applyKnownUsageCount, signOut } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -202,27 +206,12 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    void supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) {
-        setUser(data.session?.user ?? null);
-      }
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) {
-        setUser(session?.user ?? null);
-      }
-    });
-    subscription = data.subscription;
-
-    return () => {
-      isMounted = false;
-      subscription?.unsubscribe();
-    };
-  }, []);
+    if (!user) {
+      setMessages([]);
+      setError(null);
+      setInput('');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -327,6 +316,10 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
     try {
       const accumulated = await streamChatFromProxy(apiMessages, accessToken, appendAssistantDelta);
       finalizeAssistant(accumulated || 'No response received.');
+      if (isDailyCopilotLimitMessage(accumulated)) {
+        applyKnownUsageCount(DAILY_COPILOT_QUERY_LIMIT);
+      }
+      void refreshUsage();
     } catch (sendError) {
       logCopilotApiError(sendError);
       const isAuthError =
@@ -335,8 +328,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
           sendError.message.includes('Unauthorized'));
 
       if (isAuthError) {
-        await supabase.auth.signOut();
-        setUser(null);
+        await signOut();
         setMessages((previous) => previous.filter((message) => message.id !== assistantId));
         setError('Your session expired. Please sign in again.');
         return;
@@ -349,7 +341,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, messages]);
+  }, [input, isSending, messages, refreshUsage, applyKnownUsageCount, signOut]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

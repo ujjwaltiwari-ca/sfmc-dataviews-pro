@@ -10,6 +10,7 @@ import {
   Database,
   FileText,
   GitBranch,
+  Hash,
   Route,
   Shield,
   Terminal,
@@ -22,8 +23,13 @@ import {
   applyTargetDeScaffolding,
   buildActiveSubscriberPredicate,
   generateSfmcSql,
+  resolveFilterAlias,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
+import { sfmcDataViews } from '../data/sfmcSchema';
+
+const QUERY_STUDIO_TIP =
+  '💡 Quick Tip: Copy this optimized SQL query block, modify any specific IDs for your unique business needs, and run it directly inside Marketing Cloud\'s Query Studio or an Automation Studio Query Activity.';
 const COPIED_FEEDBACK_MS = 2200;
 /** Expanded drawer height — keep in sync with App canvas bottom padding. */
 const SANDBOX_DRAWER_HEIGHT_PX = 450;
@@ -81,6 +87,68 @@ function UtilityToggle({
         </span>
       </span>
     </label>
+  );
+}
+
+function CampaignJobIdFilter({
+  checked,
+  jobId,
+  onCheckedChange,
+  onJobIdChange,
+  previewPredicate,
+}: {
+  checked: boolean;
+  jobId: string;
+  onCheckedChange: (value: boolean) => void;
+  onJobIdChange: (value: string) => void;
+  previewPredicate: string;
+}) {
+  return (
+    <div
+      className={`rounded-lg border transition-colors ${
+        checked
+          ? 'border-cyan-500/50 bg-cyan-950/40'
+          : 'border-slate-700/80 bg-slate-800/40 hover:border-slate-600'
+      }`}
+    >
+      <label
+        htmlFor="filter-campaign-job-id"
+        className="flex cursor-pointer items-start gap-3 px-3 py-2.5"
+      >
+        <input
+          id="filter-campaign-job-id"
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onCheckedChange(event.target.checked)}
+          className="mt-1 h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/40"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-medium text-slate-100">
+            <Hash className="h-3.5 w-3.5 text-cyan-400" aria-hidden />
+            Filter by Campaign JobID
+          </span>
+          <span className="mt-0.5 block font-mono text-[10px] leading-snug text-slate-500">
+            {previewPredicate}
+          </span>
+        </span>
+      </label>
+      {checked && (
+        <div className="border-t border-slate-700/60 px-3 pb-3 pt-2">
+          <label htmlFor="campaign-job-id-value" className="sr-only">
+            Campaign JobID
+          </label>
+          <input
+            id="campaign-job-id-value"
+            type="text"
+            inputMode="numeric"
+            value={jobId}
+            onChange={(event) => onJobIdChange(event.target.value)}
+            placeholder="e.g., 123456"
+            className="w-full rounded-md border border-slate-600/80 bg-slate-950/80 px-2.5 py-1.5 font-mono text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -150,8 +218,12 @@ export function SqlGenerator({
   const [limitPast30Days, setLimitPast30Days] = useState(false);
   const [excludeTestSends, setExcludeTestSends] = useState(false);
   const [filterActiveSubscribersOnly, setFilterActiveSubscribersOnly] = useState(false);
+  const [filterByCampaignJobId, setFilterByCampaignJobId] = useState(false);
+  const [campaignJobId, setCampaignJobId] = useState('');
   const [includeTargetDeScaffolding, setIncludeTargetDeScaffolding] = useState(false);
   const [keywordCase, setKeywordCase] = useState<SqlKeywordCase>('upper');
+
+  const schema = schemaTables ?? sfmcDataViews;
 
   const generation = useMemo(
     () =>
@@ -173,6 +245,14 @@ export function SqlGenerator({
 
   const subscribersInJoinPath = joinTables.includes('_Subscribers');
 
+  const jobIdFilterAlias = useMemo(
+    () => resolveFilterAlias(userSelectedTables, joinTables, schema, ['JobID']),
+    [userSelectedTables, joinTables, schema],
+  );
+
+  const campaignJobIdActive =
+    filterByCampaignJobId && campaignJobId.trim().length > 0;
+
   const filteredSql = useMemo(
     () =>
       applySqlUtilityFilters(
@@ -182,6 +262,9 @@ export function SqlGenerator({
           excludeTestSends,
           filterActiveSubscribersOnly:
             filterActiveSubscribersOnly && subscribersInJoinPath,
+          filterByCampaignJobId: campaignJobIdActive,
+          campaignJobId,
+          jobIdFilterAlias,
         },
         filterAlias,
         keywordCase,
@@ -192,6 +275,9 @@ export function SqlGenerator({
       excludeTestSends,
       filterActiveSubscribersOnly,
       subscribersInJoinPath,
+      campaignJobIdActive,
+      campaignJobId,
+      jobIdFilterAlias,
       filterAlias,
       keywordCase,
     ],
@@ -328,6 +414,13 @@ export function SqlGenerator({
 
           {isExpanded && (
             <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4 pt-4">
+              <p
+                className="mb-4 rounded-lg border border-blue-100 bg-blue-50/80 p-3 text-[12px] leading-relaxed text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
+                role="note"
+              >
+                {QUERY_STUDIO_TIP}
+              </p>
+
               <div className="grid gap-4 lg:grid-cols-12">
                   {/* Architecture breakdown */}
                   <aside className="space-y-3 lg:col-span-4 xl:col-span-3">
@@ -423,60 +516,81 @@ export function SqlGenerator({
                       )}
                     </section>
 
-                    {/* Utilities */}
-                    <section className="space-y-2">
+                    {/* Configuration filters */}
+                    <section className="space-y-3">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                        SQL utilities
+                        Performance &amp; Formatting
                       </p>
-                      <KeywordCaseToggle value={keywordCase} onChange={setKeywordCase} />
-                      <UtilityToggle
-                        id="limit-30-days"
-                        label="Limit past 30 days"
-                        description={formatUtilityPreview(
-                          filterAlias
-                            ? `${filterAlias}.EventDate >= DATEADD(day, -30, GETDATE())`
-                            : 'EventDate >= DATEADD(day, -30, GETDATE())',
+                      <div className="space-y-2">
+                        <UtilityToggle
+                          id="limit-30-days"
+                          label="Limit past 30 days"
+                          description={formatUtilityPreview(
+                            filterAlias
+                              ? `${filterAlias}.EventDate >= DATEADD(day, -30, GETDATE())`
+                              : 'EventDate >= DATEADD(day, -30, GETDATE())',
+                          )}
+                          checked={limitPast30Days}
+                          onChange={setLimitPast30Days}
+                          icon={Calendar}
+                        />
+                        <UtilityToggle
+                          id="exclude-test-sends"
+                          label="Exclude test send records"
+                          description={formatUtilityPreview(
+                            filterAlias
+                              ? `${filterAlias}.TestStormObjID IS NULL`
+                              : 'TestStormObjID IS NULL',
+                          )}
+                          checked={excludeTestSends}
+                          onChange={setExcludeTestSends}
+                          icon={Shield}
+                        />
+                        <KeywordCaseToggle value={keywordCase} onChange={setKeywordCase} />
+                        <UtilityToggle
+                          id="include-target-de-scaffolding"
+                          label="Include Automation Target Header"
+                          description="Prepends target schema configurations and data binding rules."
+                          checked={includeTargetDeScaffolding}
+                          onChange={setIncludeTargetDeScaffolding}
+                          icon={FileText}
+                        />
+                      </div>
+
+                      <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        Marketing Business Filters
+                      </p>
+                      <div className="space-y-2">
+                        <UtilityToggle
+                          id="filter-active-subscribers"
+                          label="Filter Active Subscribers Only"
+                          description={formatUtilityPreview(
+                            `AND ${buildActiveSubscriberPredicate(keywordCase)}`,
+                          )}
+                          checked={filterActiveSubscribersOnly}
+                          onChange={setFilterActiveSubscribersOnly}
+                          icon={Users}
+                        />
+                        {filterActiveSubscribersOnly && !subscribersInJoinPath && (
+                          <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-[10px] leading-snug text-amber-200">
+                            Could not auto-link <span className="font-mono">_Subscribers</span>{' '}
+                            from the current selection. Choose a table with a subscriber join path.
+                          </p>
                         )}
-                        checked={limitPast30Days}
-                        onChange={setLimitPast30Days}
-                        icon={Calendar}
-                      />
-                      <UtilityToggle
-                        id="exclude-test-sends"
-                        label="Exclude test send records"
-                        description={formatUtilityPreview(
-                          filterAlias
-                            ? `${filterAlias}.TestStormObjID IS NULL`
-                            : 'TestStormObjID IS NULL',
-                        )}
-                        checked={excludeTestSends}
-                        onChange={setExcludeTestSends}
-                        icon={Shield}
-                      />
-                      <UtilityToggle
-                        id="filter-active-subscribers"
-                        label="Filter Active Subscribers Only"
-                        description={formatUtilityPreview(
-                          `AND ${buildActiveSubscriberPredicate(keywordCase)}`,
-                        )}
-                        checked={filterActiveSubscribersOnly}
-                        onChange={setFilterActiveSubscribersOnly}
-                        icon={Users}
-                      />
-                      {filterActiveSubscribersOnly && !subscribersInJoinPath && (
-                        <p className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-[10px] leading-snug text-amber-200">
-                          Could not auto-link <span className="font-mono">_Subscribers</span> from
-                          the current selection. Choose a table with a subscriber join path.
-                        </p>
-                      )}
-                      <UtilityToggle
-                        id="include-target-de-scaffolding"
-                        label="Include Automation Target Header"
-                        description="Prepends target schema configurations and data binding rules."
-                        checked={includeTargetDeScaffolding}
-                        onChange={setIncludeTargetDeScaffolding}
-                        icon={FileText}
-                      />
+                        <CampaignJobIdFilter
+                          checked={filterByCampaignJobId}
+                          jobId={campaignJobId}
+                          onCheckedChange={setFilterByCampaignJobId}
+                          onJobIdChange={setCampaignJobId}
+                          previewPredicate={formatUtilityPreview(
+                            jobIdFilterAlias
+                              ? `AND ${jobIdFilterAlias}.JobID = '${
+                                  campaignJobId.trim() || 'YOUR_ID'
+                                }'`
+                              : `AND JobID = '${campaignJobId.trim() || 'YOUR_ID'}'`,
+                          )}
+                        />
+                      </div>
                     </section>
                   </aside>
 
@@ -515,6 +629,7 @@ export function SqlGenerator({
                           {(limitPast30Days ||
                             excludeTestSends ||
                             (filterActiveSubscribersOnly && subscribersInJoinPath) ||
+                            campaignJobIdActive ||
                             includeTargetDeScaffolding) && (
                             <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
                               utilities active
