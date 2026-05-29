@@ -7,7 +7,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import {
   AlertTriangle,
   Bot,
@@ -22,7 +22,7 @@ import {
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { buildLocalFallbackReply, logCopilotApiError } from '../utils/copilotFallback';
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const OPENAI_MODEL = 'gpt-4o-mini';
 
 const COMPRESSED_SCHEMA = sfmcDataViews
   .map(
@@ -51,8 +51,9 @@ function createMessageId(): string {
 }
 
 function buildSystemInstruction(): string {
-  return `SFMC Schema Architect copilot. Use exact table names (leading underscores). Write Query Studio SQL. Reply briefly. SQL only in \`\`\`sql blocks with aliases. Filter _Open/_Click/_Sent by EventDate.
+  return `You are an elite SFMC Architect Copilot for Salesforce Marketing Cloud Data Views and Query Studio SQL. Use exact table names (leading underscores). Reply briefly. Put runnable SQL in \`\`\`sql fences with aliases. Filter large tracking views (_Open, _Click, _Sent) by EventDate when relevant.
 
+Compressed Schema Context:
 ${COMPRESSED_SCHEMA}`;
 }
 
@@ -80,8 +81,17 @@ function extractSqlFromMessage(content: string): string | null {
   return null;
 }
 
+function toOpenAiHistory(messages: ChatMessage[]): OpenAI.Chat.ChatCompletionMessageParam[] {
+  return messages
+    .filter((message) => !message.isStreaming && message.content.trim())
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+}
+
 export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
   const hasApiKey = Boolean(apiKey?.trim());
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -90,27 +100,20 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
   const [error, setError] = useState<string | null>(null);
   const [appliedMessageId, setAppliedMessageId] = useState<string | null>(null);
 
-  const chatSessionRef = useRef<ReturnType<
-    ReturnType<GoogleGenerativeAI['getGenerativeModel']>['startChat']
-  > | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const systemInstruction = useMemo(() => buildSystemInstruction(), []);
 
-  useEffect(() => {
+  const openai = useMemo(() => {
     if (!hasApiKey) {
-      chatSessionRef.current = null;
-      return;
+      return null;
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey!.trim());
-    const model = genAI.getGenerativeModel({
-      model: GEMINI_MODEL,
-      systemInstruction,
+    return new OpenAI({
+      apiKey: apiKey!.trim(),
+      dangerouslyAllowBrowser: true,
     });
-    chatSessionRef.current = model.startChat();
-  }, [apiKey, hasApiKey, systemInstruction]);
+  }, [apiKey, hasApiKey]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -146,11 +149,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed || isSending) {
-      return;
-    }
-
-    if (!hasApiKey || !chatSessionRef.current) {
+    if (!trimmed || isSending || !openai) {
       return;
     }
 
@@ -172,6 +171,8 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
       isStreaming: true,
     };
 
+    const historyForApi = toOpenAiHistory(messages);
+
     setMessages((previous) => [...previous, userMessage, assistantPlaceholder]);
 
     const finalizeAssistant = (content: string) => {
@@ -185,16 +186,25 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
     };
 
     try {
-      const result = await chatSessionRef.current.sendMessageStream(trimmed);
+      const stream = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        messages: [
+          { role: 'system', content: systemInstruction },
+          ...historyForApi,
+          { role: 'user', content: trimmed },
+        ],
+        stream: true,
+      });
+
       let accumulated = '';
 
       try {
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          if (!chunkText) {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content ?? '';
+          if (!delta) {
             continue;
           }
-          accumulated += chunkText;
+          accumulated += delta;
           setMessages((previous) =>
             previous.map((message) =>
               message.id === assistantId
@@ -216,7 +226,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
     } finally {
       setIsSending(false);
     }
-  }, [hasApiKey, input, isSending]);
+  }, [hasApiKey, input, isSending, messages, openai, systemInstruction]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -236,6 +246,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
       return;
     }
     onApplyToSandbox(sql);
+    onClose();
     setAppliedMessageId(messageId);
     window.setTimeout(() => setAppliedMessageId(null), 2200);
   };
@@ -275,7 +286,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
                   Schema Assistant
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  {sfmcDataViews.length} data views · Gemini
+                  {sfmcDataViews.length} data views · GPT-4o mini
                 </p>
               </div>
             </div>
@@ -303,12 +314,12 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
                 />
                 <div>
                   <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
-                    Gemini API key not configured
+                    OpenAI API key not configured
                   </p>
                   <p className="mt-1.5 text-sm leading-relaxed text-amber-900/85 dark:text-amber-200/85">
                     Add{' '}
                     <code className="rounded border border-amber-200/80 bg-white/70 px-1 py-0.5 font-mono text-[11px] dark:border-amber-800 dark:bg-slate-900/80">
-                      VITE_GEMINI_API_KEY
+                      VITE_OPENAI_API_KEY
                     </code>{' '}
                     to your <code className="font-mono text-[11px]">.env.local</code> file, then
                     restart the dev server. Your key stays in the browser and is never sent to our

@@ -33,6 +33,11 @@ interface SqlGeneratorProps {
   schemaTables?: DataViewTable[];
   sql: string;
   onSqlChange: (sql: string) => void;
+  isVisible: boolean;
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  /** When true, skip overwriting sql from card-driven generation (e.g. copilot apply). */
+  preserveSql?: boolean;
 }
 
 function UtilityToggle({
@@ -136,8 +141,11 @@ export function SqlGenerator({
   schemaTables,
   sql,
   onSqlChange,
+  isVisible,
+  isExpanded,
+  onExpandedChange,
+  preserveSql = false,
 }: SqlGeneratorProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const [limitPast30Days, setLimitPast30Days] = useState(false);
   const [excludeTestSends, setExcludeTestSends] = useState(false);
@@ -208,11 +216,12 @@ export function SqlGenerator({
   const formatUtilityPreview = (expression: string) =>
     applySqlKeywordCase(expression, keywordCase);
 
-  const isVisible = selectedTableNames.length > 0;
-
   useEffect(() => {
+    if (preserveSql || selectedTableNames.length === 0) {
+      return;
+    }
     onSqlChange(displaySql);
-  }, [displaySql, onSqlChange]);
+  }, [displaySql, onSqlChange, preserveSql, selectedTableNames.length]);
 
   const fieldsByTable = useMemo(() => {
     const groups = new Map<string, typeof architecture.selectFields>();
@@ -303,7 +312,7 @@ export function SqlGenerator({
               </button>
               <button
                 type="button"
-                onClick={() => setIsExpanded((value) => !value)}
+                onClick={() => onExpandedChange(!isExpanded)}
                 className="rounded-lg border border-slate-700 p-2 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-slate-600"
                 aria-expanded={isExpanded}
                 aria-label={isExpanded ? 'Collapse SQL sandbox' : 'Expand SQL sandbox'}

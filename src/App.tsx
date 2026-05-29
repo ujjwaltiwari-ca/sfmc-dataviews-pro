@@ -37,6 +37,9 @@ function App() {
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [sandboxSql, setSandboxSql] = useState('');
+  const [showSandbox, setShowSandbox] = useState(false);
+  const [isSandboxExpanded, setIsSandboxExpanded] = useState(true);
+  const [copilotSqlActive, setCopilotSqlActive] = useState(false);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggleCopilot = useCallback(() => {
@@ -45,6 +48,9 @@ function App() {
 
   const handleApplyToSandbox = useCallback((sql: string) => {
     setSandboxSql(sql.trim());
+    setShowSandbox(true);
+    setIsSandboxExpanded(true);
+    setCopilotSqlActive(true);
   }, []);
 
   const activeTables = useMemo(
@@ -91,7 +97,11 @@ function App() {
     [activeTables, selectedTables],
   );
 
-  const sandboxOpen = selectedTableNames.length > 0;
+  const sandboxOpen = selectedTableNames.length > 0 || showSandbox;
+
+  useEffect(() => {
+    setCopilotSqlActive(false);
+  }, [selectedTableNames]);
 
   const clearRelationLeaveTimer = () => {
     if (relationLeaveTimerRef.current !== null) {
@@ -177,6 +187,10 @@ function App() {
         schemaTables={activeTables}
         sql={sandboxSql}
         onSqlChange={setSandboxSql}
+        isVisible={sandboxOpen}
+        isExpanded={isSandboxExpanded}
+        onExpandedChange={setIsSandboxExpanded}
+        preserveSql={copilotSqlActive}
       />
 
       <AiCopilot
