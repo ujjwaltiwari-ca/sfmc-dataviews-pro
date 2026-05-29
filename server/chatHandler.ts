@@ -42,9 +42,7 @@ type ChatRequestBody = {
 };
 
 function resolveOpenAiApiKey(): string | undefined {
-  return (
-    process.env.OPENAI_API_KEY?.trim() || process.env.VITE_OPENAI_API_KEY?.trim()
-  );
+  return process.env.OPENAI_API_KEY?.trim();
 }
 
 function jsonError(message: string, status: number): Response {
@@ -106,15 +104,58 @@ async function resolveAuthenticatedUser(
   }
 }
 
-async function logSuccessfulQuery(userId: string): Promise<void> {
+type UsageReservation =
+  | { ok: true; usageRowId: string | number }
+  | { ok: false; reason: 'limit' };
+
+/**
+ * Reserves one daily copilot slot before calling OpenAI.
+ * Re-counts after insert so parallel requests cannot exceed the daily cap.
+ */
+async function reserveCopilotUsageSlot(userId: string): Promise<UsageReservation> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
     throw new Error('Supabase is not configured on the server');
   }
 
-  const { error } = await supabase.from('user_usage').insert({ user_id: userId });
+  const countBefore = await getTodayCopilotUsageCount(userId);
+  if (countBefore >= DAILY_QUERY_LIMIT) {
+    return { ok: false, reason: 'limit' };
+  }
+
+  const { data, error } = await supabase
+    .from('user_usage')
+    .insert({ user_id: userId })
+    .select('id')
+    .single();
+
   if (error) {
-    throw new Error(`Failed to write user_usage row: ${error.message}`);
+    throw new Error(`Failed to reserve user_usage row: ${error.message}`);
+  }
+
+  const usageRowId = data?.id;
+  if (usageRowId === null || usageRowId === undefined) {
+    throw new Error('Failed to reserve user_usage row: missing row id');
+  }
+
+  const countAfter = await getTodayCopilotUsageCount(userId);
+  if (countAfter > DAILY_QUERY_LIMIT) {
+    await supabase.from('user_usage').delete().eq('id', usageRowId);
+    return { ok: false, reason: 'limit' };
+  }
+
+  return { ok: true, usageRowId };
+}
+
+async function releaseCopilotUsageSlot(usageRowId: string | number): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.from('user_usage').delete().eq('id', usageRowId);
+  if (error) {
+    console.error('[chatHandler] Failed to release reserved user_usage row', usageRowId, error.message);
   }
 }
 
@@ -241,20 +282,6 @@ export async function handleChatRequest(request: Request): Promise<Response> {
 
   const { user } = authResult;
 
-  let todayUsageCount: number;
-  try {
-    todayUsageCount = await getTodayCopilotUsageCount(user.id);
-  } catch (usageError) {
-    const message =
-      usageError instanceof Error ? usageError.message : 'Failed to check daily usage limit';
-    console.error('[chatHandler] Rejected request: usage lookup failed', message);
-    return jsonError(`Usage verification failed: ${message}`, 503);
-  }
-
-  if (todayUsageCount >= DAILY_QUERY_LIMIT) {
-    return streamSseContent(DAILY_LIMIT_MESSAGE);
-  }
-
   const apiKey = resolveOpenAiApiKey();
   if (!apiKey) {
     return jsonError('OpenAI API key is not configured on the server', 500);
@@ -276,6 +303,22 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     return jsonError('At least one non-empty message is required', 400);
   }
 
+  let usageReservation: UsageReservation;
+  try {
+    usageReservation = await reserveCopilotUsageSlot(user.id);
+  } catch (usageError) {
+    const message =
+      usageError instanceof Error ? usageError.message : 'Failed to check daily usage limit';
+    console.error('[chatHandler] Rejected request: usage reservation failed', message);
+    return jsonError(`Usage verification failed: ${message}`, 503);
+  }
+
+  if (!usageReservation.ok) {
+    return streamSseContent(DAILY_LIMIT_MESSAGE);
+  }
+
+  const reservedUsageRowId = usageReservation.usageRowId;
+
   const openai = new OpenAI({ apiKey });
 
   let completionStream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
@@ -292,6 +335,7 @@ export async function handleChatRequest(request: Request): Promise<Response> {
       { signal: request.signal },
     );
   } catch (error) {
+    await releaseCopilotUsageSlot(reservedUsageRowId);
     const message =
       error instanceof Error ? error.message : 'Failed to start OpenAI completion stream';
     return jsonError(message, 502);
@@ -317,7 +361,6 @@ export async function handleChatRequest(request: Request): Promise<Response> {
           controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
         }
 
-        await logSuccessfulQuery(user.id);
         await logConversationAnalytics(user.id, latestUserPrompt, accumulatedAssistantText);
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
@@ -328,14 +371,12 @@ export async function handleChatRequest(request: Request): Promise<Response> {
           return;
         }
 
+        await releaseCopilotUsageSlot(reservedUsageRowId);
+
         const message =
           streamError instanceof Error
             ? streamError.message
             : 'Stream interrupted while reading OpenAI response';
-
-        if (message.includes('user_usage')) {
-          console.error('[chatHandler] Failed to persist usage row for user', user.id, streamError);
-        }
 
         const payload = JSON.stringify({ error: message });
         controller.enqueue(encoder.encode(`data: ${payload}\n\n`));

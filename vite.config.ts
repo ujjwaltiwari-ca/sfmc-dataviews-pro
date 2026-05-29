@@ -68,10 +68,7 @@ async function withServerEnv<T>(
   run: () => Promise<T>,
 ): Promise<T> {
   const env = loadEnv(server.config.mode, server.config.root, '');
-  const apiKey =
-    process.env.OPENAI_API_KEY?.trim() ||
-    env.OPENAI_API_KEY?.trim() ||
-    env.VITE_OPENAI_API_KEY?.trim();
+  const apiKey = process.env.OPENAI_API_KEY?.trim() || env.OPENAI_API_KEY?.trim();
 
   const supabaseUrl =
     process.env.SUPABASE_URL?.trim() ||
@@ -85,7 +82,6 @@ async function withServerEnv<T>(
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   const previousOpenAiKey = process.env.OPENAI_API_KEY;
-  const previousViteKey = process.env.VITE_OPENAI_API_KEY;
   const previousSupabaseUrl = process.env.SUPABASE_URL;
   const previousViteSupabaseUrl = process.env.VITE_SUPABASE_URL;
   const previousSupabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -94,7 +90,6 @@ async function withServerEnv<T>(
 
   if (apiKey) {
     process.env.OPENAI_API_KEY = apiKey;
-    process.env.VITE_OPENAI_API_KEY = apiKey;
   }
 
   if (supabaseUrl) {
@@ -120,12 +115,6 @@ async function withServerEnv<T>(
       delete process.env.OPENAI_API_KEY;
     } else {
       process.env.OPENAI_API_KEY = previousOpenAiKey;
-    }
-
-    if (previousViteKey === undefined) {
-      delete process.env.VITE_OPENAI_API_KEY;
-    } else {
-      process.env.VITE_OPENAI_API_KEY = previousViteKey;
     }
 
     if (previousSupabaseUrl === undefined) {

@@ -47,16 +47,26 @@ export async function handleUsageRequest(request: Request): Promise<Response> {
     return jsonError('Unauthorized: invalid or expired session', 401);
   }
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser(accessToken);
+  let user: { id: string };
+  try {
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser(accessToken);
 
-  if (authError || !user) {
-    console.error(
-      '[usageHandler] Rejected request: invalid session token',
-      authError?.message ?? 'no user',
-    );
+    if (authError || !authUser) {
+      console.error(
+        '[usageHandler] Rejected request: invalid session token',
+        authError?.message ?? 'no user',
+      );
+      return jsonError('Unauthorized: invalid or expired session', 401);
+    }
+
+    user = authUser;
+  } catch (authFailure) {
+    const message =
+      authFailure instanceof Error ? authFailure.message : 'Token verification failed';
+    console.error('[usageHandler] Auth verification threw unexpectedly', message);
     return jsonError('Unauthorized: invalid or expired session', 401);
   }
 

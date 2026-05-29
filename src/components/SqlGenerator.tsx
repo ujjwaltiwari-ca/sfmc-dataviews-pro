@@ -29,7 +29,7 @@ import {
 import { sfmcDataViews } from '../data/sfmcSchema';
 
 const QUERY_STUDIO_TIP =
-  '💡 Quick Tip: Copy this optimized SQL query block, modify any specific IDs for your unique business needs, and run it directly inside Marketing Cloud\'s Query Studio or an Automation Studio Query Activity.';
+  'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
 const COPIED_FEEDBACK_MS = 2200;
 /** Expanded drawer height — keep in sync with App canvas bottom padding. */
 const SANDBOX_DRAWER_HEIGHT_PX = 450;
@@ -418,6 +418,9 @@ export function SqlGenerator({
                 className="mb-4 rounded-lg border border-blue-100 bg-blue-50/80 p-3 text-[12px] leading-relaxed text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300"
                 role="note"
               >
+                <span className="mr-1" aria-hidden>
+                  💡
+                </span>
                 {QUERY_STUDIO_TIP}
               </p>
 

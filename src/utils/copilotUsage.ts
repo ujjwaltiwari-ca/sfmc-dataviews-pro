@@ -1,6 +1,3 @@
-import { startOfUtcDayIso } from '../constants/copilotQuota';
-import { supabase } from './supabaseClient';
-
 type UsageApiPayload = {
   count?: number;
   limit?: number;
@@ -36,60 +33,20 @@ async function fetchUsageFromApi(accessToken: string): Promise<number> {
   return payload.count;
 }
 
-async function fetchUsageFromClient(userId: string): Promise<number> {
-  const dayStartUtc = startOfUtcDayIso();
-
-  const { count, error } = await supabase
-    .from('user_usage')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', dayStartUtc);
-
-  if (error) {
-    console.error('[copilotUsage] Supabase client user_usage query failed:', {
-      userId,
-      dayStartUtc,
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-    });
-    throw new Error(error.message);
-  }
-
-  const resolved = count ?? 0;
-
-  if (count === null) {
-    console.warn(
-      '[copilotUsage] user_usage count was null for authenticated user — check RLS SELECT policy or use /api/usage with SUPABASE_SERVICE_ROLE_KEY.',
-      { userId, dayStartUtc },
-    );
-  }
-
-  return resolved;
-}
-
 /**
  * Returns today's copilot request count for a user (UTC day boundary).
- * Prefers the authenticated /api/usage route (service role) over direct client reads.
+ * Uses the authenticated /api/usage route so counts are aggregated with the service role.
  */
 export async function fetchTodayCopilotUsageCount(
-  userId: string,
+  _userId: string,
   accessToken?: string | null,
 ): Promise<number> {
   const token = accessToken?.trim();
-  if (token) {
-    try {
-      return await fetchUsageFromApi(token);
-    } catch (apiError) {
-      console.warn(
-        '[copilotUsage] /api/usage fetch failed; falling back to direct Supabase client query.',
-        apiError instanceof Error ? apiError.message : apiError,
-      );
-    }
+  if (!token) {
+    throw new Error('Missing access token for usage lookup');
   }
 
-  return fetchUsageFromClient(userId);
+  return fetchUsageFromApi(token);
 }
 
 /** Removes Supabase auth keys from localStorage after sign-out. */
