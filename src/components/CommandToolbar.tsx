@@ -40,10 +40,10 @@ export function CommandToolbar({
   }, []);
 
   return (
-    <div className="z-10 border-b border-slate-200/80 bg-white/95 shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/95 dark:shadow-[0_1px_3px_0_rgba(0,0,0,0.2)]">
+    <div className="border-b border-slate-200/80 bg-white/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-950/80 dark:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div
-          className="flex flex-wrap gap-1 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/50"
+          className="flex flex-wrap gap-1 rounded-xl border border-slate-200/60 bg-slate-100/50 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] dark:border-slate-700/50 dark:bg-slate-800/40"
           role="tablist"
           aria-label="Schema canvas segments"
         >
@@ -56,10 +56,10 @@ export function CommandToolbar({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => onSegmentChange(segment.id)}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 ease-in-out sm:text-sm ${
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-300 ease-out sm:text-sm ${
                   isActive
-                    ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-950 dark:text-slate-50 dark:ring-slate-700'
-                    : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-slate-200'
+                    ? 'bg-white text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-slate-200/60 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700/60'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-slate-800 hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-slate-200'
                 }`}
               >
                 {segment.toolbarLabel}
@@ -80,7 +80,7 @@ export function CommandToolbar({
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search fields across the canvas…"
-              className="w-full rounded-lg border border-slate-200/80 bg-white py-2 pl-10 pr-14 text-sm text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-400 hover:border-slate-300/80 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-cyan-500"
+              className="w-full rounded-xl border border-slate-200/60 bg-white/90 py-2 pl-10 pr-14 text-sm text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out placeholder:text-slate-400 hover:border-slate-300/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] focus:border-cyan-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-cyan-500"
               aria-label="Search fields by name"
             />
             <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-500 sm:inline">

@@ -230,8 +230,8 @@ function AppMain() {
 
   return (
     <AuthProvider>
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-100/90 text-slate-900 transition-colors duration-300 ease-in-out dark:bg-slate-950 dark:text-slate-100">
-      <div className="z-40 shrink-0">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 text-slate-900 transition-colors duration-300 ease-in-out dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100">
+      <div className="sticky top-0 z-50 shrink-0">
         <Header
           onToggleCopilot={handleToggleCopilot}
           isCopilotOpen={isCopilotOpen}
@@ -248,7 +248,7 @@ function AppMain() {
       </div>
 
       <div
-        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/90 dark:bg-slate-950 ${
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 ${
           sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
         }`}
       >

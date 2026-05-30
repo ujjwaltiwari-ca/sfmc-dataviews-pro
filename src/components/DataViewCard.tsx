@@ -13,9 +13,9 @@ import {
 type DataViewCategory = DataViewTable['category'];
 
 type CategoryTheme = {
-  badgeBorder: string;
-  badgeBg: string;
-  cardTopAccent: string;
+  badgeGradient: string;
+  badgeText: string;
+  topGradient: string;
   cardHover: string;
   pathInset: string;
   pathRowBg: string;
@@ -24,16 +24,16 @@ type CategoryTheme = {
   linkHover: string;
 };
 
-const CARD_PREMIUM_SHADOW =
-  'shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.35),0_1px_3px_rgba(0,0,0,0.2)]';
+const CARD_BASE_CLASS =
+  'bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.05)] transition-all duration-300 ease-out transform hover:-translate-y-0.5 dark:bg-slate-900/90 dark:border-slate-700/40 dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] dark:hover:shadow-[0_20px_40px_rgb(0,0,0,0.35)]';
 
 const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
   Sending: {
-    badgeBorder: 'border-blue-500/25',
-    badgeBg: 'bg-blue-500/[0.05] dark:bg-blue-500/10',
-    cardTopAccent: 'border-t-blue-500',
+    badgeGradient: 'from-blue-500/10 via-blue-400/5 to-transparent',
+    badgeText: 'text-blue-700 dark:text-blue-300',
+    topGradient: 'from-blue-400/70 via-blue-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-blue-50/40 dark:hover:from-slate-900 dark:hover:to-blue-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-blue-50/30 dark:hover:from-slate-900/95 dark:hover:to-blue-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(59,130,246)]',
     pathRowBg: 'bg-blue-50/70 dark:bg-blue-950/35',
     pathText: 'text-blue-950 dark:text-blue-50',
@@ -41,11 +41,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-blue-600 dark:group-hover/row:text-blue-400',
   },
   Tracking: {
-    badgeBorder: 'border-emerald-500/25',
-    badgeBg: 'bg-emerald-500/[0.05] dark:bg-emerald-500/10',
-    cardTopAccent: 'border-t-emerald-500',
+    badgeGradient: 'from-emerald-500/10 via-emerald-400/5 to-transparent',
+    badgeText: 'text-emerald-700 dark:text-emerald-300',
+    topGradient: 'from-emerald-400/70 via-emerald-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-emerald-50/40 dark:hover:from-slate-900 dark:hover:to-emerald-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-emerald-50/30 dark:hover:from-slate-900/95 dark:hover:to-emerald-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(16,185,129)]',
     pathRowBg: 'bg-emerald-50/70 dark:bg-emerald-950/35',
     pathText: 'text-emerald-950 dark:text-emerald-50',
@@ -54,11 +54,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
       'group-hover/row:opacity-100 group-hover/row:text-emerald-600 dark:group-hover/row:text-emerald-400',
   },
   Journey: {
-    badgeBorder: 'border-violet-500/25',
-    badgeBg: 'bg-violet-500/[0.05] dark:bg-violet-500/10',
-    cardTopAccent: 'border-t-violet-500',
+    badgeGradient: 'from-violet-500/10 via-violet-400/5 to-transparent',
+    badgeText: 'text-violet-700 dark:text-violet-300',
+    topGradient: 'from-violet-400/70 via-violet-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-violet-50/40 dark:hover:from-slate-900 dark:hover:to-violet-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-violet-50/30 dark:hover:from-slate-900/95 dark:hover:to-violet-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(139,92,246)]',
     pathRowBg: 'bg-violet-50/70 dark:bg-violet-950/35',
     pathText: 'text-violet-950 dark:text-violet-50',
@@ -66,11 +66,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
   },
   Subscribers: {
-    badgeBorder: 'border-amber-500/25',
-    badgeBg: 'bg-amber-500/[0.05] dark:bg-amber-500/10',
-    cardTopAccent: 'border-t-amber-500',
+    badgeGradient: 'from-amber-500/10 via-amber-400/5 to-transparent',
+    badgeText: 'text-amber-700 dark:text-amber-300',
+    topGradient: 'from-amber-400/70 via-amber-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-amber-50/40 dark:hover:from-slate-900 dark:hover:to-amber-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-amber-50/30 dark:hover:from-slate-900/95 dark:hover:to-amber-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(245,158,11)]',
     pathRowBg: 'bg-amber-50/70 dark:bg-amber-950/35',
     pathText: 'text-amber-950 dark:text-amber-50',
@@ -78,11 +78,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-amber-600 dark:group-hover/row:text-amber-400',
   },
   Subscription: {
-    badgeBorder: 'border-rose-500/25',
-    badgeBg: 'bg-rose-500/[0.05] dark:bg-rose-500/10',
-    cardTopAccent: 'border-t-rose-500',
+    badgeGradient: 'from-rose-500/10 via-rose-400/5 to-transparent',
+    badgeText: 'text-rose-700 dark:text-rose-300',
+    topGradient: 'from-rose-400/70 via-rose-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-rose-50/40 dark:hover:from-slate-900 dark:hover:to-rose-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-rose-50/30 dark:hover:from-slate-900/95 dark:hover:to-rose-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(244,63,94)]',
     pathRowBg: 'bg-rose-50/70 dark:bg-rose-950/35',
     pathText: 'text-rose-950 dark:text-rose-50',
@@ -90,11 +90,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-rose-600 dark:group-hover/row:text-rose-400',
   },
   Automation: {
-    badgeBorder: 'border-violet-500/25',
-    badgeBg: 'bg-violet-500/[0.05] dark:bg-violet-500/10',
-    cardTopAccent: 'border-t-violet-500',
+    badgeGradient: 'from-violet-500/10 via-violet-400/5 to-transparent',
+    badgeText: 'text-violet-700 dark:text-violet-300',
+    topGradient: 'from-violet-400/70 via-violet-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-violet-50/40 dark:hover:from-slate-900 dark:hover:to-violet-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-violet-50/30 dark:hover:from-slate-900/95 dark:hover:to-violet-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(139,92,246)]',
     pathRowBg: 'bg-violet-50/70 dark:bg-violet-950/35',
     pathText: 'text-violet-950 dark:text-violet-50',
@@ -102,11 +102,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
   },
   Mobile: {
-    badgeBorder: 'border-cyan-500/25',
-    badgeBg: 'bg-cyan-500/[0.05] dark:bg-cyan-500/10',
-    cardTopAccent: 'border-t-cyan-500',
+    badgeGradient: 'from-cyan-500/10 via-cyan-400/5 to-transparent',
+    badgeText: 'text-cyan-700 dark:text-cyan-300',
+    topGradient: 'from-cyan-400/70 via-cyan-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-cyan-50/40 dark:hover:from-slate-900 dark:hover:to-cyan-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-cyan-50/30 dark:hover:from-slate-900/95 dark:hover:to-cyan-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(6,182,212)]',
     pathRowBg: 'bg-cyan-50/70 dark:bg-cyan-950/35',
     pathText: 'text-cyan-950 dark:text-cyan-50',
@@ -114,11 +114,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-cyan-600 dark:group-hover/row:text-cyan-400',
   },
   GroupConnect: {
-    badgeBorder: 'border-lime-500/25',
-    badgeBg: 'bg-lime-500/[0.05] dark:bg-lime-500/10',
-    cardTopAccent: 'border-t-lime-500',
+    badgeGradient: 'from-lime-500/10 via-lime-400/5 to-transparent',
+    badgeText: 'text-lime-700 dark:text-lime-300',
+    topGradient: 'from-lime-400/70 via-lime-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-lime-50/40 dark:hover:from-slate-900 dark:hover:to-lime-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-lime-50/30 dark:hover:from-slate-900/95 dark:hover:to-lime-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(132,204,22)]',
     pathRowBg: 'bg-lime-50/70 dark:bg-lime-950/35',
     pathText: 'text-lime-950 dark:text-lime-50',
@@ -126,11 +126,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-lime-600 dark:group-hover/row:text-lime-400',
   },
   Social: {
-    badgeBorder: 'border-pink-500/25',
-    badgeBg: 'bg-pink-500/[0.05] dark:bg-pink-500/10',
-    cardTopAccent: 'border-t-pink-500',
+    badgeGradient: 'from-pink-500/10 via-pink-400/5 to-transparent',
+    badgeText: 'text-pink-700 dark:text-pink-300',
+    topGradient: 'from-pink-400/70 via-pink-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-pink-50/40 dark:hover:from-slate-900 dark:hover:to-pink-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-pink-50/30 dark:hover:from-slate-900/95 dark:hover:to-pink-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(236,72,153)]',
     pathRowBg: 'bg-pink-50/70 dark:bg-pink-950/35',
     pathText: 'text-pink-950 dark:text-pink-50',
@@ -138,11 +138,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-pink-600 dark:group-hover/row:text-pink-400',
   },
   Other: {
-    badgeBorder: 'border-stone-500/25',
-    badgeBg: 'bg-stone-500/[0.05] dark:bg-stone-500/10',
-    cardTopAccent: 'border-t-stone-500',
+    badgeGradient: 'from-stone-500/10 via-stone-400/5 to-transparent',
+    badgeText: 'text-stone-700 dark:text-stone-300',
+    topGradient: 'from-stone-400/70 via-stone-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-stone-50/40 dark:hover:from-slate-900 dark:hover:to-stone-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-stone-50/30 dark:hover:from-slate-900/95 dark:hover:to-stone-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(120,113,108)]',
     pathRowBg: 'bg-stone-50/70 dark:bg-stone-950/35',
     pathText: 'text-stone-950 dark:text-stone-50',
@@ -150,11 +150,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-stone-600 dark:group-hover/row:text-stone-400',
   },
   SendLog: {
-    badgeBorder: 'border-orange-500/25',
-    badgeBg: 'bg-orange-500/[0.05] dark:bg-orange-500/10',
-    cardTopAccent: 'border-t-orange-500',
+    badgeGradient: 'from-orange-500/10 via-orange-400/5 to-transparent',
+    badgeText: 'text-orange-700 dark:text-orange-300',
+    topGradient: 'from-orange-400/70 via-orange-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-orange-50/40 dark:hover:from-slate-900 dark:hover:to-orange-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-orange-50/30 dark:hover:from-slate-900/95 dark:hover:to-orange-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
     pathRowBg: 'bg-orange-50/70 dark:bg-orange-950/35',
     pathText: 'text-orange-950 dark:text-orange-50',
@@ -162,11 +162,11 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-orange-600 dark:group-hover/row:text-orange-400',
   },
   Synchronized: {
-    badgeBorder: 'border-indigo-500/25',
-    badgeBg: 'bg-indigo-500/[0.05] dark:bg-indigo-500/10',
-    cardTopAccent: 'border-t-indigo-500',
+    badgeGradient: 'from-indigo-500/10 via-indigo-400/5 to-transparent',
+    badgeText: 'text-indigo-700 dark:text-indigo-300',
+    topGradient: 'from-indigo-400/70 via-indigo-300/30 to-transparent',
     cardHover:
-      'hover:bg-gradient-to-b hover:from-white hover:to-indigo-50/40 dark:hover:from-slate-900 dark:hover:to-indigo-950/25',
+      'hover:bg-gradient-to-b hover:from-white/95 hover:to-indigo-50/30 dark:hover:from-slate-900/95 dark:hover:to-indigo-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(99,102,241)]',
     pathRowBg: 'bg-indigo-50/70 dark:bg-indigo-950/35',
     pathText: 'text-indigo-950 dark:text-indigo-50',
@@ -190,7 +190,7 @@ const FIELD_GRID_COLS =
   'grid-cols-[minmax(0,1fr)_minmax(4.75rem,auto)_2.25rem]';
 
 const TYPE_BADGE_CLASS =
-  'inline-flex whitespace-nowrap rounded border border-slate-200/60 bg-white px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-slate-600 transition-colors duration-100 dark:border-slate-700/60 dark:bg-slate-900 dark:text-slate-400';
+  'inline-flex whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-400 transition-colors duration-200 dark:bg-slate-800/80 dark:text-slate-500';
 
 const MUTED_ICON = 'text-slate-400 transition-colors duration-100 dark:text-slate-500';
 
@@ -249,14 +249,19 @@ export function DataViewCard({
 
   return (
     <article
-      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden rounded-xl border border-slate-200/80 border-t-2 bg-white transition-all duration-200 ease-in-out will-change-transform hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_8px_28px_-6px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.03)] dark:border-slate-800/50 dark:bg-slate-900 dark:hover:border-slate-700 ${theme.cardTopAccent} ${CARD_PREMIUM_SHADOW} ${theme.cardHover} ${
+      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden will-change-transform ${CARD_BASE_CLASS} ${theme.cardHover} ${
         isSelected
-          ? 'border-slate-300 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.03)] ring-1 ring-slate-900/10 ring-offset-2 ring-offset-slate-100 dark:border-slate-600 dark:ring-white/10 dark:ring-offset-slate-950'
+          ? 'shadow-[0_20px_40px_rgb(0,0,0,0.06)] ring-1 ring-slate-900/8 ring-offset-2 ring-offset-slate-50 dark:shadow-[0_20px_40px_rgb(0,0,0,0.35)] dark:ring-white/10 dark:ring-offset-slate-950'
           : ''
       } ${isCardDimmed ? 'opacity-30' : 'opacity-100'}`}
     >
+      <div
+        className={`h-1 w-full shrink-0 bg-gradient-to-r ${theme.topGradient}`}
+        aria-hidden
+      />
+
       <header
-        className={`${CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100 px-4 py-3 transition-colors duration-500 group-hover/card:border-slate-200/80 dark:border-slate-800 dark:group-hover/card:border-slate-700/80`}
+        className={`${CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100/80 px-4 py-3 transition-colors duration-300 group-hover/card:border-slate-200/60 dark:border-slate-800/60 dark:group-hover/card:border-slate-700/50`}
       >
         <div className="flex min-h-[1.5rem] items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -267,12 +272,12 @@ export function DataViewCard({
               className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 text-slate-900 transition-all duration-200 ease-in-out hover:border-slate-400 focus:ring-2 focus:ring-slate-400/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               aria-label={`Include ${table.name} in SQL query`}
             />
-            <h2 className="truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-50">
+            <h2 className="truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-800 dark:text-slate-50">
               {table.name}
             </h2>
           </div>
           <span
-            className={`inline-flex shrink-0 items-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 ${theme.badgeBorder} ${theme.badgeBg}`}
+            className={`inline-flex shrink-0 items-center rounded-full bg-gradient-to-r px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${theme.badgeGradient} ${theme.badgeText}`}
           >
             {table.category}
           </span>
@@ -282,9 +287,9 @@ export function DataViewCard({
         </p>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col bg-white transition-colors duration-500 group-hover/card:bg-white dark:bg-slate-950/25 dark:group-hover/card:bg-slate-950/15">
+      <div className="flex min-h-0 flex-1 flex-col bg-transparent transition-colors duration-300">
         <div
-          className={`grid shrink-0 gap-x-2 border-b border-slate-100 px-3 pb-1.5 pt-2 dark:border-slate-800/80 sm:px-4 ${FIELD_GRID_COLS}`}
+          className={`grid shrink-0 gap-x-2 border-b border-slate-100/80 px-3 pb-1.5 pt-2 dark:border-slate-800/50 sm:px-4 ${FIELD_GRID_COLS}`}
           role="row"
         >
           <span className={`pl-0.5 ${FIELD_COLUMN_HEADER_CLASS}`} role="columnheader">
@@ -401,10 +406,10 @@ function FieldRow({
   return (
     <div
       role="row"
-      className={`group/row grid gap-x-2 border-b border-slate-100 px-3 py-2.5 transition-[background-color,color,opacity] duration-100 ease-out last:border-b-0 dark:border-slate-800/50 sm:px-4 ${FIELD_GRID_COLS} ${
+      className={`group/row mx-1.5 grid gap-x-2 rounded-lg px-3 py-2.5 transition-[background-color,color,opacity] duration-200 ease-out sm:mx-2 ${FIELD_GRID_COLS} ${
         isPathActive
           ? `${categoryTheme.pathRowBg} ${categoryTheme.pathInset}`
-          : 'even:bg-white odd:bg-slate-50/50 hover:bg-slate-50/80 dark:even:bg-slate-900 dark:odd:bg-slate-800/20 dark:hover:bg-slate-800/70'
+          : 'even:bg-slate-50/30 odd:bg-transparent hover:bg-slate-50/80 dark:even:bg-slate-800/20 dark:odd:bg-transparent dark:hover:bg-slate-800/50'
       } ${isFieldDimmed ? 'opacity-30' : 'opacity-100'} ${
         isRelationInteractive ? 'cursor-pointer' : ''
       }`}
@@ -459,8 +464,8 @@ function FieldRow({
           <span
             className={`${TYPE_BADGE_CLASS} ${
               isPathActive
-                ? `${categoryTheme.pathText} border-current/20 bg-white/80 dark:bg-slate-900/80`
-                : 'group-hover/row:border-slate-300 group-hover/row:text-slate-700 dark:group-hover/row:text-slate-200'
+                ? `${categoryTheme.pathText} bg-white/80 dark:bg-slate-900/80`
+                : 'group-hover/row:bg-slate-200/60 group-hover/row:text-slate-500 dark:group-hover/row:bg-slate-700/60 dark:group-hover/row:text-slate-300'
             }`}
           >
             {formatFieldType(field)}

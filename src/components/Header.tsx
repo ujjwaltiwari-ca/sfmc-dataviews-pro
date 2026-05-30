@@ -3,6 +3,7 @@ import {
   BookOpen,
   CheckSquare,
   ExternalLink,
+  Info,
   Keyboard,
   Lightbulb,
   Link2,
@@ -18,6 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AccountProfileDropdown } from './AccountProfileDropdown';
+import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
 
 const GUIDE_WORKFLOW = [
@@ -86,6 +88,7 @@ export function Header({
   const { isDark, toggleTheme } = useTheme();
   const { user, isAuthLoading } = useAuth();
   const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const [isPlatformInfoOpen, setIsPlatformInfoOpen] = useState(false);
   const docsPanelRef = useRef<HTMLDivElement>(null);
   const docsTitleId = useId();
 
@@ -112,7 +115,7 @@ export function Header({
 
   return (
     <>
-      <header className="relative overflow-visible border-b border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-950">
+      <header className="relative overflow-visible border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.12),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.08),transparent)]"
           aria-hidden
@@ -137,10 +140,10 @@ export function Header({
                 onClick={onToggleCopilot}
                 aria-pressed={isCopilotOpen}
                 aria-expanded={isCopilotOpen}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
+                className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
                   isCopilotOpen
-                    ? 'border-violet-400/80 bg-violet-50 text-violet-950 shadow-violet-500/20 ring-1 ring-violet-400/30 dark:border-violet-500/60 dark:bg-violet-950/50 dark:text-violet-100 dark:shadow-violet-500/10'
-                    : 'border-slate-200/90 bg-slate-50/80 text-slate-700 hover:-translate-y-px hover:scale-[1.02] hover:border-violet-300/70 hover:bg-violet-50/90 hover:text-violet-950 hover:shadow-md hover:shadow-violet-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-violet-600/70 dark:hover:bg-violet-950/40 dark:hover:text-violet-100'
+                    ? 'border-violet-300/60 bg-gradient-to-b from-violet-50 to-violet-100/80 text-violet-950 shadow-[0_4px_12px_rgba(139,92,246,0.12)] ring-1 ring-violet-400/20 dark:border-violet-500/50 dark:from-violet-950/60 dark:to-violet-950/40 dark:text-violet-100'
+                    : 'border-slate-200/60 bg-white/90 text-slate-700 hover:-translate-y-0.5 hover:border-violet-300/50 hover:bg-gradient-to-b hover:from-violet-50/80 hover:to-white hover:text-violet-950 hover:shadow-[0_8px_20px_rgba(139,92,246,0.08)] dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:border-violet-600/50 dark:hover:from-violet-950/40 dark:hover:to-slate-900 dark:hover:text-violet-100'
                 }`}
               >
                 <Sparkles
@@ -158,7 +161,7 @@ export function Header({
               <button
                 type="button"
                 onClick={() => setIsDocsOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-px hover:scale-[1.02] hover:border-cyan-300/80 hover:bg-cyan-50 hover:text-cyan-950 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/50 dark:hover:text-cyan-100"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/90 px-3.5 py-2 text-sm font-medium text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-gradient-to-b hover:from-cyan-50/80 hover:to-white hover:text-cyan-950 hover:shadow-[0_8px_20px_rgba(6,182,212,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:border-cyan-600/50 dark:hover:from-cyan-950/40 dark:hover:to-slate-900 dark:hover:text-cyan-100"
                 aria-haspopup="dialog"
                 aria-expanded={isDocsOpen}
               >
@@ -169,8 +172,20 @@ export function Header({
 
               <button
                 type="button"
+                onClick={() => setIsPlatformInfoOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/90 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-slate-300/80 hover:bg-slate-50 hover:text-slate-700 hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-slate-600/60 dark:hover:bg-slate-800/90 dark:hover:text-slate-200"
+                aria-haspopup="dialog"
+                aria-expanded={isPlatformInfoOpen}
+                aria-label="Platform Info & Credits"
+                title="Platform Info & Credits"
+              >
+                <Info className="h-4 w-4" aria-hidden />
+              </button>
+
+              <button
+                type="button"
                 onClick={toggleTheme}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50/80 text-slate-700 shadow-sm transition-all duration-200 ease-in-out hover:scale-105 hover:border-amber-300/80 hover:bg-amber-50 hover:text-amber-900 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:bg-amber-950/40 dark:hover:text-amber-100"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/90 text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-gradient-to-b hover:from-amber-50/80 hover:to-white hover:text-amber-900 hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:from-amber-950/40 dark:hover:to-slate-900 dark:hover:text-amber-100"
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {isDark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
@@ -179,6 +194,8 @@ export function Header({
           </div>
         </div>
       </header>
+
+      <PlatformInfoModal isOpen={isPlatformInfoOpen} onClose={() => setIsPlatformInfoOpen(false)} />
 
       {isDocsOpen && (
         <div className="fixed inset-0 z-[60] flex justify-end" role="presentation">

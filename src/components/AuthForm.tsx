@@ -63,7 +63,7 @@ export function AuthForm() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-600 text-white shadow-lg shadow-violet-500/20">
             <Lock className="h-5 w-5" aria-hidden />
           </div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-base font-semibold tracking-tight text-slate-800 dark:text-white">
             Sign in to use AI Copilot
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -71,14 +71,14 @@ export function AuthForm() {
           </p>
         </div>
 
-        <div className="mb-5 flex rounded-xl border border-slate-200/80 bg-slate-100/60 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+        <div className="mb-5 flex rounded-xl border border-slate-200/60 bg-slate-100/50 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] dark:border-slate-700/50 dark:bg-slate-800/40">
           <button
             type="button"
             onClick={() => switchMode('signIn')}
-            className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 ease-in-out ${
+            className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-300 ease-out ${
               mode === 'signIn'
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white'
-                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950/60 dark:hover:text-slate-200'
+                ? 'bg-white text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:bg-slate-900 dark:text-slate-50'
+                : 'text-slate-500 hover:bg-white/80 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-slate-200'
             }`}
           >
             Sign In
@@ -86,10 +86,10 @@ export function AuthForm() {
           <button
             type="button"
             onClick={() => switchMode('signUp')}
-            className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 ease-in-out ${
+            className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-300 ease-out ${
               mode === 'signUp'
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-white'
-                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950/60 dark:hover:text-slate-200'
+                ? 'bg-white text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:bg-slate-900 dark:text-slate-50'
+                : 'text-slate-500 hover:bg-white/80 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-slate-200'
             }`}
           >
             Sign Up
@@ -117,7 +117,7 @@ export function AuthForm() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@company.com"
-                className="w-full rounded-xl border border-slate-200/80 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition-all duration-200 ease-in-out hover:border-slate-300/80 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-violet-600"
+                className="w-full rounded-xl border border-slate-200/60 bg-white/90 py-2.5 pl-10 pr-3 text-sm text-slate-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] placeholder:text-slate-400 transition-all duration-300 ease-out hover:border-slate-300/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] focus:border-violet-300/60 focus:outline-none focus:ring-2 focus:ring-violet-500/15 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-violet-600"
               />
             </div>
           </div>
@@ -143,7 +143,7 @@ export function AuthForm() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-slate-200/80 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition-all duration-200 ease-in-out hover:border-slate-300/80 focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-violet-600"
+                className="w-full rounded-xl border border-slate-200/60 bg-white/90 py-2.5 pl-10 pr-3 text-sm text-slate-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] placeholder:text-slate-400 transition-all duration-300 ease-out hover:border-slate-300/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] focus:border-violet-300/60 focus:outline-none focus:ring-2 focus:ring-violet-500/15 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-violet-600"
               />
             </div>
           </div>
@@ -163,7 +163,7 @@ export function AuthForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 ease-in-out hover:scale-[1.01] hover:from-violet-600 hover:to-cyan-700 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(139,92,246,0.25)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:from-violet-600 hover:to-cyan-700 hover:shadow-[0_8px_20px_rgba(139,92,246,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {isSubmitting ? (
               <>
