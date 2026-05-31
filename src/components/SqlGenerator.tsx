@@ -347,13 +347,25 @@ export function SqlGenerator({
       return;
     }
 
-    textarea.style.height = '0px';
-    const contentHeight = textarea.scrollHeight;
-    const nextHeight = Math.min(
-      SQL_EDITOR_MAX_HEIGHT_PX,
-      Math.max(SQL_EDITOR_MIN_HEIGHT_PX, contentHeight),
-    );
-    textarea.style.height = `${nextHeight}px`;
+    const applyEditorHeight = () => {
+      const isSideBySide = window.matchMedia('(min-width: 1024px)').matches;
+      if (isSideBySide) {
+        textarea.style.height = '';
+        return;
+      }
+
+      textarea.style.height = '0px';
+      const contentHeight = textarea.scrollHeight;
+      const nextHeight = Math.min(
+        SQL_EDITOR_MAX_HEIGHT_PX,
+        Math.max(SQL_EDITOR_MIN_HEIGHT_PX, contentHeight),
+      );
+      textarea.style.height = `${nextHeight}px`;
+    };
+
+    applyEditorHeight();
+    window.addEventListener('resize', applyEditorHeight);
+    return () => window.removeEventListener('resize', applyEditorHeight);
   }, [sql, isExpanded]);
 
   const handleCopy = async () => {
@@ -444,9 +456,9 @@ export function SqlGenerator({
           </div>
 
           {isExpanded && (
-            <div className="scrollbar-card min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4 pt-4">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-4 pt-4">
               <p
-                className="mb-4 rounded-xl border border-blue-200/60 bg-blue-50/80 p-3 text-[12px] leading-relaxed text-blue-800 backdrop-blur-sm dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300"
+                className="mb-4 shrink-0 rounded-xl border border-blue-200/60 bg-blue-50/80 p-3 text-[12px] leading-relaxed text-blue-800 backdrop-blur-sm dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300"
                 role="note"
               >
                 <span className="mr-1" aria-hidden>
@@ -456,7 +468,7 @@ export function SqlGenerator({
               </p>
 
               {(bridgingTables.length > 0 || disconnectedTables.length > 0) && (
-                <div className="mb-4 space-y-2">
+                <div className="mb-4 shrink-0 space-y-2">
                   {bridgingTables.length > 0 && (
                     <div className="flex gap-2 rounded-xl border border-amber-200/60 bg-amber-50/80 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
                       <Route className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
@@ -478,230 +490,227 @@ export function SqlGenerator({
                 </div>
               )}
 
-              {/* Full-width SQL editor */}
-              <section className="mb-4 w-full" aria-label="SQL query editor">
-                <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white/50 p-1 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-900/30">
-                  <div className="overflow-hidden rounded-xl border border-slate-800/20 bg-slate-900 shadow-[inset_0_2px_8px_rgb(0,0,0,0.15)] dark:border-slate-700/40">
-                    <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 bg-slate-900/95 px-3 py-2">
-                      <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                        query.sql
+              <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-y-auto lg:grid-cols-3 lg:overflow-hidden">
+                {/* Left — query architecture & filters */}
+                <aside className="scrollbar-card flex min-h-0 flex-col gap-4 lg:col-span-1 lg:overflow-y-auto">
+                  <p className={SECTION_LABEL_CLASS}>Query architecture &amp; filters</p>
+
+                  <section className={`${GLASS_PANEL_CLASS} p-3`}>
+                    <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
+                      <Braces className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" aria-hidden />
+                      SELECT fields
+                      <span className={`ml-auto font-normal ${MONO_BADGE_CLASS}`}>
+                        {architecture.selectFields.length}
                       </span>
-                      <div className="flex items-center gap-2">
-                        {(limitPast30Days ||
-                          excludeTestSends ||
-                          (filterActiveSubscribersOnly && subscribersInJoinPath) ||
-                          campaignJobIdActive ||
-                          includeTargetDeScaffolding) && (
-                          <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
-                            utilities active
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleCopy}
-                          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
-                            copied
-                              ? 'border-emerald-500/40 bg-emerald-600/90 text-white'
-                              : 'border-slate-700/60 bg-slate-800/80 text-slate-300 hover:border-slate-600 hover:bg-slate-700 hover:text-white'
-                          }`}
-                          aria-live="polite"
-                        >
-                          {copied ? (
-                            <>
-                              <Check className="h-3.5 w-3.5" aria-hidden />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" aria-hidden />
-                              Copy SQL
-                            </>
-                          )}
-                        </button>
-                      </div>
                     </div>
-                    <textarea
-                      ref={sqlTextareaRef}
-                      value={sql}
-                      onChange={(event) => onSqlChange(event.target.value)}
-                      spellCheck={false}
-                      rows={6}
-                      className="scrollbar-card block w-full min-h-[150px] max-h-[350px] resize-none overflow-y-auto bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-500/30 sm:text-sm"
-                      aria-label="SQL query editor"
-                      placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {/* Architecture breakdown */}
-                  <aside className="space-y-3 md:col-span-2 xl:col-span-3">
-                    <p className={SECTION_LABEL_CLASS}>Query architecture &amp; filters</p>
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-
-                    {/* Fields */}
-                    <section className={`${GLASS_PANEL_CLASS} p-3`}>
-                      <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
-                        <Braces className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" aria-hidden />
-                        SELECT fields
-                        <span className={`ml-auto font-normal ${MONO_BADGE_CLASS}`}>
-                          {architecture.selectFields.length}
-                        </span>
-                      </div>
-                      <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
-                        {[...fieldsByTable.entries()].map(([tableName, fields]) => (
-                          <div key={tableName}>
-                            <p className="font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
-                              {tableName}
-                            </p>
-                            <ul className="mt-0.5 space-y-0.5">
-                              {fields.map((item) => (
-                                <li
-                                  key={item.expression}
-                                  className="truncate rounded px-1.5 py-0.5 font-mono text-[10px] text-slate-500 transition-colors hover:bg-slate-50/80 dark:text-slate-400 dark:hover:bg-slate-800/50"
-                                >
-                                  {item.expression}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-
-                    {/* Base target */}
-                    <section className={`${GLASS_PANEL_CLASS} p-3`}>
-                      <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
-                        <Database className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" aria-hidden />
-                        Base target (FROM)
-                      </div>
-                      {architecture.rootTable ? (
-                        <p className="font-mono text-sm text-emerald-700 dark:text-emerald-300">
-                          {architecture.rootTable}{' '}
-                          <span className="text-slate-400">AS</span>{' '}
-                          <span className="text-slate-600 dark:text-slate-300">{architecture.rootAlias}</span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-500">—</p>
-                      )}
-                    </section>
-
-                    {/* JOIN steps */}
-                    <section className={`${GLASS_PANEL_CLASS} p-3`}>
-                      <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
-                        <GitBranch className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" aria-hidden />
-                        BFS join path
-                      </div>
-                      {architecture.joinSteps.length === 0 ? (
-                        <p className="text-xs text-slate-500">
-                          {architecture.rootTable
-                            ? 'Single-table query — no joins required.'
-                            : 'No joins.'}
-                        </p>
-                      ) : (
-                        <ol className="space-y-2">
-                          {architecture.joinSteps.map((step) => (
-                            <li
-                              key={`${step.order}-${step.table}`}
-                              className="rounded-xl border border-slate-200/60 bg-white/60 px-2.5 py-2 dark:border-slate-700/50 dark:bg-slate-900/40"
-                            >
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100 font-mono text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                  {step.order}
-                                </span>
-                                <span className="font-mono text-xs font-medium text-slate-800 dark:text-slate-200">
-                                  {step.table}
-                                </span>
-                                {step.isBridgingTable && (
-                                  <span className="rounded-full bg-gradient-to-r from-amber-500/10 to-amber-400/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                                    bridge
-                                  </span>
-                                )}
-                              </div>
-                              <p className="mt-1 font-mono text-[10px] leading-relaxed text-slate-400">
-                                ON {step.conditions.join(' AND ')}
-                              </p>
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                    </section>
-
-                    {/* Configuration filters */}
-                    <section className="space-y-3 xl:col-span-3">
-                      <p className={SECTION_LABEL_CLASS}>Performance &amp; Formatting</p>
-                      <div className="space-y-2">
-                        <UtilityToggle
-                          id="limit-30-days"
-                          label="Limit past 30 days"
-                          description={formatUtilityPreview(
-                            filterAlias
-                              ? `${filterAlias}.EventDate >= DATEADD(day, -30, GETDATE())`
-                              : 'EventDate >= DATEADD(day, -30, GETDATE())',
-                          )}
-                          checked={limitPast30Days}
-                          onChange={setLimitPast30Days}
-                          icon={Calendar}
-                        />
-                        <UtilityToggle
-                          id="exclude-test-sends"
-                          label="Exclude test send records"
-                          description={formatUtilityPreview(
-                            filterAlias
-                              ? `${filterAlias}.TestStormObjID IS NULL`
-                              : 'TestStormObjID IS NULL',
-                          )}
-                          checked={excludeTestSends}
-                          onChange={setExcludeTestSends}
-                          icon={Shield}
-                        />
-                        <KeywordCaseToggle value={keywordCase} onChange={setKeywordCase} />
-                        <UtilityToggle
-                          id="include-target-de-scaffolding"
-                          label="Include Automation Target Header"
-                          description="Prepends target schema configurations and data binding rules."
-                          checked={includeTargetDeScaffolding}
-                          onChange={setIncludeTargetDeScaffolding}
-                          icon={FileText}
-                        />
-                      </div>
-
-                      <p className={`pt-1 ${SECTION_LABEL_CLASS}`}>Marketing Business Filters</p>
-                      <div className="space-y-2">
-                        <UtilityToggle
-                          id="filter-active-subscribers"
-                          label="Filter Active Subscribers Only"
-                          description={formatUtilityPreview(
-                            `AND ${buildActiveSubscriberPredicate(keywordCase)}`,
-                          )}
-                          checked={filterActiveSubscribersOnly}
-                          onChange={setFilterActiveSubscribersOnly}
-                          icon={Users}
-                        />
-                        {filterActiveSubscribersOnly && !subscribersInJoinPath && (
-                          <p className="rounded-xl border border-amber-200/60 bg-amber-50/80 px-3 py-2 text-[10px] leading-snug text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-                            Could not auto-link <span className="font-mono">_Subscribers</span>{' '}
-                            from the current selection. Choose a table with a subscriber join path.
+                    <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
+                      {[...fieldsByTable.entries()].map(([tableName, fields]) => (
+                        <div key={tableName}>
+                          <p className="font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                            {tableName}
                           </p>
-                        )}
-                        <CampaignJobIdFilter
-                          checked={filterByCampaignJobId}
-                          jobId={campaignJobId}
-                          onCheckedChange={setFilterByCampaignJobId}
-                          onJobIdChange={setCampaignJobId}
-                          previewPredicate={formatUtilityPreview(
-                            jobIdFilterAlias
-                              ? `AND ${jobIdFilterAlias}.JobID = '${
-                                  campaignJobId.trim() || 'YOUR_ID'
-                                }'`
-                              : `AND JobID = '${campaignJobId.trim() || 'YOUR_ID'}'`,
-                          )}
-                        />
-                      </div>
-                    </section>
+                          <ul className="mt-0.5 space-y-0.5">
+                            {fields.map((item) => (
+                              <li
+                                key={item.expression}
+                                className="truncate rounded px-1.5 py-0.5 font-mono text-[10px] text-slate-500 transition-colors hover:bg-slate-50/80 dark:text-slate-400 dark:hover:bg-slate-800/50"
+                              >
+                                {item.expression}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
-                  </aside>
+                  </section>
+
+                  <section className={`${GLASS_PANEL_CLASS} p-3`}>
+                    <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
+                      <Database className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" aria-hidden />
+                      Base target (FROM)
+                    </div>
+                    {architecture.rootTable ? (
+                      <p className="font-mono text-sm text-emerald-700 dark:text-emerald-300">
+                        {architecture.rootTable}{' '}
+                        <span className="text-slate-400">AS</span>{' '}
+                        <span className="text-slate-600 dark:text-slate-300">{architecture.rootAlias}</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-500">—</p>
+                    )}
+                  </section>
+
+                  <section className={`${GLASS_PANEL_CLASS} p-3`}>
+                    <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
+                      <GitBranch className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" aria-hidden />
+                      BFS join path
+                    </div>
+                    {architecture.joinSteps.length === 0 ? (
+                      <p className="text-xs text-slate-500">
+                        {architecture.rootTable
+                          ? 'Single-table query — no joins required.'
+                          : 'No joins.'}
+                      </p>
+                    ) : (
+                      <ol className="space-y-2">
+                        {architecture.joinSteps.map((step) => (
+                          <li
+                            key={`${step.order}-${step.table}`}
+                            className="rounded-xl border border-slate-200/60 bg-white/60 px-2.5 py-2 dark:border-slate-700/50 dark:bg-slate-900/40"
+                          >
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100 font-mono text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                {step.order}
+                              </span>
+                              <span className="font-mono text-xs font-medium text-slate-800 dark:text-slate-200">
+                                {step.table}
+                              </span>
+                              {step.isBridgingTable && (
+                                <span className="rounded-full bg-gradient-to-r from-amber-500/10 to-amber-400/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                                  bridge
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 font-mono text-[10px] leading-relaxed text-slate-400">
+                              ON {step.conditions.join(' AND ')}
+                            </p>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </section>
+
+                  <section className="space-y-3">
+                    <p className={SECTION_LABEL_CLASS}>Performance &amp; Formatting</p>
+                    <div className="space-y-2">
+                      <UtilityToggle
+                        id="limit-30-days"
+                        label="Limit past 30 days"
+                        description={formatUtilityPreview(
+                          filterAlias
+                            ? `${filterAlias}.EventDate >= DATEADD(day, -30, GETDATE())`
+                            : 'EventDate >= DATEADD(day, -30, GETDATE())',
+                        )}
+                        checked={limitPast30Days}
+                        onChange={setLimitPast30Days}
+                        icon={Calendar}
+                      />
+                      <UtilityToggle
+                        id="exclude-test-sends"
+                        label="Exclude test send records"
+                        description={formatUtilityPreview(
+                          filterAlias
+                            ? `${filterAlias}.TestStormObjID IS NULL`
+                            : 'TestStormObjID IS NULL',
+                        )}
+                        checked={excludeTestSends}
+                        onChange={setExcludeTestSends}
+                        icon={Shield}
+                      />
+                      <KeywordCaseToggle value={keywordCase} onChange={setKeywordCase} />
+                      <UtilityToggle
+                        id="include-target-de-scaffolding"
+                        label="Include Automation Target Header"
+                        description="Prepends target schema configurations and data binding rules."
+                        checked={includeTargetDeScaffolding}
+                        onChange={setIncludeTargetDeScaffolding}
+                        icon={FileText}
+                      />
+                    </div>
+
+                    <p className={`pt-1 ${SECTION_LABEL_CLASS}`}>Marketing Business Filters</p>
+                    <div className="space-y-2">
+                      <UtilityToggle
+                        id="filter-active-subscribers"
+                        label="Filter Active Subscribers Only"
+                        description={formatUtilityPreview(
+                          `AND ${buildActiveSubscriberPredicate(keywordCase)}`,
+                        )}
+                        checked={filterActiveSubscribersOnly}
+                        onChange={setFilterActiveSubscribersOnly}
+                        icon={Users}
+                      />
+                      {filterActiveSubscribersOnly && !subscribersInJoinPath && (
+                        <p className="rounded-xl border border-amber-200/60 bg-amber-50/80 px-3 py-2 text-[10px] leading-snug text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                          Could not auto-link <span className="font-mono">_Subscribers</span>{' '}
+                          from the current selection. Choose a table with a subscriber join path.
+                        </p>
+                      )}
+                      <CampaignJobIdFilter
+                        checked={filterByCampaignJobId}
+                        jobId={campaignJobId}
+                        onCheckedChange={setFilterByCampaignJobId}
+                        onJobIdChange={setCampaignJobId}
+                        previewPredicate={formatUtilityPreview(
+                          jobIdFilterAlias
+                            ? `AND ${jobIdFilterAlias}.JobID = '${
+                                campaignJobId.trim() || 'YOUR_ID'
+                              }'`
+                            : `AND JobID = '${campaignJobId.trim() || 'YOUR_ID'}'`,
+                        )}
+                      />
+                    </div>
+                  </section>
+                </aside>
+
+                {/* Right — SQL editor */}
+                <section
+                  className="flex min-h-[280px] flex-col lg:col-span-2 lg:min-h-0"
+                  aria-label="SQL query editor"
+                >
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/50 p-1 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-900/30">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-800/20 bg-slate-900 shadow-[inset_0_2px_8px_rgb(0,0,0,0.15)] dark:border-slate-700/40">
+                      <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 bg-slate-900/95 px-3 py-2">
+                        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                          query.sql
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {(limitPast30Days ||
+                            excludeTestSends ||
+                            (filterActiveSubscribersOnly && subscribersInJoinPath) ||
+                            campaignJobIdActive ||
+                            includeTargetDeScaffolding) && (
+                            <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                              utilities active
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleCopy}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
+                              copied
+                                ? 'border-emerald-500/40 bg-emerald-600/90 text-white'
+                                : 'border-slate-700/60 bg-slate-800/80 text-slate-300 hover:border-slate-600 hover:bg-slate-700 hover:text-white'
+                            }`}
+                            aria-live="polite"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="h-3.5 w-3.5" aria-hidden />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3.5 w-3.5" aria-hidden />
+                                Copy SQL
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        ref={sqlTextareaRef}
+                        value={sql}
+                        onChange={(event) => onSqlChange(event.target.value)}
+                        spellCheck={false}
+                        rows={6}
+                        className="scrollbar-card block w-full min-h-[150px] flex-1 resize-none overflow-y-auto bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-500/30 max-h-[350px] lg:max-h-none sm:text-sm"
+                        aria-label="SQL query editor"
+                        placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
+                      />
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
           )}
