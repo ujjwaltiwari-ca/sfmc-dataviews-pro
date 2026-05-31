@@ -1,0 +1,128 @@
+# DataViews.pro — SFMC Schema Architect (Full Reference)
+
+> An advanced optimizer and sandbox for visualizing and generating SQL against Salesforce Marketing Cloud (SFMC) Data Views.
+
+---
+
+## Purpose
+
+DataViews.pro (branded as **SFMC Schema Architect**) is a client-side web application that helps Salesforce Marketing Cloud practitioners:
+
+- **Visualize** the complete SFMC Data View schema as an interactive card-based canvas
+- **Search** across all tables and fields to locate columns instantly
+- **Trace relationships** between Data Views via foreign-key metadata and cross-highlighting
+- **Generate SQL** with automatic multi-hop JOIN pathfinding (BFS graph routing)
+- **Optimize queries** with sandbox utilities such as date-range filters and subscriber status toggles
+- **Learn** SFMC data structures without switching between documentation tabs
+
+The platform is designed for marketers, CRM analysts, and SFMC developers who write SQL in Query Studio or Automation Studio and need a faster, more reliable way to compose joins across system Data Views.
+
+---
+
+## The Architect
+
+| Field | Detail |
+|-------|--------|
+| **Name** | Ujjwal Tiwari |
+| **Role** | Senior Salesforce Platform Architect |
+| **Location** | Waterloo, Ontario, Canada |
+| **Primary domain** | https://ujjwaltiwari.com |
+| **LinkedIn** | https://linkedin.com/in/ujjwaltiwari |
+
+Ujjwal created DataViews.pro as an open experimentation and learning project to modernize how SFMC professionals interact with system Data View schemas.
+
+---
+
+## Target Scope — 29 Core Data Views
+
+The platform indexes **29 SFMC system Data Views** across subscribers, sending, tracking, journeys, automation, mobile, and social categories.
+
+### Subscribers & Lists
+- `_Subscribers` — Active subscriber records, status, and tracking attributes
+- `_EnterpriseAttribute` — Enterprise-level subscriber profile attributes
+- `_ListSubscribers` — List membership and subscriber-list relationships
+
+### Subscription & Unsubscribe
+- `_BusinessUnitUnsubscribes` — Business-unit-level unsubscribe events
+- `_Unsubscribe` — Global unsubscribe tracking
+
+### Sending
+- `_Job` — Email send job metadata, scheduling, and delivery timestamps
+- `_Sent` — Individual subscriber send execution records
+- `_ReconcilableDispositionView` — Reconcilable send disposition data
+
+### Tracking
+- `_Open` — Email open events (pixel tracking)
+- `_Click` — Link click events with URL and link name metadata
+- `_Bounce` — Hard and soft bounce responses
+- `_Complaint` — Spam complaint events
+- `_FTAF` — Forward-to-a-friend tracking
+- `_SurveyResponse` — Survey response capture
+
+### Journey Builder
+- `_Journey` — Journey metadata, versions, and status
+- `_JourneyActivity` — Individual journey canvas activity nodes
+
+### Automation Studio
+- `_AutomationInstance` — Automation run instances
+- `_AutomationActivityInstance` — Individual automation activity executions
+
+### Mobile (SMS)
+- `_SMSMessageTracking` — SMS message delivery and tracking
+- `_SMSSubscriptionLog` — SMS subscription change log
+- `_UndeliverableSMS` — Undeliverable SMS records
+- `_MobileAddress` — Mobile address records
+
+### Mobile Push
+- `_PushAddress` — Push notification device addresses
+- `_PushTag` — Push tag assignments
+
+### Group Connect
+- `_MobileLineAddressContactSubscriptionView` — Line address contact subscriptions
+- `_MobileLineOrphanContactView` — Orphan contact records
+
+### Social
+- `_SocialNetworkImpressions` — Social network impression tracking
+- `_SocialNetworkTracking` — Social network engagement events
+
+### Other
+- `_Coupon` — Coupon redemption tracking
+
+---
+
+## Technology Stack
+
+- **Frontend**: Vite + React (TypeScript) + Tailwind CSS
+- **Architecture**: Pure client-side state — no backend database required
+- **Icons**: lucide-react
+- **AI assistance**: Gemini and Cursor AI during development
+
+---
+
+## Attribution & Data Sources
+
+Engineered with the assistance of **Gemini** and **Cursor AI**. System prompts and schemas are closely grounded on:
+
+1. **Official Salesforce Documentation** — SFMC Data View field definitions and behavior
+2. **Mateusz Dąbrowski's technical blog** (https://mateuszdabrowski.pl/) — Pioneering SFMC ecosystem research and Data View deep-dives
+3. **dataviews.io** — Structural benchmarks for schema presentation and query workflow
+
+---
+
+## Release Status
+
+**Public Beta Release** — Features and schema coverage are actively evolving. Feedback welcome via LinkedIn or the architect's website.
+
+---
+
+## SEO Keywords
+
+SFMC Data Views, Salesforce Marketing Cloud SQL Generator, SFMC Schema Architect, Data Views SQL, Query Studio helper, Automation Studio SQL, Ujjwal Tiwari, DataViews.pro
+
+---
+
+## Canonical URLs
+
+- Application: https://dataviews.pro/
+- Brief AI summary: https://dataviews.pro/llms.txt
+- Full AI reference: https://dataviews.pro/llms-full.txt
