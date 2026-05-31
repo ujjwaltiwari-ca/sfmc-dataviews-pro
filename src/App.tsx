@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
 import { AiCopilot } from './components/AiCopilot';
 import { CommandToolbar } from './components/CommandToolbar';
@@ -230,7 +231,7 @@ function AppMain() {
 
   return (
     <AuthProvider>
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 text-slate-900 transition-colors duration-300 ease-in-out dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100">
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 text-slate-900 transition-colors duration-300 ease-in-out dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100">
       <div className="sticky top-0 z-50 shrink-0">
         <Header
           onToggleCopilot={handleToggleCopilot}
@@ -292,7 +293,7 @@ function AppMain() {
         onClose={() => setIsCopilotOpen(false)}
         onApplyToSandbox={handleApplyToSandbox}
       />
-    </div>
+      </div>
     </AuthProvider>
   );
 }
@@ -305,14 +306,22 @@ function App() {
 
   if (stagingGateActive && !isStagingUnlocked) {
     return (
-      <StagingGateScreen
-        onUnlock={() => setIsStagingUnlocked(true)}
-        onSubmitPassword={(attempt) => attempt === stagingPassword}
-      />
+      <>
+        <StagingGateScreen
+          onUnlock={() => setIsStagingUnlocked(true)}
+          onSubmitPassword={(attempt) => attempt === stagingPassword}
+        />
+        <Analytics />
+      </>
     );
   }
 
-  return <AppMain />;
+  return (
+    <>
+      <AppMain />
+      <Analytics />
+    </>
+  );
 }
 
 export default App;
