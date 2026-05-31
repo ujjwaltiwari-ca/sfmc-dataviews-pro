@@ -87,10 +87,9 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
 
   const usageCount = dailyUsageCount ?? 0;
   const isAtDailyLimit = dailyUsageCount !== null && usageCount >= dailyLimit;
-  const quotaLabel =
-    dailyUsageCount === null
-      ? 'Daily Quota: — / 5 requests used'
-      : `Daily Quota: ${usageCount} / ${dailyLimit} requests used`;
+  const usageDisplay = dailyUsageCount === null ? '—' : String(usageCount);
+  const usagePercent =
+    dailyUsageCount === null ? 0 : Math.min(100, (usageCount / dailyLimit) * 100);
 
   return (
     <div ref={containerRef} className="relative z-50">
@@ -128,17 +127,43 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
             {email}
           </p>
 
-          <p
-            className={`mt-2 text-xs ${
-              isAtDailyLimit
-                ? 'font-semibold text-rose-500 dark:text-rose-400'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            {quotaLabel}
-          </p>
-
           <div className="my-3 border-t border-slate-200/80 dark:border-slate-800" />
+
+          <div
+            className="rounded-lg border border-slate-200/70 bg-slate-50/60 p-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/40"
+            aria-label={`AI Query Usage: ${usageDisplay} of ${dailyLimit}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                AI Query Usage
+              </span>
+              <span
+                className={`text-xs tabular-nums ${
+                  isAtDailyLimit
+                    ? 'font-semibold text-rose-500 dark:text-rose-400'
+                    : 'font-medium text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {usageDisplay} / {dailyLimit}
+              </span>
+            </div>
+            <div
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/60"
+              role="progressbar"
+              aria-valuenow={dailyUsageCount ?? 0}
+              aria-valuemin={0}
+              aria-valuemax={dailyLimit}
+            >
+              <div
+                className={`h-full rounded-full transition-all duration-500 ease-out ${
+                  isAtDailyLimit
+                    ? 'bg-gradient-to-r from-rose-500 to-rose-600'
+                    : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                }`}
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
+          </div>
 
           <button
             type="button"
@@ -148,7 +173,7 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
               event.stopPropagation();
               void handleSignOut();
             }}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-in-out hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-in-out hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
             <LogOut className="h-4 w-4" aria-hidden />
             {isSigningOut ? 'Signing out…' : 'Sign Out'}

@@ -109,8 +109,11 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
             </p>
           </div>
 
-          <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            <Info
+              className="mr-1 inline-block h-3.5 w-3.5 shrink-0 align-[-2px]"
+              aria-hidden
+            />
             Created by{' '}
             <a
               href="https://ujjwaltiwari.com"
