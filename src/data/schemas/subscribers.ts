@@ -15,7 +15,10 @@ export const subscriberDataViews: DataViewTable[] = [
       field('Domain', 'Text', 'Email domain of the subscriber.', { length: 254, isNullable: true }),
       field('EmailAddress', 'Text', 'Subscriber email address.', { length: 254 }),
       field('BounceCount', 'Number', 'Total bounces accrued by the subscriber.'),
-      field('SubscriberKey', 'Text', 'Alternate subscriber identifier; defaults to email.', { length: 254 }),
+      field('SubscriberKey', 'Text', 'Alternate subscriber identifier; defaults to email.', {
+        length: 254,
+        isIndexed: true,
+      }),
       field('SubscriberType', 'Text', 'Subscriber type (e.g. ExactTarget, Salesforce Contact).', {
         length: 100,
       }),
