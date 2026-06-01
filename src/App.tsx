@@ -28,9 +28,13 @@ const SANDBOX_CANVAS_PADDING = 'pb-[450px]';
 
 function readShowDetailsPreference(): boolean {
   try {
-    return localStorage.getItem(SHOW_DETAILS_STORAGE_KEY) === 'true';
+    const stored = localStorage.getItem(SHOW_DETAILS_STORAGE_KEY);
+    if (stored === null) {
+      return true;
+    }
+    return stored === 'true';
   } catch {
-    return false;
+    return true;
   }
 }
 
