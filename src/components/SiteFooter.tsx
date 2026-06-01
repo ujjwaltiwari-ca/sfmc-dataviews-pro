@@ -1,11 +1,7 @@
 const CREATOR_URL = 'https://ujjwaltiwari.com';
-const LINKEDIN_URL = 'https://linkedin.com/in/ujjwaltiwari';
 
 const nameLinkClassName =
   'font-medium text-slate-700 transition-colors hover:text-cyan-600 hover:underline dark:text-slate-300 dark:hover:text-cyan-400';
-
-const linkedInLinkClassName =
-  'text-slate-400 transition-colors hover:text-slate-600 hover:underline dark:text-slate-500 dark:hover:text-slate-300';
 
 export function SiteFooter() {
   return (
@@ -20,16 +16,7 @@ export function SiteFooter() {
         >
           Ujjwal Tiwari
         </a>
-        . All rights reserved.{' '}
-        <a
-          href={LINKEDIN_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={linkedInLinkClassName}
-          aria-label="Ujjwal Tiwari on LinkedIn"
-        >
-          LinkedIn
-        </a>
+        . All rights reserved.
       </p>
     </footer>
   );
