@@ -6,6 +6,7 @@ export type FieldOptions = {
   length?: number;
   isPrimaryKey?: boolean;
   isNullable?: boolean;
+  isIndexed?: boolean;
   relatesTo?: FieldRelation[];
   isDynamicProfileAttribute?: boolean;
 };
@@ -72,6 +73,7 @@ export function field(
     isNullable: options.isNullable ?? false,
     ...(options.length !== undefined ? { length: options.length } : {}),
     ...(options.relatesTo !== undefined ? { relatesTo: options.relatesTo } : {}),
+    ...(options.isIndexed === true ? { isIndexed: true } : {}),
     ...(options.isDynamicProfileAttribute === true
       ? { isDynamicProfileAttribute: true }
       : {}),
@@ -115,7 +117,7 @@ export function engagementEventFields(
       length: 254,
       relatesTo: ENGAGEMENT_SUBSCRIBER_KEY,
     }),
-    field(eventDateField, 'Date', eventDateDescription),
+    field(eventDateField, 'Date', eventDateDescription, { isIndexed: true }),
     field('Domain', 'Text', 'Domain associated with the event.', { length: 128 }),
     field('TriggererSendDefinitionObjectID', 'Text', 'Triggered send definition object ID.', {
       length: 36,
