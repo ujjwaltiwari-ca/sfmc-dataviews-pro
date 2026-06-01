@@ -202,12 +202,12 @@ const FIELD_GRID_COLS =
   'grid-cols-[minmax(0,1fr)_minmax(4.75rem,auto)_2.25rem]';
 
 const TYPE_BADGE_CLASS =
-  'inline-flex whitespace-nowrap rounded border border-slate-200/40 bg-slate-100/80 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600 transition-colors duration-200 dark:border-slate-700/50 dark:bg-slate-800/80 dark:text-slate-400';
+  'inline-flex whitespace-nowrap rounded border border-slate-200/50 bg-slate-100/80 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-400';
 
-const PK_ICON_CLASS = 'text-amber-500 transition-colors duration-100';
+const PK_ICON_CLASS = 'text-amber-500';
 
 const FK_IDX_MARK_CLASS =
-  'font-mono text-[9px] font-bold uppercase leading-none tracking-wide text-indigo-500 transition-colors duration-100';
+  'font-mono text-[9px] font-bold uppercase leading-none tracking-wide text-indigo-500';
 
 const LINK_ICON_IDLE =
   'text-indigo-400/70 opacity-80 transition-all duration-100 dark:text-indigo-400/60';
@@ -415,10 +415,10 @@ function FieldRow({
   const showIndexedMark = field.isIndexed === true && !field.isPrimaryKey && !hasForeignKey;
 
   const fieldNameClass = isProfileAttribute
-    ? 'italic font-medium tracking-tight text-slate-500 group-hover/row:text-slate-600 dark:text-slate-400 dark:group-hover/row:text-slate-300'
+    ? 'italic font-medium tracking-tight text-slate-500 dark:text-slate-400'
     : isPathActive
       ? categoryTheme.pathText
-      : 'font-medium tracking-tight text-slate-800 group-hover/row:text-slate-900 dark:text-slate-200 dark:group-hover/row:text-white';
+      : 'font-medium tracking-tight text-slate-800 dark:text-slate-200';
 
   const descriptionClass = isPathActive
     ? `${categoryTheme.pathText} opacity-80`
@@ -483,10 +483,10 @@ function FieldRow({
           <span className={`${TYPE_BADGE_CLASS} italic`}>dynamic</span>
         ) : (
           <span
-            className={`${TYPE_BADGE_CLASS} ${
+            className={`${TYPE_BADGE_CLASS}${
               isPathActive
-                ? `${categoryTheme.pathText} bg-white/80 dark:bg-slate-900/80`
-                : 'group-hover/row:bg-slate-200/60 group-hover/row:text-slate-500 dark:group-hover/row:bg-slate-700/60 dark:group-hover/row:text-slate-300'
+                ? ` ${categoryTheme.pathText} bg-white/80 dark:bg-slate-900/80`
+                : ''
             }`}
           >
             {formatFieldType(field)}
@@ -497,9 +497,7 @@ function FieldRow({
         {field.isPrimaryKey ? (
           <span className="inline-flex" title="Primary key">
             <KeyRound
-              className={`h-3.5 w-3.5 ${
-                isPathActive ? categoryTheme.pathIcon : PK_ICON_CLASS
-              }`}
+              className={`h-3.5 w-3.5 ${PK_ICON_CLASS}`}
               aria-label="Primary key"
             />
           </span>
