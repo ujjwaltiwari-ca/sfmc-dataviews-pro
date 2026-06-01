@@ -13,8 +13,8 @@ import {
 type DataViewCategory = DataViewTable['category'];
 
 type CategoryTheme = {
-  badgeGradient: string;
-  badgeText: string;
+  categoryBadge: string;
+  accentDot: string;
   topGradient: string;
   cardHover: string;
   pathInset: string;
@@ -29,9 +29,10 @@ const CARD_BASE_CLASS =
 
 const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
   Sending: {
-    badgeGradient: 'from-blue-500/10 via-blue-400/5 to-transparent',
-    badgeText: 'text-blue-700 dark:text-blue-300',
-    topGradient: 'from-blue-400/70 via-blue-300/30 to-transparent',
+    categoryBadge:
+      'bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/25',
+    accentDot: 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.4)]',
+    topGradient: 'from-blue-500/80 via-blue-400/40 to-blue-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-blue-50/30 dark:hover:from-slate-900/95 dark:hover:to-blue-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(59,130,246)]',
@@ -41,9 +42,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-blue-600 dark:group-hover/row:text-blue-400',
   },
   Tracking: {
-    badgeGradient: 'from-emerald-500/10 via-emerald-400/5 to-transparent',
-    badgeText: 'text-emerald-700 dark:text-emerald-300',
-    topGradient: 'from-emerald-400/70 via-emerald-300/30 to-transparent',
+    categoryBadge:
+      'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/25',
+    accentDot: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]',
+    topGradient: 'from-emerald-500/80 via-emerald-400/40 to-emerald-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-emerald-50/30 dark:hover:from-slate-900/95 dark:hover:to-emerald-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(16,185,129)]',
@@ -54,9 +56,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
       'group-hover/row:opacity-100 group-hover/row:text-emerald-600 dark:group-hover/row:text-emerald-400',
   },
   Journey: {
-    badgeGradient: 'from-violet-500/10 via-violet-400/5 to-transparent',
-    badgeText: 'text-violet-700 dark:text-violet-300',
-    topGradient: 'from-violet-400/70 via-violet-300/30 to-transparent',
+    categoryBadge:
+      'bg-violet-50 text-violet-700 border-violet-200/60 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/25',
+    accentDot: 'bg-violet-500 shadow-[0_0_6px_rgba(139,92,246,0.4)]',
+    topGradient: 'from-violet-500/80 via-violet-400/40 to-violet-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-violet-50/30 dark:hover:from-slate-900/95 dark:hover:to-violet-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(139,92,246)]',
@@ -66,9 +69,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
   },
   Subscribers: {
-    badgeGradient: 'from-amber-500/10 via-amber-400/5 to-transparent',
-    badgeText: 'text-amber-700 dark:text-amber-300',
-    topGradient: 'from-amber-400/70 via-amber-300/30 to-transparent',
+    categoryBadge:
+      'bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/25',
+    accentDot: 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]',
+    topGradient: 'from-amber-500/80 via-amber-400/40 to-amber-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-amber-50/30 dark:hover:from-slate-900/95 dark:hover:to-amber-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(245,158,11)]',
@@ -78,9 +82,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-amber-600 dark:group-hover/row:text-amber-400',
   },
   Subscription: {
-    badgeGradient: 'from-rose-500/10 via-rose-400/5 to-transparent',
-    badgeText: 'text-rose-700 dark:text-rose-300',
-    topGradient: 'from-rose-400/70 via-rose-300/30 to-transparent',
+    categoryBadge:
+      'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/25',
+    accentDot: 'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.4)]',
+    topGradient: 'from-rose-500/80 via-rose-400/40 to-rose-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-rose-50/30 dark:hover:from-slate-900/95 dark:hover:to-rose-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(244,63,94)]',
@@ -90,9 +95,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-rose-600 dark:group-hover/row:text-rose-400',
   },
   Automation: {
-    badgeGradient: 'from-violet-500/10 via-violet-400/5 to-transparent',
-    badgeText: 'text-violet-700 dark:text-violet-300',
-    topGradient: 'from-violet-400/70 via-violet-300/30 to-transparent',
+    categoryBadge:
+      'bg-violet-50 text-violet-700 border-violet-200/60 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/25',
+    accentDot: 'bg-violet-500 shadow-[0_0_6px_rgba(139,92,246,0.4)]',
+    topGradient: 'from-violet-500/80 via-violet-400/40 to-violet-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-violet-50/30 dark:hover:from-slate-900/95 dark:hover:to-violet-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(139,92,246)]',
@@ -102,9 +108,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
   },
   Mobile: {
-    badgeGradient: 'from-cyan-500/10 via-cyan-400/5 to-transparent',
-    badgeText: 'text-cyan-700 dark:text-cyan-300',
-    topGradient: 'from-cyan-400/70 via-cyan-300/30 to-transparent',
+    categoryBadge:
+      'bg-cyan-50 text-cyan-700 border-cyan-200/60 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/25',
+    accentDot: 'bg-cyan-500 shadow-[0_0_6px_rgba(6,182,212,0.4)]',
+    topGradient: 'from-cyan-500/80 via-cyan-400/40 to-cyan-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-cyan-50/30 dark:hover:from-slate-900/95 dark:hover:to-cyan-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(6,182,212)]',
@@ -114,9 +121,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-cyan-600 dark:group-hover/row:text-cyan-400',
   },
   GroupConnect: {
-    badgeGradient: 'from-lime-500/10 via-lime-400/5 to-transparent',
-    badgeText: 'text-lime-700 dark:text-lime-300',
-    topGradient: 'from-lime-400/70 via-lime-300/30 to-transparent',
+    categoryBadge:
+      'bg-lime-50 text-lime-700 border-lime-200/60 dark:bg-lime-500/10 dark:text-lime-400 dark:border-lime-500/25',
+    accentDot: 'bg-lime-500 shadow-[0_0_6px_rgba(132,204,22,0.4)]',
+    topGradient: 'from-lime-500/80 via-lime-400/40 to-lime-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-lime-50/30 dark:hover:from-slate-900/95 dark:hover:to-lime-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(132,204,22)]',
@@ -126,9 +134,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-lime-600 dark:group-hover/row:text-lime-400',
   },
   Social: {
-    badgeGradient: 'from-pink-500/10 via-pink-400/5 to-transparent',
-    badgeText: 'text-pink-700 dark:text-pink-300',
-    topGradient: 'from-pink-400/70 via-pink-300/30 to-transparent',
+    categoryBadge:
+      'bg-pink-50 text-pink-700 border-pink-200/60 dark:bg-pink-500/10 dark:text-pink-400 dark:border-pink-500/25',
+    accentDot: 'bg-pink-500 shadow-[0_0_6px_rgba(236,72,153,0.4)]',
+    topGradient: 'from-pink-500/80 via-pink-400/40 to-pink-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-pink-50/30 dark:hover:from-slate-900/95 dark:hover:to-pink-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(236,72,153)]',
@@ -138,9 +147,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-pink-600 dark:group-hover/row:text-pink-400',
   },
   Other: {
-    badgeGradient: 'from-stone-500/10 via-stone-400/5 to-transparent',
-    badgeText: 'text-stone-700 dark:text-stone-300',
-    topGradient: 'from-stone-400/70 via-stone-300/30 to-transparent',
+    categoryBadge:
+      'bg-stone-50 text-stone-700 border-stone-200/60 dark:bg-stone-500/10 dark:text-stone-400 dark:border-stone-500/25',
+    accentDot: 'bg-stone-500 shadow-[0_0_6px_rgba(120,113,108,0.4)]',
+    topGradient: 'from-stone-500/80 via-stone-400/40 to-stone-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-stone-50/30 dark:hover:from-slate-900/95 dark:hover:to-stone-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(120,113,108)]',
@@ -150,9 +160,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-stone-600 dark:group-hover/row:text-stone-400',
   },
   SendLog: {
-    badgeGradient: 'from-orange-500/10 via-orange-400/5 to-transparent',
-    badgeText: 'text-orange-700 dark:text-orange-300',
-    topGradient: 'from-orange-400/70 via-orange-300/30 to-transparent',
+    categoryBadge:
+      'bg-orange-50 text-orange-700 border-orange-200/60 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/25',
+    accentDot: 'bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.4)]',
+    topGradient: 'from-orange-500/80 via-orange-400/40 to-orange-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-orange-50/30 dark:hover:from-slate-900/95 dark:hover:to-orange-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(249,115,22)]',
@@ -162,9 +173,10 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
     linkHover: 'group-hover/row:opacity-100 group-hover/row:text-orange-600 dark:group-hover/row:text-orange-400',
   },
   Synchronized: {
-    badgeGradient: 'from-indigo-500/10 via-indigo-400/5 to-transparent',
-    badgeText: 'text-indigo-700 dark:text-indigo-300',
-    topGradient: 'from-indigo-400/70 via-indigo-300/30 to-transparent',
+    categoryBadge:
+      'bg-indigo-50 text-indigo-700 border-indigo-200/60 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/25',
+    accentDot: 'bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.4)]',
+    topGradient: 'from-indigo-500/80 via-indigo-400/40 to-indigo-300/10',
     cardHover:
       'hover:bg-gradient-to-b hover:from-white/95 hover:to-indigo-50/30 dark:hover:from-slate-900/95 dark:hover:to-indigo-950/20',
     pathInset: 'shadow-[inset_3px_0_0_0_rgb(99,102,241)]',
@@ -190,12 +202,15 @@ const FIELD_GRID_COLS =
   'grid-cols-[minmax(0,1fr)_minmax(4.75rem,auto)_2.25rem]';
 
 const TYPE_BADGE_CLASS =
-  'inline-flex whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-400 transition-colors duration-200 dark:bg-slate-800/80 dark:text-slate-500';
+  'inline-flex whitespace-nowrap rounded border border-slate-200/40 bg-slate-100/80 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600 transition-colors duration-200 dark:border-slate-700/50 dark:bg-slate-800/80 dark:text-slate-400';
 
-const MUTED_ICON = 'text-slate-400 transition-colors duration-100 dark:text-slate-500';
+const PK_ICON_CLASS = 'text-amber-500 transition-colors duration-100';
+
+const FK_IDX_MARK_CLASS =
+  'font-mono text-[9px] font-bold uppercase leading-none tracking-wide text-indigo-500 transition-colors duration-100';
 
 const LINK_ICON_IDLE =
-  'opacity-25 text-slate-300 transition-all duration-100 dark:text-slate-600';
+  'text-indigo-400/70 opacity-80 transition-all duration-100 dark:text-indigo-400/60';
 
 /** Positions link icon in row padding without shifting field name text. */
 const FIELD_LINK_ICON_CLASS = 'absolute left-0 top-0.5 z-[1] h-3.5 w-3.5 -translate-x-[calc(100%+0.25rem)]';
@@ -272,12 +287,16 @@ export function DataViewCard({
               className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 text-slate-900 transition-all duration-200 ease-in-out hover:border-slate-400 focus:ring-2 focus:ring-slate-400/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               aria-label={`Include ${table.name} in SQL query`}
             />
-            <h2 className="truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-800 dark:text-slate-50">
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${theme.accentDot}`}
+              aria-hidden
+            />
+            <h2 className="truncate font-mono text-sm font-bold leading-none tracking-tight text-slate-900 dark:text-white">
               {table.name}
             </h2>
           </div>
           <span
-            className={`inline-flex shrink-0 items-center rounded-full bg-gradient-to-r px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${theme.badgeGradient} ${theme.badgeText}`}
+            className={`inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${theme.categoryBadge}`}
           >
             {table.category}
           </span>
@@ -392,12 +411,14 @@ function FieldRow({
     !field.isDynamicProfileAttribute &&
     buildRelationHighlight(tableName, field, schemaTables) !== null;
   const isProfileAttribute = field.isDynamicProfileAttribute === true;
+  const hasForeignKey = Boolean(field.relatesTo?.length);
+  const showIndexedMark = field.isIndexed === true && !field.isPrimaryKey && !hasForeignKey;
 
   const fieldNameClass = isProfileAttribute
     ? 'italic font-medium tracking-tight text-slate-500 group-hover/row:text-slate-600 dark:text-slate-400 dark:group-hover/row:text-slate-300'
     : isPathActive
       ? categoryTheme.pathText
-      : 'font-medium tracking-tight text-slate-700 group-hover/row:text-slate-900 dark:text-slate-200 dark:group-hover/row:text-white';
+      : 'font-medium tracking-tight text-slate-800 group-hover/row:text-slate-900 dark:text-slate-200 dark:group-hover/row:text-white';
 
   const descriptionClass = isPathActive
     ? `${categoryTheme.pathText} opacity-80`
@@ -476,11 +497,23 @@ function FieldRow({
         {field.isPrimaryKey ? (
           <span className="inline-flex" title="Primary key">
             <KeyRound
-              className={`h-3.5 w-3.5 transition-colors duration-100 ${
-                isPathActive ? categoryTheme.pathIcon : MUTED_ICON
+              className={`h-3.5 w-3.5 ${
+                isPathActive ? categoryTheme.pathIcon : PK_ICON_CLASS
               }`}
               aria-label="Primary key"
             />
+          </span>
+        ) : hasForeignKey ? (
+          <span className={FK_IDX_MARK_CLASS} title="Foreign key">
+            FK
+          </span>
+        ) : showIndexedMark ? (
+          <span className={FK_IDX_MARK_CLASS} title="Indexed field">
+            IDX
+          </span>
+        ) : isRelationInteractive ? (
+          <span className={FK_IDX_MARK_CLASS} title="Relational join field">
+            FK
           </span>
         ) : (
           <span className="inline-block h-3.5 w-3.5" aria-hidden />
