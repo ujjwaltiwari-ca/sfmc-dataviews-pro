@@ -24,6 +24,7 @@ import { AccountProfileDropdown } from './AccountProfileDropdown';
 import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
 import {
+  dispatchOpenOnboardingTour,
   OPEN_DOCUMENTATION_EVENT,
   OPEN_ONBOARDING_TOUR_EVENT,
   OPEN_PLATFORM_INFO_EVENT,
@@ -213,7 +214,7 @@ export function Header({
 
               <button
                 type="button"
-                onClick={() => onStartOnboardingTour?.()}
+                onClick={() => dispatchOpenOnboardingTour()}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/90 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-cyan-50/80 hover:text-cyan-800 hover:shadow-[0_8px_20px_rgba(6,182,212,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-cyan-600/50 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-200"
                 aria-label="Start 60-second onboarding tour"
                 title="60-Second Onboarding Tour"
