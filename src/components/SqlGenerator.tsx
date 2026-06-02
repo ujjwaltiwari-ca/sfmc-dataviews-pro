@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import CodeMirror from '@uiw/react-codemirror';
+import { sql } from '@codemirror/lang-sql';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
 import {
   ArrowLeft,
   Braces,
@@ -37,8 +41,8 @@ import {
 } from '../utils/sqlGenerator';
 import { sfmcQueryTemplates } from '../data/queryTemplates';
 import { sfmcDataViews } from '../data/sfmcSchema';
-import { FieldExpressionLabel, SqlStyledCode, SqlSyntaxSnippet } from './SqlStyledCode';
-import { getIdentifierSyntaxClass, IDE_DARK_EDITOR_ROOT, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
+import { FieldExpressionLabel, SqlSyntaxSnippet } from './SqlStyledCode';
+import { getIdentifierSyntaxClass, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
 import type { SandboxEditorTab, SandboxPreferences } from '../utils/workspacePersistence';
 import {
   buildDefaultParameterValues,
@@ -68,6 +72,18 @@ const QUERY_STUDIO_TIP =
 const COPIED_FEEDBACK_MS = 2200;
 /** Expanded drawer height — keep in sync with App canvas bottom padding. */
 const SANDBOX_DRAWER_HEIGHT_PX = 520;
+const sandboxSqlScrollerTheme = EditorView.theme({
+  '&': {
+    height: '100%',
+    maxHeight: '100%',
+  },
+  '.cm-scroller': {
+    overflow: 'auto',
+    minHeight: 0,
+  },
+});
+
+const sqlEditorExtensions = [sql(), sandboxSqlScrollerTheme];
 const SANDBOX_SHELL_CLASS =
   'pointer-events-auto flex flex-col bg-white border border-slate-200/60 shadow-[0_-4px_24px_rgba(15,23,42,0.06),0_-12px_40px_rgba(15,23,42,0.04)] dark:bg-slate-950 dark:border-slate-800/60 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]';
 
@@ -146,6 +162,38 @@ function QueryStudioTipIcon({ tip }: { tip: string }) {
 type EditorTab = SandboxEditorTab;
 
 export type { SandboxEditorTab };
+
+function SandboxSqlCodeMirror({
+  value,
+  onChange,
+  readOnly,
+  placeholder,
+}: {
+  value: string;
+  onChange: (sql: string) => void;
+  readOnly: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
+      <CodeMirror
+        value={value}
+        height="100%"
+        theme={oneDark}
+        extensions={sqlEditorExtensions}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        onChange={onChange}
+        basicSetup={{
+          lineNumbers: true,
+          bracketMatching: true,
+        }}
+        className="sandbox-sql-codemirror flex-1 min-h-0 overflow-auto rounded-md border border-slate-800/60 text-sm"
+        aria-label="SQL query editor"
+      />
+    </div>
+  );
+}
 
 function EditorTabButton({
   id,
@@ -423,8 +471,6 @@ export function SqlGenerator({
   const editorTab = editorTabProp ?? preferenceEditorTab;
   const [templateBaseSql, setTemplateBaseSql] = useState<string | null>(null);
   const [templateParamValues, setTemplateParamValues] = useState<Record<string, string>>({});
-  const sqlTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const sqlHighlightRef = useRef<HTMLDivElement>(null);
 
   const activeTemplate = useMemo(
     () => sfmcQueryTemplates.find((item) => item.id === activeTemplateId) ?? null,
@@ -623,6 +669,10 @@ export function SqlGenerator({
   const showTemplateLibrary = editorTab === 'templates' && activeTemplateId === null;
   const showSqlEditor = editorTab === 'live' || activeTemplateId !== null;
 
+  const isPathfinderLiveOutput =
+    editorTab === 'live' && selectedTableNames.length > 0 && !preserveSql;
+  const isSqlEditorReadOnly = showTemplateParametersPanel || isPathfinderLiveOutput;
+
   const fieldsByTable = useMemo(() => {
     const groups = new Map<string, typeof architecture.selectFields>();
     for (const field of architecture.selectFields) {
@@ -640,22 +690,6 @@ export function SqlGenerator({
     const timer = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
     return () => clearTimeout(timer);
   }, [copied]);
-
-  const syncSqlEditorScroll = useCallback(() => {
-    const textarea = sqlTextareaRef.current;
-    const highlight = sqlHighlightRef.current;
-    if (!textarea || !highlight) {
-      return;
-    }
-    highlight.scrollTop = textarea.scrollTop;
-    highlight.scrollLeft = textarea.scrollLeft;
-  }, []);
-
-  useEffect(() => {
-    if (isExpanded) {
-      syncSqlEditorScroll();
-    }
-  }, [sql, isExpanded, syncSqlEditorScroll]);
 
   const handleCopy = async () => {
     try {
@@ -1053,28 +1087,14 @@ export function SqlGenerator({
                               />
                             ) : null}
                             <div
-                              className={`relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-slate-800/60 ${
-                                showTemplateParametersPanel ? 'bg-[#010409]' : ''
+                              className={`flex h-full w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
+                                showTemplateParametersPanel ? 'bg-[#010409]' : 'bg-[#0d1117]'
                               }`}
                             >
-                              <div
-                                ref={sqlHighlightRef}
-                                className="pointer-events-none absolute inset-0 overflow-hidden"
-                                aria-hidden
-                              >
-                                <div className="min-w-max p-4">
-                                  <SqlStyledCode sql={sql} showGutter={false} theme="editor-dark" />
-                                </div>
-                              </div>
-                              <textarea
-                                ref={sqlTextareaRef}
+                              <SandboxSqlCodeMirror
                                 value={sql}
-                                onChange={(event) => onSqlChange(event.target.value)}
-                                onScroll={syncSqlEditorScroll}
-                                spellCheck={false}
-                                readOnly={showTemplateParametersPanel}
-                                className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${IDE_DARK_EDITOR_ROOT}`}
-                                aria-label="SQL query editor"
+                                onChange={onSqlChange}
+                                readOnly={isSqlEditorReadOnly}
                                 placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
                               />
                             </div>
