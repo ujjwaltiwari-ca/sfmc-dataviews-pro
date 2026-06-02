@@ -1,4 +1,4 @@
-export type { DataViewCategory, DataViewField, DataViewTable } from './schemas/types';
+export type { DataViewCategory, DataViewField, DataViewTable } from './schemas/types.js';
 
 export {
   automationDataViews,
@@ -15,13 +15,13 @@ export {
   subscriptionDataViews,
   synchronizedDeDataViews,
   trackingDataViews,
-} from './schemas';
+} from './schemas/index.js';
 
-export type { ViewSegmentId } from './viewSegments';
+export type { ViewSegmentId } from './viewSegments.js';
 export {
   dedupeTablesByName,
   getTablesForSegment,
   VIEW_SEGMENTS,
   VIEW_SEGMENT_STORAGE_KEY,
   readViewSegmentPreference,
-} from './viewSegments';
+} from './viewSegments.js';

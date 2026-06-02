@@ -1,7 +1,7 @@
-import { sfmcDataViews } from './schemas';
-import { sendLogDataViews } from './schemas/sendLog';
-import { synchronizedDeDataViews } from './schemas/synchronizedDe';
-import type { DataViewTable } from './schemas/types';
+import { sfmcDataViews } from './schemas/index.js';
+import { sendLogDataViews } from './schemas/sendLog.js';
+import { synchronizedDeDataViews } from './schemas/synchronizedDe.js';
+import type { DataViewTable } from './schemas/types.js';
 
 export type ViewSegmentId = 'core' | 'sendlog' | 'synchronized';
 

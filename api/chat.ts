@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import { buildDynamicCopilotSchemaContext } from '../src/utils/compressSchemaForCopilot';
+import { buildDynamicCopilotSchemaContext } from '../src/utils/compressSchemaForCopilot.js';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
 const OPENAI_MODEL = 'gpt-4o-mini';

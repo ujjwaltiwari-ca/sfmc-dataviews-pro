@@ -2,8 +2,8 @@ import {
   sendLogDataViews,
   sfmcDataViews,
   synchronizedDeDataViews,
-} from '../data/sfmcSchema';
-import type { DataViewField, DataViewTable } from '../data/schemas/types';
+} from '../data/sfmcSchema.js';
+import type { DataViewField, DataViewTable } from '../data/schemas/types.js';
 
 /** All workspace segments — core system views, SendLog templates, and synchronized CRM DEs. */
 const ALL_COPILOT_WORKSPACE_TABLES: readonly DataViewTable[] = [
