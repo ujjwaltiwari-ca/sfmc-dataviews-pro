@@ -7,17 +7,16 @@ export const SYNTAX_DATE_CLASS = `${MONO_SYNTAX_BASE} text-emerald-600 dark:text
 export const SYNTAX_TEXT_CLASS = `${MONO_SYNTAX_BASE} text-purple-500 dark:text-purple-400`;
 export const SYNTAX_NEUTRAL_CLASS = `${MONO_SYNTAX_BASE} text-slate-500 dark:text-slate-400`;
 
-/** VS Code / GitHub Dark — SQL sandbox code pane (explicit colors; never inherit body text) */
-export const SYNTAX_KEYWORD_EDITOR =
-  'font-mono text-xs font-semibold text-sky-400 dark:text-sky-400';
-export const SYNTAX_IDENTIFIER_EDITOR =
-  'font-mono text-xs text-[#e1e4e8] dark:text-[#e1e4e8]';
-export const SYNTAX_COMMENT_EDITOR =
-  'font-mono text-xs font-normal italic text-slate-500 dark:text-slate-500';
-export const SYNTAX_PUNCTUATION_EDITOR =
-  'font-mono text-xs text-slate-400 dark:text-slate-400';
+export const MONO_EDITOR_TYPO =
+  'font-mono text-xs leading-[1.65] tracking-normal sm:text-sm sm:leading-[1.65]';
 
-export const IDE_DARK_CODE_ROOT = 'text-[#e1e4e8] dark:text-[#e1e4e8]';
+export const IDE_DARK_EDITOR_ROOT = `${MONO_EDITOR_TYPO} text-[#e1e4e8]`;
+
+/** VS Code / GitHub Dark — color-only token classes (inherit MONO_EDITOR_TYPO) */
+export const SYNTAX_KEYWORD_EDITOR = 'font-medium text-sky-400';
+export const SYNTAX_IDENTIFIER_EDITOR = 'text-[#e1e4e8]';
+export const SYNTAX_COMMENT_EDITOR = 'font-normal italic text-slate-500';
+export const SYNTAX_PUNCTUATION_EDITOR = 'text-slate-400';
 
 /** Compact sidebar SQL previews (light panel, same 3-tone palette) */
 export const SYNTAX_KEYWORD_LIGHT = 'font-mono text-[10px] font-semibold text-sky-600 dark:text-sky-400';
