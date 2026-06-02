@@ -1,0 +1,165 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { SandboxEditorTab } from '../utils/workspacePersistence';
+import type { ViewSegmentId } from '../data/viewSegments';
+import {
+  DEFAULT_SANDBOX_PREFERENCES,
+  filterTableNamesForSegment,
+  hydrateWorkspaceState,
+  isWorkspaceUrlEmpty,
+  persistWorkspaceState,
+  type SandboxPreferences,
+  type WorkspaceSnapshot,
+} from '../utils/workspacePersistence';
+
+export type WorkspaceStateApi = {
+  segment: ViewSegmentId;
+  setSegment: (segment: ViewSegmentId) => void;
+  selectedTableNames: string[];
+  selectedTables: Set<string>;
+  setSelectedTableNames: (names: string[]) => void;
+  toggleTableSelection: (tableName: string) => void;
+  showSandbox: boolean;
+  setShowSandbox: (open: boolean) => void;
+  sandboxPreferences: SandboxPreferences;
+  updateSandboxPreferences: (patch: Partial<SandboxPreferences>) => void;
+  isSandboxExpanded: boolean;
+  setIsSandboxExpanded: (expanded: boolean) => void;
+  activeTemplateId: string | null;
+  setActiveTemplateId: (templateId: string | null) => void;
+  editorTab: SandboxEditorTab;
+  setEditorTab: (tab: SandboxEditorTab) => void;
+  initialTemplateSql: string | null;
+};
+
+export function useWorkspaceState(): WorkspaceStateApi {
+  const hydrated = useMemo(() => hydrateWorkspaceState(), []);
+  const loadedFromBareUrlRef = useRef(
+    hydrated.source === 'fresh-url' && isWorkspaceUrlEmpty(),
+  );
+  const isFirstPersistRef = useRef(true);
+
+  const [segment, setSegment] = useState<ViewSegmentId>(hydrated.segment);
+  const [selectedTableNames, setSelectedTableNamesState] = useState<string[]>(
+    hydrated.selectedTableNames,
+  );
+  const [showSandbox, setShowSandbox] = useState(hydrated.showSandbox);
+  const [sandboxPreferences, setSandboxPreferences] = useState<SandboxPreferences>(
+    hydrated.sandboxPreferences,
+  );
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(
+    hydrated.activeTemplateId,
+  );
+
+  const selectedTables = useMemo(
+    () => new Set(selectedTableNames),
+    [selectedTableNames],
+  );
+
+  const setSelectedTableNames = useCallback((names: string[]) => {
+    const filtered = filterTableNamesForSegment(names, segment);
+    setSelectedTableNamesState(filtered);
+  }, [segment]);
+
+  const updateSandboxPreferences = useCallback((patch: Partial<SandboxPreferences>) => {
+    setSandboxPreferences((previous) => ({ ...previous, ...patch }));
+  }, []);
+
+  const toggleTableSelection = useCallback(
+    (tableName: string) => {
+      const valid = filterTableNamesForSegment([tableName], segment);
+      if (valid.length === 0) {
+        return;
+      }
+
+      const name = valid[0];
+      const isSelecting = !selectedTableNames.includes(name);
+
+      setSelectedTableNamesState((previous) => {
+        if (previous.includes(name)) {
+          return previous.filter((entry) => entry !== name);
+        }
+        return [...previous, name];
+      });
+
+      if (isSelecting) {
+        setShowSandbox(true);
+        updateSandboxPreferences({ isSandboxExpanded: true });
+      }
+    },
+    [segment, selectedTableNames, updateSandboxPreferences],
+  );
+
+  const setIsSandboxExpanded = useCallback(
+    (expanded: boolean) => {
+      updateSandboxPreferences({ isSandboxExpanded: expanded });
+    },
+    [updateSandboxPreferences],
+  );
+
+  const setEditorTab = useCallback(
+    (tab: SandboxEditorTab) => {
+      updateSandboxPreferences({ editorTab: tab });
+      if (tab === 'live') {
+        setActiveTemplateId(null);
+      }
+    },
+    [updateSandboxPreferences],
+  );
+
+  useEffect(() => {
+    setSelectedTableNamesState((previous) => {
+      const filtered = filterTableNamesForSegment(previous, segment);
+      if (
+        filtered.length === previous.length &&
+        filtered.every((name, index) => name === previous[index])
+      ) {
+        return previous;
+      }
+      return filtered;
+    });
+  }, [segment]);
+
+  const snapshot: WorkspaceSnapshot = useMemo(
+    () => ({
+      segment,
+      selectedTableNames,
+      showSandbox,
+      activeTemplateId,
+      sandboxPreferences,
+    }),
+    [segment, selectedTableNames, showSandbox, activeTemplateId, sandboxPreferences],
+  );
+
+  useEffect(() => {
+    if (isFirstPersistRef.current) {
+      isFirstPersistRef.current = false;
+      if (loadedFromBareUrlRef.current) {
+        loadedFromBareUrlRef.current = false;
+        return;
+      }
+    }
+    persistWorkspaceState(snapshot);
+  }, [snapshot]);
+
+  return {
+    segment,
+    setSegment,
+    selectedTableNames,
+    selectedTables,
+    setSelectedTableNames,
+    toggleTableSelection,
+    showSandbox,
+    setShowSandbox,
+    sandboxPreferences,
+    updateSandboxPreferences,
+    isSandboxExpanded: sandboxPreferences.isSandboxExpanded,
+    setIsSandboxExpanded,
+    activeTemplateId,
+    setActiveTemplateId,
+    editorTab: sandboxPreferences.editorTab,
+    setEditorTab,
+    initialTemplateSql: hydrated.initialTemplateSql,
+  };
+}
+
+export { DEFAULT_SANDBOX_PREFERENCES };

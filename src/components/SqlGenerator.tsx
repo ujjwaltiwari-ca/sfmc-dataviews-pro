@@ -34,6 +34,7 @@ import { sfmcQueryTemplates } from '../data/queryTemplates';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { FieldExpressionLabel, SqlStyledCode, SqlSyntaxSnippet } from './SqlStyledCode';
 import { getIdentifierSyntaxClass, IDE_DARK_EDITOR_ROOT, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
+import type { SandboxEditorTab, SandboxPreferences } from '../utils/workspacePersistence';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
@@ -115,9 +116,9 @@ function QueryStudioTipIcon({ tip }: { tip: string }) {
   );
 }
 
-type EditorTab = 'live' | 'templates';
+type EditorTab = SandboxEditorTab;
 
-export type SandboxEditorTab = EditorTab;
+export type { SandboxEditorTab };
 
 function EditorTabButton({
   id,
@@ -193,6 +194,10 @@ interface SqlGeneratorProps {
   isVisible: boolean;
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  sandboxPreferences: SandboxPreferences;
+  onSandboxPreferencesChange: (patch: Partial<SandboxPreferences>) => void;
+  activeTemplateId: string | null;
+  onActiveTemplateIdChange: (templateId: string | null) => void;
   /** When true, skip overwriting sql from card-driven generation (e.g. copilot apply). */
   preserveSql?: boolean;
   editorTab?: SandboxEditorTab;
@@ -367,22 +372,27 @@ export function SqlGenerator({
   isVisible,
   isExpanded,
   onExpandedChange,
+  sandboxPreferences,
+  onSandboxPreferencesChange,
+  activeTemplateId,
+  onActiveTemplateIdChange,
   preserveSql = false,
   editorTab: editorTabProp,
   onEditorTabChange,
   templatesShortcutNonce = 0,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
-  const [limitPast30Days, setLimitPast30Days] = useState(false);
-  const [excludeTestSends, setExcludeTestSends] = useState(false);
-  const [filterActiveSubscribersOnly, setFilterActiveSubscribersOnly] = useState(false);
-  const [filterByCampaignJobId, setFilterByCampaignJobId] = useState(false);
-  const [campaignJobId, setCampaignJobId] = useState('');
-  const [includeTargetDeScaffolding, setIncludeTargetDeScaffolding] = useState(false);
-  const [keywordCase, setKeywordCase] = useState<SqlKeywordCase>('upper');
-  const [internalEditorTab, setInternalEditorTab] = useState<EditorTab>('live');
-  const editorTab = editorTabProp ?? internalEditorTab;
-  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const {
+    limitPast30Days,
+    excludeTestSends,
+    filterActiveSubscribersOnly,
+    filterByCampaignJobId,
+    campaignJobId,
+    includeTargetDeScaffolding,
+    keywordCase,
+    editorTab: preferenceEditorTab,
+  } = sandboxPreferences;
+  const editorTab = editorTabProp ?? preferenceEditorTab;
   const sqlTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sqlHighlightRef = useRef<HTMLDivElement>(null);
 
@@ -476,33 +486,39 @@ export function SqlGenerator({
     if (onEditorTabChange) {
       onEditorTabChange(tab);
     } else {
-      setInternalEditorTab(tab);
+      onSandboxPreferencesChange({ editorTab: tab });
     }
     if (tab === 'live') {
-      setActiveTemplateId(null);
+      onActiveTemplateIdChange(null);
       if (!preserveSql && selectedTableNames.length > 0) {
         onSqlChange(displaySql);
       }
       return;
     }
-    setActiveTemplateId(null);
+    onActiveTemplateIdChange(null);
   };
 
+  const templatesShortcutNonceRef = useRef(templatesShortcutNonce);
   useEffect(() => {
-    setActiveTemplateId(null);
-  }, [templatesShortcutNonce]);
+    if (templatesShortcutNonceRef.current === templatesShortcutNonce) {
+      return;
+    }
+    templatesShortcutNonceRef.current = templatesShortcutNonce;
+    onActiveTemplateIdChange(null);
+  }, [templatesShortcutNonce, onActiveTemplateIdChange]);
 
   const handleSelectTemplate = (templateId: string) => {
     const template = sfmcQueryTemplates.find((item) => item.id === templateId);
     if (!template) {
       return;
     }
-    setActiveTemplateId(templateId);
+    onActiveTemplateIdChange(templateId);
+    onSandboxPreferencesChange({ editorTab: 'templates', isSandboxExpanded: true });
     onSqlChange(template.sql);
   };
 
   const handleBackToTemplates = () => {
-    setActiveTemplateId(null);
+    onActiveTemplateIdChange(null);
   };
 
   const showTemplateLibrary = editorTab === 'templates' && activeTemplateId === null;
@@ -752,7 +768,7 @@ export function SqlGenerator({
                             : 'EventDate >= DATEADD(day, -30, GETDATE())',
                         )}
                         checked={limitPast30Days}
-                        onChange={setLimitPast30Days}
+                        onChange={(value) => onSandboxPreferencesChange({ limitPast30Days: value })}
                         icon={Calendar}
                       />
                       <UtilityToggle
@@ -764,16 +780,21 @@ export function SqlGenerator({
                             : 'TestStormObjID IS NULL',
                         )}
                         checked={excludeTestSends}
-                        onChange={setExcludeTestSends}
+                        onChange={(value) => onSandboxPreferencesChange({ excludeTestSends: value })}
                         icon={Shield}
                       />
-                      <KeywordCaseToggle value={keywordCase} onChange={setKeywordCase} />
+                      <KeywordCaseToggle
+                        value={keywordCase}
+                        onChange={(value) => onSandboxPreferencesChange({ keywordCase: value })}
+                      />
                       <UtilityToggle
                         id="include-target-de-scaffolding"
                         label="Include Automation Target Header"
                         description="Prepends target schema configurations and data binding rules."
                         checked={includeTargetDeScaffolding}
-                        onChange={setIncludeTargetDeScaffolding}
+                        onChange={(value) =>
+                          onSandboxPreferencesChange({ includeTargetDeScaffolding: value })
+                        }
                         icon={FileText}
                       />
                     </div>
@@ -787,7 +808,9 @@ export function SqlGenerator({
                           `AND ${buildActiveSubscriberPredicate(keywordCase)}`,
                         )}
                         checked={filterActiveSubscribersOnly}
-                        onChange={setFilterActiveSubscribersOnly}
+                        onChange={(value) =>
+                          onSandboxPreferencesChange({ filterActiveSubscribersOnly: value })
+                        }
                         icon={Users}
                       />
                       {filterActiveSubscribersOnly && !subscribersInJoinPath && (
@@ -799,8 +822,12 @@ export function SqlGenerator({
                       <CampaignJobIdFilter
                         checked={filterByCampaignJobId}
                         jobId={campaignJobId}
-                        onCheckedChange={setFilterByCampaignJobId}
-                        onJobIdChange={setCampaignJobId}
+                        onCheckedChange={(value) =>
+                          onSandboxPreferencesChange({ filterByCampaignJobId: value })
+                        }
+                        onJobIdChange={(value) =>
+                          onSandboxPreferencesChange({ campaignJobId: value })
+                        }
                         previewPredicate={formatUtilityPreview(
                           jobIdFilterAlias
                             ? `AND ${jobIdFilterAlias}.JobID = '${

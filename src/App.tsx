@@ -6,15 +6,10 @@ import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
 import { SiteFooter } from './components/SiteFooter';
-import { SqlGenerator, type SandboxEditorTab } from './components/SqlGenerator';
+import { SqlGenerator } from './components/SqlGenerator';
 import type { DataViewField } from './data/sfmcSchema';
-import {
-  dedupeTablesByName,
-  getTablesForSegment,
-  readViewSegmentPreference,
-  VIEW_SEGMENT_STORAGE_KEY,
-  type ViewSegmentId,
-} from './data/viewSegments';
+import { dedupeTablesByName, getTablesForSegment } from './data/viewSegments';
+import { useWorkspaceState } from './hooks/useWorkspaceState';
 import type { HoveredRelation } from './utils/schemaExplorer';
 import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExplorer';
 
@@ -123,16 +118,30 @@ function StagingGateScreen({
 }
 
 function AppMain() {
+  const workspace = useWorkspaceState();
+  const {
+    segment: activeSegment,
+    setSegment: setActiveSegment,
+    selectedTables,
+    toggleTableSelection,
+    showSandbox,
+    setShowSandbox,
+    sandboxPreferences,
+    updateSandboxPreferences,
+    isSandboxExpanded,
+    setIsSandboxExpanded,
+    activeTemplateId,
+    setActiveTemplateId,
+    editorTab: sandboxEditorTab,
+    setEditorTab: setSandboxEditorTab,
+    initialTemplateSql,
+  } = workspace;
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSegment, setActiveSegment] = useState<ViewSegmentId>(readViewSegmentPreference);
-  const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
   const [hoveredRelation, setHoveredRelation] = useState<HoveredRelation | null>(null);
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
-  const [sandboxSql, setSandboxSql] = useState('');
-  const [showSandbox, setShowSandbox] = useState(false);
-  const [isSandboxExpanded, setIsSandboxExpanded] = useState(false);
-  const [sandboxEditorTab, setSandboxEditorTab] = useState<SandboxEditorTab>('live');
+  const [sandboxSql, setSandboxSql] = useState(() => initialTemplateSql ?? '');
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
   const [copilotSqlActive, setCopilotSqlActive] = useState(false);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -146,23 +155,18 @@ function AppMain() {
     setShowSandbox(true);
     setIsSandboxExpanded(true);
     setCopilotSqlActive(true);
-  }, []);
+  }, [setIsSandboxExpanded, setShowSandbox]);
 
   const handleOpenSqlTemplates = useCallback(() => {
     setShowSandbox(true);
     setIsSandboxExpanded(true);
     setSandboxEditorTab('templates');
     setTemplatesShortcutNonce((nonce) => nonce + 1);
-  }, []);
+  }, [setIsSandboxExpanded, setSandboxEditorTab, setShowSandbox]);
 
   const activeTables = useMemo(
     () => dedupeTablesByName(getTablesForSegment(activeSegment)),
     [activeSegment],
-  );
-
-  const activeTableNames = useMemo(
-    () => new Set(activeTables.map((table) => table.name)),
-    [activeTables],
   );
 
   useEffect(() => {
@@ -174,20 +178,8 @@ function AppMain() {
   }, [showDetails]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_SEGMENT_STORAGE_KEY, activeSegment);
-    } catch {
-      /* ignore */
-    }
-  }, [activeSegment]);
-
-  useEffect(() => {
     setHoveredRelation(null);
-    setSelectedTables((previous) => {
-      const next = new Set([...previous].filter((name) => activeTableNames.has(name)));
-      return next.size === previous.size ? previous : next;
-    });
-  }, [activeSegment, activeTableNames]);
+  }, [activeSegment]);
 
   const normalizedSearchQuery = useMemo(
     () => normalizeSearchQuery(searchQuery),
@@ -224,18 +216,6 @@ function AppMain() {
       setHoveredRelation(null);
       relationLeaveTimerRef.current = null;
     }, RELATION_LEAVE_DELAY_MS);
-  };
-
-  const handleToggleTableSelect = (tableName: string) => {
-    setSelectedTables((previous) => {
-      const next = new Set(previous);
-      if (next.has(tableName)) {
-        next.delete(tableName);
-      } else {
-        next.add(tableName);
-      }
-      return next;
-    });
   };
 
   const handleSignInRequired = useCallback(() => {
@@ -277,7 +257,7 @@ function AppMain() {
                 key={table.name}
                 table={table}
                 isSelected={selectedTables.has(table.name)}
-                onToggleSelect={handleToggleTableSelect}
+                onToggleSelect={toggleTableSelection}
                 normalizedSearchQuery={normalizedSearchQuery}
                 hoveredRelation={hoveredRelation}
                 onFieldRelationHover={handleFieldRelationHover}
@@ -299,6 +279,10 @@ function AppMain() {
         isVisible={sandboxOpen}
         isExpanded={isSandboxExpanded}
         onExpandedChange={setIsSandboxExpanded}
+        sandboxPreferences={sandboxPreferences}
+        onSandboxPreferencesChange={updateSandboxPreferences}
+        activeTemplateId={activeTemplateId}
+        onActiveTemplateIdChange={setActiveTemplateId}
         preserveSql={copilotSqlActive}
         editorTab={sandboxEditorTab}
         onEditorTabChange={setSandboxEditorTab}
