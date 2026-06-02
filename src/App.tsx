@@ -263,7 +263,7 @@ function AppMain() {
       </div>
 
       <div
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900"
+        className="surface-canvas min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
         style={canvasBottomPaddingPx > 0 ? { paddingBottom: canvasBottomPaddingPx } : undefined}
       >
         <main className="mx-auto w-full max-w-7xl p-6 sm:p-8">
@@ -272,19 +272,24 @@ function AppMain() {
             key={activeSegment}
             className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"
           >
-            {activeTables.map((table) => (
-              <DataViewCard
+            {activeTables.map((table, index) => (
+              <div
                 key={table.name}
-                table={table}
-                isSelected={selectedTables.has(table.name)}
-                onToggleSelect={toggleTableSelection}
-                normalizedSearchQuery={normalizedSearchQuery}
-                hoveredRelation={hoveredRelation}
-                onFieldRelationHover={handleFieldRelationHover}
-                onFieldRelationLeave={handleFieldRelationLeave}
-                showDetails={showDetails}
-                schemaTables={activeTables}
-              />
+                className="animate-fade-up"
+                style={{ ['--stagger-delay' as string]: `${index * 20}ms` }}
+              >
+                <DataViewCard
+                  table={table}
+                  isSelected={selectedTables.has(table.name)}
+                  onToggleSelect={toggleTableSelection}
+                  normalizedSearchQuery={normalizedSearchQuery}
+                  hoveredRelation={hoveredRelation}
+                  onFieldRelationHover={handleFieldRelationHover}
+                  onFieldRelationLeave={handleFieldRelationLeave}
+                  showDetails={showDetails}
+                  schemaTables={activeTables}
+                />
+              </div>
             ))}
           </div>
           <SiteFooter />
