@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { field } from './helpers';
+import type { DataViewTable } from './types.js';
+import { field } from './helpers.js';
 
 export const otherDataViews: DataViewTable[] = [
   {

@@ -1,11 +1,11 @@
-import type { DataViewTable } from './types';
+import type { DataViewTable } from './types.js';
 import {
   ENGAGEMENT_JOB,
   ENGAGEMENT_LIST,
   ENGAGEMENT_SUBSCRIBER_ID,
   ENGAGEMENT_SUBSCRIBER_KEY,
   field,
-} from './helpers';
+} from './helpers.js';
 
 export const socialDataViews: DataViewTable[] = [
   {

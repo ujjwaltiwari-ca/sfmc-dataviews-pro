@@ -1,4 +1,4 @@
-import type { DataViewField } from './types';
+import type { DataViewField } from './types.js';
 
 export type FieldRelation = NonNullable<DataViewField['relatesTo']>[number];
 

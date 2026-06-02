@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { field, JOURNEY_ACTIVITY, JOURNEY_TRIGGER_SEND, JOURNEY_VERSION } from './helpers';
+import type { DataViewTable } from './types.js';
+import { field, JOURNEY_ACTIVITY, JOURNEY_TRIGGER_SEND, JOURNEY_VERSION } from './helpers.js';
 
 export const journeyDataViews: DataViewTable[] = [
   {

@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { ENGAGEMENT_SUBSCRIBER_ID, field, rel } from './helpers';
+import type { DataViewTable } from './types.js';
+import { ENGAGEMENT_SUBSCRIBER_ID, field, rel } from './helpers.js';
 
 const PUSH_DEVICE = [rel('_PushAddress', 'DeviceID'), rel('_PushTag', 'DeviceID')];
 

@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { AUTOMATION_INSTANCE, ENGAGEMENT_JOB, field, rel } from './helpers';
+import type { DataViewTable } from './types.js';
+import { AUTOMATION_INSTANCE, ENGAGEMENT_JOB, field, rel } from './helpers.js';
 
 export const automationDataViews: DataViewTable[] = [
   {

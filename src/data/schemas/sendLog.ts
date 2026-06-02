@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { field, rel } from './helpers';
+import type { DataViewTable } from './types.js';
+import { field, rel } from './helpers.js';
 
 /** Corporate SendLog data extension template (triggered / journey sends). */
 export const sendLogDataViews: DataViewTable[] = [

@@ -1,31 +1,31 @@
-import { automationDataViews } from './automation';
-import { groupConnectDataViews } from './groupConnect';
-import { journeyDataViews } from './journey';
-import { mobileDataViews } from './mobile';
-import { mobilePushDataViews } from './mobilePush';
-import { otherDataViews } from './other';
-import { sendingDataViews } from './sending';
-import { socialDataViews } from './social';
-import { subscriberDataViews } from './subscribers';
-import { subscriptionDataViews } from './subscription';
-import { trackingDataViews } from './tracking';
-import type { DataViewTable } from './types';
+import { automationDataViews } from './automation.js';
+import { groupConnectDataViews } from './groupConnect.js';
+import { journeyDataViews } from './journey.js';
+import { mobileDataViews } from './mobile.js';
+import { mobilePushDataViews } from './mobilePush.js';
+import { otherDataViews } from './other.js';
+import { sendingDataViews } from './sending.js';
+import { socialDataViews } from './social.js';
+import { subscriberDataViews } from './subscribers.js';
+import { subscriptionDataViews } from './subscription.js';
+import { trackingDataViews } from './tracking.js';
+import type { DataViewTable } from './types.js';
 
-export type { DataViewCategory, DataViewField, DataViewTable } from './types';
+export type { DataViewCategory, DataViewField, DataViewTable } from './types.js';
 
-export { subscriberDataViews } from './subscribers';
-export { subscriptionDataViews } from './subscription';
-export { sendingDataViews } from './sending';
-export { trackingDataViews } from './tracking';
-export { journeyDataViews } from './journey';
-export { automationDataViews } from './automation';
-export { mobileDataViews } from './mobile';
-export { mobilePushDataViews } from './mobilePush';
-export { groupConnectDataViews } from './groupConnect';
-export { socialDataViews } from './social';
-export { otherDataViews } from './other';
-export { sendLogDataViews } from './sendLog';
-export { synchronizedDeDataViews } from './synchronizedDe';
+export { subscriberDataViews } from './subscribers.js';
+export { subscriptionDataViews } from './subscription.js';
+export { sendingDataViews } from './sending.js';
+export { trackingDataViews } from './tracking.js';
+export { journeyDataViews } from './journey.js';
+export { automationDataViews } from './automation.js';
+export { mobileDataViews } from './mobile.js';
+export { mobilePushDataViews } from './mobilePush.js';
+export { groupConnectDataViews } from './groupConnect.js';
+export { socialDataViews } from './social.js';
+export { otherDataViews } from './other.js';
+export { sendLogDataViews } from './sendLog.js';
+export { synchronizedDeDataViews } from './synchronizedDe.js';
 
 function uniqueTablesByName(tables: DataViewTable[]): DataViewTable[] {
   const seen = new Set<string>();

@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { engagementEventFields, field, rel } from './helpers';
+import type { DataViewTable } from './types.js';
+import { engagementEventFields, field, rel } from './helpers.js';
 
 export const subscriptionDataViews: DataViewTable[] = [
   {

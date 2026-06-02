@@ -1,4 +1,4 @@
-import type { DataViewTable } from './types';
+import type { DataViewTable } from './types.js';
 import {
   ENGAGEMENT_SUBSCRIBER_ID,
   ENGAGEMENT_SUBSCRIBER_KEY,
@@ -6,7 +6,7 @@ import {
   JOURNEY_ACTIVITY,
   JOURNEY_VERSION,
   rel,
-} from './helpers';
+} from './helpers.js';
 
 export const mobileDataViews: DataViewTable[] = [
   {

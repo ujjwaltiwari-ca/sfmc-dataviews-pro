@@ -1,4 +1,4 @@
-import type { DataViewTable } from './types';
+import type { DataViewTable } from './types.js';
 import {
   appendDynamicProfileAttributeField,
   ENGAGEMENT_JOB,
@@ -8,7 +8,7 @@ import {
   engagementEventFields,
   field,
   JOURNEY_TRIGGER_SEND,
-} from './helpers';
+} from './helpers.js';
 
 export const trackingDataViews: DataViewTable[] = [
   {

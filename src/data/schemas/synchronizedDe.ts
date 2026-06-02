@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { field, rel } from './helpers';
+import type { DataViewTable } from './types.js';
+import { field, rel } from './helpers.js';
 
 /** Standard Salesforce CRM synchronized data extension shapes. */
 export const synchronizedDeDataViews: DataViewTable[] = [

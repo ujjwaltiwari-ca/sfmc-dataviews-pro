@@ -1,5 +1,5 @@
-import type { DataViewTable } from './types';
-import { appendDynamicProfileAttributeField, ENGAGEMENT_LIST, field, rel } from './helpers';
+import type { DataViewTable } from './types.js';
+import { appendDynamicProfileAttributeField, ENGAGEMENT_LIST, field, rel } from './helpers.js';
 
 export const subscriberDataViews: DataViewTable[] = [
   {
