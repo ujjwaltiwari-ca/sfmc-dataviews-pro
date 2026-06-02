@@ -40,12 +40,21 @@ type ApiChatMessage = {
   content: string;
 };
 
+/** POST /api/chat request body (client → server). */
+export type CopilotChatRequestPayload = {
+  messages: ApiChatMessage[];
+  activeTables: string[];
+  currentQueryText: string;
+};
+
 export type AiCopilotProps = {
   isOpen: boolean;
   onClose: () => void;
   onApplyToSandbox: (sql: string) => void;
   /** Data view names currently selected on the workspace canvas. */
   activeTables?: string[];
+  /** SQL currently loaded in the CodeMirror sandbox editor. */
+  currentQueryText?: string;
 };
 
 function createMessageId(): string {
@@ -125,11 +134,11 @@ function processSseLine(
 }
 
 async function streamChatFromProxy(
-  messages: ApiChatMessage[],
+  payload: CopilotChatRequestPayload,
   accessToken: string,
-  activeTables: string[],
   onDelta: (accumulated: string) => void,
 ): Promise<string> {
+  const { messages, activeTables, currentQueryText } = payload;
   const bearerToken = accessToken.trim();
   if (!bearerToken) {
     throw new Error('Unauthorized: session access token is missing');
@@ -141,7 +150,7 @@ async function streamChatFromProxy(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${bearerToken}`,
     },
-    body: JSON.stringify({ messages, activeTables }),
+    body: JSON.stringify({ messages, activeTables, currentQueryText }),
   });
 
   if (response.status === 401) {
@@ -202,6 +211,7 @@ export function AiCopilot({
   onClose,
   onApplyToSandbox,
   activeTables = [],
+  currentQueryText = '',
 }: AiCopilotProps) {
   const { user, refreshUsage, applyKnownUsageCount, signOut } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -323,9 +333,12 @@ export function AiCopilot({
 
     try {
       const accumulated = await streamChatFromProxy(
-        apiMessages,
+        {
+          messages: apiMessages,
+          activeTables,
+          currentQueryText: currentQueryText.trim(),
+        },
         accessToken,
-        activeTables,
         appendAssistantDelta,
       );
       finalizeAssistant(accumulated || 'No response received.');
@@ -354,7 +367,16 @@ export function AiCopilot({
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, messages, activeTables, refreshUsage, applyKnownUsageCount, signOut]);
+  }, [
+    input,
+    isSending,
+    messages,
+    activeTables,
+    currentQueryText,
+    refreshUsage,
+    applyKnownUsageCount,
+    signOut,
+  ]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

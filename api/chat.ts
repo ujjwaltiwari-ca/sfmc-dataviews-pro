@@ -79,12 +79,46 @@ async function getTodayCopilotUsageCount(userId: string): Promise<number> {
   return count ?? 0;
 }
 
-function buildSystemInstruction(schemaContext: string): string {
+const MAX_CURRENT_QUERY_TEXT_CHARACTERS = 16_000;
+
+const CONTEXT_CODE_GROUNDING_INSTRUCTION = `CONTEXT CODE GROUNDING:
+You are provided with a parameter called \`currentQueryText\`, representing the code currently loaded in the user's workspace editor window.
+- If \`currentQueryText\` is NOT blank or empty, you MUST base your response on it. Analyze its aliases, current filters (like EventDate or JobID), and select fields. Modify or extend this EXACT query to satisfy the user's prompt rather than writing one from scratch. Preserve their alias conventions (e.g., use 'sent' instead of 's', and 'job' instead of 'j').
+- Only generate a standard foundational template from scratch if \`currentQueryText\` is completely empty or blank.`;
+
+function normalizeCurrentQueryText(raw: unknown): string {
+  if (typeof raw !== 'string') {
+    return '';
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  if (trimmed.length <= MAX_CURRENT_QUERY_TEXT_CHARACTERS) {
+    return trimmed;
+  }
+
+  return trimmed.slice(0, MAX_CURRENT_QUERY_TEXT_CHARACTERS);
+}
+
+function buildCurrentQueryTextSection(currentQueryText: string): string {
+  if (!currentQueryText) {
+    return '\n\ncurrentQueryText: (empty — workspace editor has no SQL loaded)';
+  }
+
+  return `\n\ncurrentQueryText (loaded in workspace editor):\n\`\`\`sql\n${currentQueryText}\n\`\`\``;
+}
+
+function buildSystemInstruction(schemaContext: string, currentQueryText: string): string {
   return `You are an elite SFMC Architect Copilot for Salesforce Marketing Cloud Data Views and Query Studio SQL. Use exact table names (leading underscores). Reply briefly. Put runnable SQL in \`\`\`sql fences with aliases. Filter large tracking views (_Open, _Click, _Sent) by EventDate when relevant.
 
 You are an exclusive, specialized Salesforce Platform Architect Copilot. Your sole purpose is to assist with Salesforce Marketing Cloud Data Views, SQL queries, and architectural layouts. You must politely decline to answer, write stories, tell jokes, or discuss any topics outside of Salesforce and technical data infrastructure. If a user asks a non-Salesforce question, respond with: 'I am specialized exclusively in Salesforce engineering and architecture. Please let me know how I can help you with your Salesforce Data Views or SQL compilation!'
 
 The user workspace may highlight specific Active Canvas Tables — prefer those views and their documented fields when writing SQL. Auxiliary table names are listed for awareness only unless the user asks to include them.
+
+${CONTEXT_CODE_GROUNDING_INSTRUCTION}${buildCurrentQueryTextSection(currentQueryText)}
 
 Schema Context:
 ${schemaContext}`;
@@ -122,6 +156,7 @@ type ClientChatMessage = {
 type ChatRequestBody = {
   messages?: ClientChatMessage[];
   activeTables?: unknown;
+  currentQueryText?: unknown;
 };
 
 type NodeApiRequest = IncomingMessage & { body?: unknown };
@@ -428,6 +463,7 @@ export async function handleChatRequest(
   const schemaContext = buildDynamicCopilotSchemaContext(
     Array.isArray(body.activeTables) ? body.activeTables : [],
   );
+  const currentQueryText = normalizeCurrentQueryText(body.currentQueryText);
 
   let usageReservation: UsageReservation;
   try {
@@ -462,7 +498,7 @@ export async function handleChatRequest(
         model: OPENAI_MODEL,
         stream: true,
         messages: [
-          { role: 'system', content: buildSystemInstruction(schemaContext) },
+          { role: 'system', content: buildSystemInstruction(schemaContext, currentQueryText) },
           ...clientMessages,
         ],
       },

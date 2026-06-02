@@ -294,6 +294,7 @@ function AppMain() {
         onClose={() => setIsCopilotOpen(false)}
         onApplyToSandbox={handleApplyToSandbox}
         activeTables={selectedTableNames}
+        currentQueryText={sandboxSql}
       />
       </div>
     </AuthProvider>
