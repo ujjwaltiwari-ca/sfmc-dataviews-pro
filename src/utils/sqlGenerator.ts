@@ -600,11 +600,17 @@ function buildJoinSteps(
   };
 }
 
+/** Documentation placeholders (e.g. profile attributes) are not valid SELECT identifiers. */
+function isDocumentationPlaceholderField(fieldName: string): boolean {
+  return fieldName.includes('(');
+}
+
 function buildSelectFields(
   userSelectedTableNames: string[],
   tables: DataViewTable[],
 ): SqlSelectField[] {
   const fields: SqlSelectField[] = [];
+  const outputColumnNames = new Set<string>();
 
   for (const tableName of userSelectedTableNames) {
     const table = getTableByName(tableName, tables);
@@ -613,6 +619,13 @@ function buildSelectFields(
     }
     const alias = tableToAlias(tableName);
     for (const field of table.fields) {
+      if (isDocumentationPlaceholderField(field.name)) {
+        continue;
+      }
+      if (outputColumnNames.has(field.name)) {
+        continue;
+      }
+      outputColumnNames.add(field.name);
       fields.push({
         table: tableName,
         alias,
@@ -623,6 +636,21 @@ function buildSelectFields(
   }
 
   return fields;
+}
+
+/** Removes leading `--` header comment lines for clipboard copy (executable SQL only). */
+export function stripLeadingSqlComments(sql: string): string {
+  const lines = sql.split('\n');
+  let index = 0;
+  while (index < lines.length) {
+    const trimmed = lines[index].trim();
+    if (trimmed === '' || trimmed.startsWith('--')) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+  return lines.slice(index).join('\n').trimStart();
 }
 
 const SQL_INDENT = '    ';

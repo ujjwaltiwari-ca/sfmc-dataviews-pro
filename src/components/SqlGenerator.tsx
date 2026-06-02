@@ -28,6 +28,7 @@ import {
   buildActiveSubscriberPredicate,
   generateSfmcSql,
   resolveFilterAlias,
+  stripLeadingSqlComments,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
 import { sfmcQueryTemplates } from '../data/queryTemplates';
@@ -623,7 +624,7 @@ export function SqlGenerator({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(sql);
+      await navigator.clipboard.writeText(stripLeadingSqlComments(sql));
       setCopied(true);
     } catch {
       setCopied(false);
