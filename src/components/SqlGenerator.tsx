@@ -26,8 +26,11 @@ import {
   applySqlUtilityFilters,
   applyTargetDeScaffolding,
   buildActiveSubscriberPredicate,
+  buildUniqueEventPredicate,
   generateSfmcSql,
+  getUniqueEventTablesInJoinGraph,
   resolveFilterAlias,
+  UNIQUE_EVENT_TRACKING_TABLE_NAMES,
   stripLeadingSqlComments,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
@@ -392,6 +395,7 @@ export function SqlGenerator({
   const [copied, setCopied] = useState(false);
   const {
     limitPast30Days,
+    filterUniqueEvents,
     excludeTestSends,
     filterActiveSubscribersOnly,
     filterByCampaignJobId,
@@ -432,8 +436,9 @@ export function SqlGenerator({
     () =>
       generateSfmcSql(selectedTableNames, schemaTables, {
         requireSubscribersJoin: filterActiveSubscribersOnly,
+        filterUniqueEvents,
       }),
-    [selectedTableNames, schemaTables, filterActiveSubscribersOnly],
+    [selectedTableNames, schemaTables, filterActiveSubscribersOnly, filterUniqueEvents],
   );
 
   const {
@@ -455,6 +460,20 @@ export function SqlGenerator({
 
   const campaignJobIdActive =
     filterByCampaignJobId && campaignJobId.trim().length > 0;
+
+  const uniqueEventTablesInGraph = useMemo(
+    () => getUniqueEventTablesInJoinGraph(joinTables),
+    [joinTables],
+  );
+
+  const uniqueEventFilterPreview = useMemo(() => {
+    if (uniqueEventTablesInGraph.length === 0) {
+      return `Applied on ${UNIQUE_EVENT_TRACKING_TABLE_NAMES.join(' / ')} when present in the query graph`;
+    }
+    return uniqueEventTablesInGraph
+      .map((tableName) => `AND ${buildUniqueEventPredicate(tableName)}`)
+      .join(' ');
+  }, [uniqueEventTablesInGraph]);
 
   const filteredSql = useMemo(
     () =>
@@ -810,9 +829,14 @@ export function SqlGenerator({
                                   bridge
                                 </span>
                               )}
+                              <span className="rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                                left join
+                              </span>
                             </div>
                             <p className="mt-1 text-[10px] leading-relaxed">
-                              <SqlSyntaxSnippet text={`ON ${step.conditions.join(' AND ')}`} />
+                              <SqlSyntaxSnippet
+                                text={`${step.joinType} JOIN ${step.table} ON ${step.conditions.join(' AND ')}`}
+                              />
                             </p>
                           </li>
                         ))}
@@ -834,6 +858,16 @@ export function SqlGenerator({
                         checked={limitPast30Days}
                         onChange={(value) => onSandboxPreferencesChange({ limitPast30Days: value })}
                         icon={Calendar}
+                      />
+                      <UtilityToggle
+                        id="filter-unique-events"
+                        label="Filter unique behavioral events (IsUnique)"
+                        description={formatUtilityPreview(uniqueEventFilterPreview)}
+                        checked={filterUniqueEvents}
+                        onChange={(value) =>
+                          onSandboxPreferencesChange({ filterUniqueEvents: value })
+                        }
+                        icon={Hash}
                       />
                       <UtilityToggle
                         id="exclude-test-sends"
@@ -947,6 +981,7 @@ export function SqlGenerator({
                         <div className="flex items-center gap-2">
                           {editorTab === 'live' &&
                             (limitPast30Days ||
+                              (filterUniqueEvents && uniqueEventTablesInGraph.length > 0) ||
                               excludeTestSends ||
                               (filterActiveSubscribersOnly && subscribersInJoinPath) ||
                               campaignJobIdActive ||

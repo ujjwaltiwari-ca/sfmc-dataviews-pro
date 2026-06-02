@@ -17,6 +17,7 @@ export const WORKSPACE_URL_KEYS = {
   templateId: 'tpl',
   keywordCase: 'kc',
   limitPast30Days: 'd30',
+  filterUniqueEvents: 'uq',
   excludeTestSends: 'xts',
   filterActiveSubscribers: 'act',
   filterByJobId: 'job',
@@ -39,6 +40,7 @@ const TEMPLATE_IDS = new Set(sfmcQueryTemplates.map((template) => template.id));
 export type SandboxPreferences = {
   keywordCase: SqlKeywordCase;
   limitPast30Days: boolean;
+  filterUniqueEvents: boolean;
   excludeTestSends: boolean;
   filterActiveSubscribersOnly: boolean;
   filterByCampaignJobId: boolean;
@@ -72,6 +74,7 @@ export function isWorkspaceUrlEmpty(
 export const DEFAULT_SANDBOX_PREFERENCES: SandboxPreferences = {
   keywordCase: 'upper',
   limitPast30Days: false,
+  filterUniqueEvents: true,
   excludeTestSends: false,
   filterActiveSubscribersOnly: false,
   filterByCampaignJobId: false,
@@ -285,6 +288,9 @@ function mergeSandboxPreferences(
   const limitFromUrl = params.has(WORKSPACE_URL_KEYS.limitPast30Days)
     ? parseFlag(params.get(WORKSPACE_URL_KEYS.limitPast30Days))
     : null;
+  const uniqueEventsFromUrl = params.has(WORKSPACE_URL_KEYS.filterUniqueEvents)
+    ? parseFlag(params.get(WORKSPACE_URL_KEYS.filterUniqueEvents))
+    : null;
   const excludeTestFromUrl = params.has(WORKSPACE_URL_KEYS.excludeTestSends)
     ? parseFlag(params.get(WORKSPACE_URL_KEYS.excludeTestSends))
     : null;
@@ -318,6 +324,10 @@ function mergeSandboxPreferences(
       limitFromUrl ??
       storedPrefs.limitPast30Days ??
       DEFAULT_SANDBOX_PREFERENCES.limitPast30Days,
+    filterUniqueEvents:
+      uniqueEventsFromUrl ??
+      storedPrefs.filterUniqueEvents ??
+      DEFAULT_SANDBOX_PREFERENCES.filterUniqueEvents,
     excludeTestSends:
       excludeTestFromUrl ??
       storedPrefs.excludeTestSends ??
@@ -453,6 +463,10 @@ export function buildWorkspaceSearchParams(snapshot: WorkspaceSnapshot): URLSear
 
   if (prefs.limitPast30Days) {
     params.set(WORKSPACE_URL_KEYS.limitPast30Days, '1');
+  }
+
+  if (!prefs.filterUniqueEvents) {
+    params.set(WORKSPACE_URL_KEYS.filterUniqueEvents, '0');
   }
 
   if (prefs.excludeTestSends) {

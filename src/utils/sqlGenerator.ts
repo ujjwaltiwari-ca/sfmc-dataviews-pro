@@ -15,12 +15,19 @@ export interface SqlSelectField {
   expression: string;
 }
 
+export type SqlJoinType = 'INNER' | 'LEFT';
+
+/** SFMC-safe default — preserves driving rows when optional tracking or list data is missing. */
+export const DEFAULT_SQL_JOIN_TYPE: SqlJoinType = 'LEFT';
+
 export interface SqlJoinStepDetail {
   order: number;
   table: string;
   alias: string;
   conditions: string[];
   isBridgingTable: boolean;
+  joinType: SqlJoinType;
+  pairedTable: string;
 }
 
 export interface SqlArchitecture {
@@ -55,9 +62,55 @@ export interface SqlUtilityFilterOptions {
 export interface SqlGenerationOptions {
   /** When true, ensures _Subscribers is linked into the BFS join path for status filtering. */
   requireSubscribersJoin?: boolean;
+  /** When true, applies IsUnique = 1 on behavioral views that expose IsUnique (excludes _Sent). */
+  filterUniqueEvents?: boolean;
 }
 
 const SUBSCRIBERS_TABLE = '_Subscribers';
+const LIST_SUBSCRIBERS_TABLE = '_ListSubscribers';
+const JOB_TABLE = '_Job';
+const AUTOMATION_INSTANCE_TABLE = '_AutomationInstance';
+const AUTOMATION_ACTIVITY_INSTANCE_TABLE = '_AutomationActivityInstance';
+const JOB_JOIN_KEY_FIELD = 'JobID';
+
+/** Triggered-send tokens must never appear in generated join ON clauses (NULL on standard sends). */
+const JOIN_BLACKLISTED_FIELDS = new Set([
+  'TriggererSendDefinitionObjectID',
+  'TriggeredSendCustomerKey',
+]);
+
+/**
+ * Behavioral tracking family — shares JobID + ListID + BatchID + SubscriberID quadrinity.
+ * Tracking-to-tracking joins use only these keys; tracking-to-_Job uses JobID only.
+ */
+const BEHAVIORAL_TRACKING_FAMILY = new Set([
+  '_Sent',
+  '_Open',
+  '_Click',
+  '_Bounce',
+  '_Complaint',
+  '_Unsubscribe',
+]);
+
+const BEHAVIORAL_TRACKING_COMPOSITE_KEYS = [
+  'JobID',
+  'ListID',
+  'BatchID',
+  'SubscriberID',
+] as const;
+
+/** Required keys when mapping a behavioral tracking event to list membership. */
+const TRACKING_TO_LIST_SUBSCRIBERS_KEYS = ['SubscriberID', 'ListID'] as const;
+
+/**
+ * Behavioral family views with an IsUnique column (_Sent excluded — no IsUnique in schema).
+ * Keeps unique-event filtering in lockstep with BEHAVIORAL_TRACKING_FAMILY.
+ */
+export const UNIQUE_EVENT_TRACKING_TABLE_NAMES = [...BEHAVIORAL_TRACKING_FAMILY].filter(
+  (name) => name !== '_Sent',
+);
+
+const UNIQUE_EVENT_TRACKING_TABLES = new Set<string>(UNIQUE_EVENT_TRACKING_TABLE_NAMES);
 
 export type SqlKeywordCase = 'upper' | 'lower';
 
@@ -69,6 +122,7 @@ export const SQL_CORE_KEYWORDS = [
   'AND',
   'OR',
   'INNER',
+  'LEFT',
   'JOIN',
   'ON',
   'AS',
@@ -488,14 +542,95 @@ export function collectJoinEdges(
   return edges;
 }
 
+function isBehavioralTrackingFamilyTable(tableName: string): boolean {
+  return BEHAVIORAL_TRACKING_FAMILY.has(tableName);
+}
+
+function isBehavioralTrackingFamilyJoin(tableA: string, tableB: string): boolean {
+  return isBehavioralTrackingFamilyTable(tableA) && isBehavioralTrackingFamilyTable(tableB);
+}
+
+function buildBehavioralTrackingCompositeConditions(tableA: string, tableB: string): string[] {
+  const aliasA = tableToAlias(tableA);
+  const aliasB = tableToAlias(tableB);
+  return BEHAVIORAL_TRACKING_COMPOSITE_KEYS.map(
+    (key) => `${aliasA}.${key} = ${aliasB}.${key}`,
+  );
+}
+
+function getBehavioralTrackingTableForListSubscribersJoin(
+  tableA: string,
+  tableB: string,
+): string | null {
+  if (tableA === LIST_SUBSCRIBERS_TABLE && isBehavioralTrackingFamilyTable(tableB)) {
+    return tableB;
+  }
+  if (tableB === LIST_SUBSCRIBERS_TABLE && isBehavioralTrackingFamilyTable(tableA)) {
+    return tableA;
+  }
+  return null;
+}
+
+function isTrackingToListSubscribersJoin(tableA: string, tableB: string): boolean {
+  return getBehavioralTrackingTableForListSubscribersJoin(tableA, tableB) !== null;
+}
+
+function buildTrackingToListSubscribersConditions(tableA: string, tableB: string): string[] {
+  const trackingTable = getBehavioralTrackingTableForListSubscribersJoin(tableA, tableB);
+  if (!trackingTable) {
+    return [];
+  }
+  const trackingAlias = tableToAlias(trackingTable);
+  const listAlias = tableToAlias(LIST_SUBSCRIBERS_TABLE);
+  return TRACKING_TO_LIST_SUBSCRIBERS_KEYS.map(
+    (key) => `${trackingAlias}.${key} = ${listAlias}.${key}`,
+  );
+}
+
+function involvesJobTable(tableA: string, tableB: string): boolean {
+  return tableA === JOB_TABLE || tableB === JOB_TABLE;
+}
+
+function isBlacklistedJoinField(fieldName: string): boolean {
+  return JOIN_BLACKLISTED_FIELDS.has(fieldName);
+}
+
+function isValidJobJoinEdge(edge: SqlJoinEdge): boolean {
+  if (isBlacklistedJoinField(edge.fromField) || isBlacklistedJoinField(edge.toField)) {
+    return false;
+  }
+  return edge.fromField === JOB_JOIN_KEY_FIELD && edge.toField === JOB_JOIN_KEY_FIELD;
+}
+
+/**
+ * Resolves join type for a BFS step. All generated joins use LEFT JOIN by default to avoid
+ * row loss from SFMC logging latency and nullable optional attributes (composite ON keys unchanged).
+ */
+export function resolveJoinTypeForTables(_tableA: string, _tableB: string): SqlJoinType {
+  return DEFAULT_SQL_JOIN_TYPE;
+}
+
 function getJoinConditionsBetween(
   tableA: string,
   tableB: string,
   edges: SqlJoinEdge[],
 ): string[] {
+  if (isBehavioralTrackingFamilyJoin(tableA, tableB)) {
+    return buildBehavioralTrackingCompositeConditions(tableA, tableB);
+  }
+
+  if (isTrackingToListSubscribersJoin(tableA, tableB)) {
+    return buildTrackingToListSubscribersConditions(tableA, tableB);
+  }
+
   const conditions: string[] = [];
+  const restrictToJobIdOnly = involvesJobTable(tableA, tableB);
 
   for (const edge of edges) {
+    if (restrictToJobIdOnly && !isValidJobJoinEdge(edge)) {
+      continue;
+    }
+
     if (edge.fromTable === tableA && edge.toTable === tableB) {
       conditions.push(
         `${tableToAlias(tableA)}.${edge.fromField} = ${tableToAlias(tableB)}.${edge.toField}`,
@@ -508,6 +643,38 @@ function getJoinConditionsBetween(
   }
 
   return [...new Set(conditions)];
+}
+
+/** Prefer _AutomationInstance as FROM root when paired with activity instances (LEFT JOIN semantics). */
+function rootTablePreferenceForAutomationFamily(tableName: string, tableNames: string[]): number {
+  const hasInstance = tableNames.includes(AUTOMATION_INSTANCE_TABLE);
+  const hasActivity = tableNames.includes(AUTOMATION_ACTIVITY_INSTANCE_TABLE);
+  if (!hasInstance || !hasActivity) {
+    return 0;
+  }
+  if (tableName === AUTOMATION_INSTANCE_TABLE) {
+    return -2;
+  }
+  if (tableName === AUTOMATION_ACTIVITY_INSTANCE_TABLE) {
+    return 2;
+  }
+  return 0;
+}
+
+/** Prefer behavioral tracking views as FROM root (LEFT JOIN semantics with _Job / _ListSubscribers). */
+function rootTablePreferenceForTrackingFamily(tableName: string, tableNames: string[]): number {
+  const hasBehavioralTracking = tableNames.some((name) => isBehavioralTrackingFamilyTable(name));
+  if (!hasBehavioralTracking) {
+    return 0;
+  }
+
+  if (isBehavioralTrackingFamilyTable(tableName)) {
+    return -2;
+  }
+  if (tableName === JOB_TABLE || tableName === LIST_SUBSCRIBERS_TABLE) {
+    return 2;
+  }
+  return 0;
 }
 
 function pickRootTable(
@@ -530,6 +697,18 @@ function pickRootTable(
     if (aSelected !== bSelected) {
       return aSelected - bSelected;
     }
+    const trackingFamilyPref =
+      rootTablePreferenceForTrackingFamily(a, tableNames) -
+      rootTablePreferenceForTrackingFamily(b, tableNames);
+    if (trackingFamilyPref !== 0) {
+      return trackingFamilyPref;
+    }
+    const automationFamilyPref =
+      rootTablePreferenceForAutomationFamily(a, tableNames) -
+      rootTablePreferenceForAutomationFamily(b, tableNames);
+    if (automationFamilyPref !== 0) {
+      return automationFamilyPref;
+    }
     const diff = (connectionCount.get(b) ?? 0) - (connectionCount.get(a) ?? 0);
     if (diff !== 0) {
       return diff;
@@ -542,8 +721,10 @@ function pickRootTable(
 
 interface JoinStep {
   table: string;
+  pairedTable: string;
   conditions: string[];
   isBridgingTable: boolean;
+  joinType: SqlJoinType;
 }
 
 function buildJoinSteps(
@@ -574,8 +755,10 @@ function buildJoinSteps(
         if (conditions.length > 0) {
           steps.push({
             table: nextTable,
+            pairedTable: joinedTable,
             conditions,
             isBridgingTable: bridgingTableNames.has(nextTable),
+            joinType: resolveJoinTypeForTables(joinedTable, nextTable),
           });
           joined.add(nextTable);
           remaining.delete(nextTable);
@@ -690,6 +873,27 @@ export function resolveFilterAlias(
 export function buildActiveSubscriberPredicate(keywordCase: SqlKeywordCase = 'upper'): string {
   const statusValue = keywordCase === 'upper' ? 'Active' : 'active';
   return `${tableToAlias(SUBSCRIBERS_TABLE)}.Status = '${statusValue}'`;
+}
+
+/** IsUnique filter for deduplicated behavioral events (prevents multi-row fan-out). */
+export function buildUniqueEventPredicate(tableName: string): string {
+  return `${tableToAlias(tableName)}.IsUnique = 1`;
+}
+
+export function isUniqueEventTrackingTable(tableName: string): boolean {
+  return UNIQUE_EVENT_TRACKING_TABLES.has(tableName);
+}
+
+function shouldApplyUniqueEventFilter(
+  tableName: string,
+  filterUniqueEvents: boolean | undefined,
+): boolean {
+  return Boolean(filterUniqueEvents) && isUniqueEventTrackingTable(tableName);
+}
+
+/** Tables in the resolved join graph that receive an IsUnique = 1 predicate when enabled. */
+export function getUniqueEventTablesInJoinGraph(joinTableNames: string[]): string[] {
+  return joinTableNames.filter((name) => isUniqueEventTrackingTable(name));
 }
 
 function appendWherePredicates(baseSql: string, predicates: string[]): string {
@@ -836,14 +1040,18 @@ export function generateSfmcSql(
   for (const step of steps) {
     const alias = tableToAlias(step.table);
     const bridgeNote = step.isBridgingTable ? ' -- bridge' : '';
-    lines.push('INNER JOIN');
+    const onConditions = [...step.conditions];
+    if (shouldApplyUniqueEventFilter(step.table, options.filterUniqueEvents)) {
+      onConditions.push(buildUniqueEventPredicate(step.table));
+    }
+    lines.push('LEFT JOIN');
     lines.push(`${SQL_INDENT}${step.table} AS ${alias}${bridgeNote}`);
-    if (step.conditions.length === 1) {
-      lines.push(`    ON ${step.conditions[0]}`);
+    if (onConditions.length === 1) {
+      lines.push(`    ON ${onConditions[0]}`);
     } else {
-      lines.push(`    ON ${step.conditions[0]}`);
-      for (let i = 1; i < step.conditions.length; i += 1) {
-        lines.push(`    AND ${step.conditions[i]}`);
+      lines.push(`    ON ${onConditions[0]}`);
+      for (let i = 1; i < onConditions.length; i += 1) {
+        lines.push(`    AND ${onConditions[i]}`);
       }
     }
   }
@@ -851,19 +1059,37 @@ export function generateSfmcSql(
   for (const tableName of disconnectedTables) {
     const alias = tableToAlias(tableName);
     lines.push(`-- WARNING: No relatesTo path found for ${tableName}; add manually if needed.`);
-    lines.push(`-- INNER JOIN`);
+    lines.push(`-- LEFT JOIN`);
     lines.push(`-- ${SQL_INDENT}${tableName} AS ${alias}`);
     lines.push(`-- ${SQL_INDENT}ON ...`);
   }
 
-  const baseSql = formatGeneratedSql(lines);
-  const joinSteps: SqlJoinStepDetail[] = steps.map((step, index) => ({
-    order: index + 1,
-    table: step.table,
-    alias: tableToAlias(step.table),
-    conditions: step.conditions,
-    isBridgingTable: step.isBridgingTable,
-  }));
+  let baseSql = formatGeneratedSql(lines);
+
+  if (options.filterUniqueEvents) {
+    const uniquePredicatesForRoot = shouldApplyUniqueEventFilter(rootTable, true)
+      ? [buildUniqueEventPredicate(rootTable)]
+      : [];
+    if (uniquePredicatesForRoot.length > 0) {
+      baseSql = appendWherePredicates(baseSql, uniquePredicatesForRoot);
+    }
+  }
+
+  const joinSteps: SqlJoinStepDetail[] = steps.map((step, index) => {
+    const conditions = [...step.conditions];
+    if (shouldApplyUniqueEventFilter(step.table, options.filterUniqueEvents)) {
+      conditions.push(buildUniqueEventPredicate(step.table));
+    }
+    return {
+      order: index + 1,
+      table: step.table,
+      alias: tableToAlias(step.table),
+      conditions,
+      isBridgingTable: step.isBridgingTable,
+      joinType: step.joinType,
+      pairedTable: step.pairedTable,
+    };
+  });
 
   const filterAlias = resolveFilterAlias(
     userSelected,

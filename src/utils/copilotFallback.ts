@@ -88,7 +88,7 @@ function appendEventDatePredicate(
 }
 
 function buildFallbackSql(query: string, tableNames: string[]): string | null {
-  const generation = generateSfmcSql(tableNames, sfmcDataViews);
+  const generation = generateSfmcSql(tableNames, sfmcDataViews, { filterUniqueEvents: true });
   if (generation.isEmpty || generation.baseSql.startsWith('--')) {
     return null;
   }
