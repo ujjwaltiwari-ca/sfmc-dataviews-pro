@@ -294,7 +294,7 @@ function SandboxSqlCodeMirror({
           lineNumbers: true,
           bracketMatching: true,
         }}
-        className="sandbox-sql-codemirror flex-1 min-h-0 overflow-auto rounded-md border border-slate-800/60 text-sm"
+        className="sandbox-sql-codemirror flex-1 min-h-0 overflow-auto rounded-md border border-slate-800/60 text-base"
         aria-label="SQL query editor"
       />
     </div>
@@ -341,25 +341,25 @@ function TemplateLibraryGrid({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-slate-800/80 px-3 py-2">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+      <div className="shrink-0 border-b border-slate-800/80 px-4 py-3">
+        <p className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
           {sfmcQueryTemplates.length} production templates
         </p>
       </div>
-      <div className="scrollbar-sql-editor min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
-        <div className="grid auto-rows-min grid-cols-1 content-start gap-2 sm:grid-cols-2">
+      <div className="scrollbar-sql-editor min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
+        <div className="grid auto-rows-min grid-cols-1 content-start gap-3 sm:grid-cols-2">
           {sfmcQueryTemplates.map((template) => (
             <button
               key={template.id}
               type="button"
               onClick={() => onSelectTemplate(template.id)}
-              className="group flex flex-col rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2.5 text-left transition-all hover:border-sky-500/40 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+              className="group flex flex-col rounded-lg border border-slate-800/80 bg-slate-900/40 px-4 py-3.5 text-left transition-all hover:border-sky-500/40 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
             >
-              <span className="flex items-center gap-1.5 font-mono text-xs font-semibold text-slate-100 group-hover:text-sky-300">
-                <Zap className="h-3 w-3 shrink-0 text-amber-400/90" aria-hidden />
+              <span className="flex items-center gap-2 font-mono text-sm font-semibold leading-snug text-slate-100 group-hover:text-sky-300">
+                <Zap className="h-4 w-4 shrink-0 text-amber-400/90" aria-hidden />
                 {template.title}
               </span>
-              <span className="mt-1 text-[11px] leading-snug text-slate-400 group-hover:text-slate-300">
+              <span className="mt-2 text-sm leading-relaxed text-slate-400 group-hover:text-slate-300">
                 {template.description}
               </span>
             </button>
@@ -1287,7 +1287,7 @@ export function SqlGenerator({
                             <button
                               type="button"
                               onClick={handleBackToTemplates}
-                              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
                             >
                               <ArrowLeft className="h-3 w-3" aria-hidden />
                               Back to Templates
