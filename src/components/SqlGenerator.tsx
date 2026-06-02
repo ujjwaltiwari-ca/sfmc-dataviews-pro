@@ -123,9 +123,6 @@ const GLASS_PANEL_CLASS =
 const SIDEBAR_COLUMN_CLASS =
   'rounded-xl bg-slate-900/[0.03] p-3 dark:bg-slate-900/30';
 
-const SECTION_LABEL_CLASS =
-  'font-mono text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400';
-
 const SECTION_TITLE_CLASS = 'text-xs font-semibold tracking-tight text-slate-900 dark:text-slate-100';
 
 const COUNT_BADGE_CLASS =
@@ -957,7 +954,7 @@ export function SqlGenerator({
                 <aside
                   className={`scrollbar-card flex min-h-0 flex-col gap-4 lg:col-span-1 lg:overflow-y-auto ${SIDEBAR_COLUMN_CLASS}`}
                 >
-                  <p className={SECTION_LABEL_CLASS}>Query architecture &amp; filters</p>
+                  <p className="micro-label">Query architecture &amp; filters</p>
 
                   <section className={`${GLASS_PANEL_CLASS} p-3`}>
                     <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
@@ -1069,7 +1066,7 @@ export function SqlGenerator({
                   </section>
 
                   <section className="space-y-3">
-                    <p className={SECTION_LABEL_CLASS}>Performance &amp; Formatting</p>
+                    <p className="micro-label">Performance &amp; Formatting</p>
                     <div className="space-y-2">
                       <UtilityToggle
                         id="limit-30-days"
@@ -1121,7 +1118,7 @@ export function SqlGenerator({
                       />
                     </div>
 
-                    <p className={`pt-1 ${SECTION_LABEL_CLASS}`}>Marketing Business Filters</p>
+                    <p className="micro-label pt-1">Marketing Business Filters</p>
                     <div className="space-y-2">
                       <UtilityToggle
                         id="filter-active-subscribers"

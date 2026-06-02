@@ -27,13 +27,54 @@
   }
 
   ::selection {
-    @apply bg-cyan-200 text-slate-900 dark:bg-cyan-800 dark:text-slate-50;
+    @apply bg-brand-muted text-slate-900 dark:bg-brand-dark dark:text-slate-50;
   }
 }
 
-@layer utilities {
-  /* Canvas vs. interactive surface separation */
-  .surface-canvas {
+@layer components {
+  /* Header navigation — shared chrome for primary action tabs */
+  .btn-nav {
+    @apply inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/90 px-3.5 py-2 text-sm font-medium text-slate-700;
+    @apply shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out;
+    @apply hover:-translate-y-0.5;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+    @apply dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-200 dark:focus:ring-offset-slate-950;
+  }
+
+  .btn-nav-cyan {
+    @apply focus-visible:ring-cyan-500/40;
+    @apply hover:border-cyan-300/60 hover:bg-gradient-to-b hover:from-cyan-50/80 hover:to-white hover:text-cyan-950;
+    @apply hover:shadow-[0_8px_20px_rgba(6,182,212,0.08)];
+    @apply dark:hover:border-cyan-600/50 dark:hover:from-cyan-950/40 dark:hover:to-slate-900 dark:hover:text-cyan-100;
+  }
+
+  .btn-nav-amber {
+    @apply focus-visible:ring-amber-500/40;
+    @apply hover:border-amber-300/60 hover:bg-gradient-to-b hover:from-amber-50/80 hover:to-white hover:text-amber-950;
+    @apply hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)];
+    @apply dark:hover:border-amber-500/50 dark:hover:from-amber-950/40 dark:hover:to-slate-900 dark:hover:text-amber-100;
+  }
+
+  .btn-nav-violet {
+    @apply focus-visible:ring-violet-500/40;
+    @apply hover:border-violet-300/50 hover:bg-gradient-to-b hover:from-violet-50/80 hover:to-white hover:text-violet-950;
+    @apply hover:shadow-[0_8px_20px_rgba(139,92,246,0.08)];
+    @apply dark:hover:border-violet-600/50 dark:hover:from-violet-950/40 dark:hover:to-slate-900 dark:hover:text-violet-100;
+  }
+
+  .btn-nav-violet-active {
+    @apply border-violet-300/60 bg-gradient-to-b from-violet-50 to-violet-100/80 text-violet-950;
+    @apply shadow-[0_4px_12px_rgba(139,92,246,0.12)] ring-1 ring-violet-400/20;
+    @apply dark:border-violet-500/50 dark:from-violet-950/60 dark:to-violet-950/40 dark:text-violet-100;
+  }
+
+  /* Sandbox sidebar & architecture micro-labels */
+  .micro-label {
+    @apply font-mono text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400;
+  }
+
+  /* App shell + scrollable schema canvas backdrop */
+  .canvas-gradient {
     background-color: rgb(248 250 252 / 0.5);
     background-image:
       radial-gradient(circle, rgb(100 116 139 / 0.04) 1px, transparent 1px),
@@ -46,12 +87,19 @@
     background-size: 20px 20px, 100% 100%;
   }
 
-  .dark .surface-canvas {
+  .dark .canvas-gradient {
     background-color: rgb(2 6 23);
     background-image:
       radial-gradient(circle, rgb(148 163 184 / 0.05) 1px, transparent 1px),
       linear-gradient(to bottom right, rgb(2 6 23), rgb(2 6 23), rgb(15 23 42));
     background-size: 20px 20px, 100% 100%;
+  }
+}
+
+@layer utilities {
+  /* Canvas vs. interactive surface separation — alias for canvas-gradient */
+  .surface-canvas {
+    @apply canvas-gradient;
   }
 
   @keyframes fadeUp {
@@ -79,12 +127,12 @@
 
   .card-select-checkbox {
     @apply appearance-none rounded-sm border border-slate-300 bg-white transition-all duration-200 ease-out;
-    @apply focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:ring-offset-1;
+    @apply focus:outline-none focus:ring-2 focus:ring-brand/30 focus:ring-offset-1;
     @apply dark:border-slate-600 dark:bg-slate-900 dark:focus:ring-offset-slate-950;
   }
 
   .card-select-checkbox:checked {
-    @apply border-cyan-500 bg-cyan-500 dark:border-cyan-400 dark:bg-cyan-500;
+    @apply border-brand bg-brand dark:border-brand dark:bg-brand;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 6l2.5 2.5 4.5-5' stroke='white' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-size: 10px 10px;
     background-position: center;
@@ -97,7 +145,7 @@
   }
 
   .card-selected {
-    @apply ring-2 ring-cyan-500/50 ring-offset-2 ring-offset-white;
+    @apply ring-2 ring-brand/50 ring-offset-2 ring-offset-white;
     @apply shadow-[0_0_15px_rgba(6,182,212,0.15)];
     @apply dark:ring-offset-slate-950;
   }
