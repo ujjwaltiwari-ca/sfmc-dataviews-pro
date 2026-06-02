@@ -836,6 +836,35 @@ export function stripLeadingSqlComments(sql: string): string {
   return lines.slice(index).join('\n').trimStart();
 }
 
+/** Heavy tracking views that require EventDate lookback in high-volume BUs. */
+export const HEAVY_TRACKING_VIEW_NAMES = ['_Open', '_Click', '_Sent', '_Bounce'] as const;
+
+/** Matches _Open / [_Open] / FROM _Open (case-insensitive; optional T-SQL brackets). */
+const HEAVY_TRACKING_VIEW_PATTERN =
+  /(?:\[\s*)?_(?:Open|Click|Sent|Bounce)(?:\s*\])?(?![A-Za-z0-9_])/i;
+
+/**
+ * Filter-context date lookback — ignores EventDate in SELECT lists.
+ * Matches EventDate comparisons, BETWEEN, and DATEADD(...).
+ */
+const DATE_LOOKBACK_PATTERN =
+  /\bEventDate\s*(?:>=|<=|<>|!=|<|>|=)\b|\bEventDate\s+BETWEEN\b|\bdateadd\s*\(/i;
+
+/**
+ * Returns true when SQL references heavy tracking views without a date lookback filter.
+ * Used by the sandbox editor to surface SFMC timeout risk before run.
+ */
+export function lacksTrackingViewDateLookback(sql: string): boolean {
+  const normalized = stripLeadingSqlComments(sql).trim();
+  if (!normalized) {
+    return false;
+  }
+  return (
+    HEAVY_TRACKING_VIEW_PATTERN.test(normalized) &&
+    !DATE_LOOKBACK_PATTERN.test(normalized)
+  );
+}
+
 const SQL_INDENT = '    ';
 
 function buildSelectClause(selectFields: SqlSelectField[]): string {

@@ -30,7 +30,6 @@ import {
   Route,
   Shield,
   Terminal,
-  TriangleAlert,
   Users,
   Zap,
   GripHorizontal,
@@ -46,6 +45,7 @@ import {
   getUniqueEventTablesInJoinGraph,
   resolveFilterAlias,
   UNIQUE_EVENT_TRACKING_TABLE_NAMES,
+  lacksTrackingViewDateLookback,
   stripLeadingSqlComments,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
@@ -62,18 +62,86 @@ import {
 } from '../utils/templatePlaceholders';
 import { TemplateParametersPanel } from './TemplateParametersPanel';
 
-const SFMC_PERFORMANCE_WARNING =
-  'Optimization Warning: Ensure large event data sets (_Sent, _Click, _Open) are filtered by EventDate in Automation Studio to avoid query runtime timeouts.';
+const COPY_TRACKING_WARNING =
+  '⚠️ Architect Warning: This query scans tracking views without an EventDate lookback filter, which may cause timeouts in high-volume SFMC accounts. Do you want to copy anyway?';
 
-function SfmcPerformanceWarningBanner() {
-  return (
-    <div
-      role="status"
-      className="mx-2 mt-2 flex shrink-0 items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 backdrop-blur-sm"
-    >
-      <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
-      <p className="text-xs leading-relaxed text-amber-600 dark:text-amber-500">{SFMC_PERFORMANCE_WARNING}</p>
-    </div>
+function CopyTrackingWarningModal({
+  isOpen,
+  onCancel,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, onCancel]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+        aria-label="Cancel copy"
+        onClick={onCancel}
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-amber-400/30 bg-slate-950/95 shadow-[0_24px_64px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md"
+      >
+        <div className="border-b border-amber-400/20 bg-amber-500/[0.08] px-5 py-4">
+          <p
+            id={titleId}
+            className="text-sm font-medium leading-relaxed text-amber-100/95"
+          >
+            {COPY_TRACKING_WARNING}
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-slate-700/80 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-lg border border-amber-500/40 bg-amber-600/90 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+          >
+            Copy anyway
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -501,6 +569,7 @@ export function SqlGenerator({
   onSandboxHeightChange,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
+  const [copyWarningOpen, setCopyWarningOpen] = useState(false);
   const [sandboxHeight, setSandboxHeight] = useState(getDefaultSandboxHeight);
   const [isResizing, setIsResizing] = useState(false);
   const [showExpandHint, setShowExpandHint] = useState(false);
@@ -810,18 +879,41 @@ export function SqlGenerator({
     [sandboxHeight],
   );
 
-  const handleCopy = async () => {
+  const performCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(stripLeadingSqlComments(sql));
       setCopied(true);
     } catch {
       setCopied(false);
     }
-  };
+  }, [sql]);
+
+  const handleCopy = useCallback(() => {
+    if (lacksTrackingViewDateLookback(sql)) {
+      setCopyWarningOpen(true);
+      return;
+    }
+    void performCopy();
+  }, [sql, performCopy]);
+
+  const handleConfirmRiskyCopy = useCallback(() => {
+    setCopyWarningOpen(false);
+    void performCopy();
+  }, [performCopy]);
+
+  const handleCancelRiskyCopy = useCallback(() => {
+    setCopyWarningOpen(false);
+  }, []);
 
   const expandedDrawerHeightPx = isExpanded ? sandboxHeight : SANDBOX_COLLAPSED_CHROME_HEIGHT_PX;
 
   return (
+    <>
+      <CopyTrackingWarningModal
+        isOpen={copyWarningOpen}
+        onCancel={handleCancelRiskyCopy}
+        onConfirm={handleConfirmRiskyCopy}
+      />
     <div
       className={`pointer-events-none fixed bottom-0 left-0 right-0 z-50 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
         isVisible ? 'translate-y-0' : 'translate-y-full'
@@ -1238,7 +1330,6 @@ export function SqlGenerator({
                           </button>
                         </div>
                       </div>
-                      {showSqlEditor ? <SfmcPerformanceWarningBanner /> : null}
                       <div
                         id="sql-editor-panel"
                         role="tabpanel"
@@ -1284,5 +1375,6 @@ export function SqlGenerator({
         </div>
       </div>
     </div>
+    </>
   );
 }
