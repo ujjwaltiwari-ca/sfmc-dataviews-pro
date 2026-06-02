@@ -429,6 +429,24 @@ export function AiCopilot({
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Canvas Context:
+            </span>
+            {activeTables.length === 0 ? (
+              <span className="text-xs italic text-slate-400 dark:text-slate-500">Global Schema</span>
+            ) : (
+              activeTables.map((tableName) => (
+                <span
+                  key={tableName}
+                  className="rounded-md border border-zinc-500/20 bg-zinc-500/10 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-200"
+                >
+                  {tableName}
+                </span>
+              ))
+            )}
+          </div>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col">
