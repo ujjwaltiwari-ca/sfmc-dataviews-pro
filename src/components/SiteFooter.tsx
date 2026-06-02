@@ -29,7 +29,7 @@ export function SiteFooter() {
         <div className="flex flex-col items-center gap-2 text-center">
           <SchemaArchitectMark className="h-4 w-4 rounded-md shadow-sm shadow-cyan-500/20 ring-1 ring-slate-900/5 dark:ring-white/10" />
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-            Built for SFMC Architects
+            Built for SFMC Developers
           </p>
         </div>
 

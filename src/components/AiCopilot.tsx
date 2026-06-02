@@ -438,7 +438,7 @@ export function AiCopilot({
                   Schema Assistant
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  {sfmcDataViews.length} data views · GPT-4o mini
+                  {sfmcDataViews.length} data views
                 </p>
               </div>
             </div>
