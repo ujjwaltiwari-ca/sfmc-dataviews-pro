@@ -22,6 +22,7 @@ import { useTheme } from '../context/ThemeContext';
 import { AccountProfileDropdown } from './AccountProfileDropdown';
 import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
+import { OPEN_DOCUMENTATION_EVENT, OPEN_PLATFORM_INFO_EVENT } from '../constants/siteChromeEvents';
 
 const GUIDE_WORKFLOW = [
   {
@@ -115,6 +116,19 @@ export function Header({
       document.body.style.overflow = previousOverflow;
     };
   }, [isDocsOpen]);
+
+  useEffect(() => {
+    const handleOpenDocumentation = () => setIsDocsOpen(true);
+    const handleOpenPlatformInfo = () => setIsPlatformInfoOpen(true);
+
+    window.addEventListener(OPEN_DOCUMENTATION_EVENT, handleOpenDocumentation);
+    window.addEventListener(OPEN_PLATFORM_INFO_EVENT, handleOpenPlatformInfo);
+
+    return () => {
+      window.removeEventListener(OPEN_DOCUMENTATION_EVENT, handleOpenDocumentation);
+      window.removeEventListener(OPEN_PLATFORM_INFO_EVENT, handleOpenPlatformInfo);
+    };
+  }, []);
 
   return (
     <>

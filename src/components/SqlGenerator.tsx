@@ -33,6 +33,7 @@ import {
   TriangleAlert,
   Users,
   Zap,
+  GripHorizontal,
 } from 'lucide-react';
 import type { DataViewTable } from '../data/sfmcSchema';
 import {
@@ -117,15 +118,26 @@ const SANDBOX_SHELL_CLASS =
   'pointer-events-auto flex flex-col bg-white border border-slate-200/60 shadow-[0_-4px_24px_rgba(15,23,42,0.06),0_-12px_40px_rgba(15,23,42,0.04)] dark:bg-slate-950 dark:border-slate-800/60 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]';
 
 const GLASS_PANEL_CLASS =
-  'rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)] dark:border-slate-800/60 dark:bg-slate-950 dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]';
+  'rounded-xl border border-slate-200/60 bg-slate-900/[0.03] shadow-[0_4px_20px_rgba(15,23,42,0.04)] dark:border-slate-800/60 dark:bg-slate-900/50 dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]';
+
+const SIDEBAR_COLUMN_CLASS =
+  'rounded-xl bg-slate-900/[0.03] p-3 dark:bg-slate-900/30';
 
 const SECTION_LABEL_CLASS =
-  'text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500';
+  'font-mono text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400';
 
 const SECTION_TITLE_CLASS = 'text-xs font-semibold tracking-tight text-slate-900 dark:text-slate-100';
 
 const COUNT_BADGE_CLASS =
   'font-mono text-[11px] font-semibold text-blue-500 dark:text-blue-400';
+
+function buildSqlPreviewLine(source: string, maxLength = 96): string {
+  const normalized = stripLeadingSqlComments(source).replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '';
+  }
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}…` : normalized;
+}
 
 function QueryStudioTipIcon({ tip }: { tip: string }) {
   const tooltipId = useId();
@@ -494,8 +506,10 @@ export function SqlGenerator({
   const [copied, setCopied] = useState(false);
   const [sandboxHeight, setSandboxHeight] = useState(getDefaultSandboxHeight);
   const [isResizing, setIsResizing] = useState(false);
+  const [showExpandHint, setShowExpandHint] = useState(false);
   const resizeStartYRef = useRef(0);
   const resizeStartHeightRef = useRef(getDefaultSandboxHeight());
+  const prevSelectionCountRef = useRef(selectedTableNames.length);
   const {
     limitPast30Days,
     filterUniqueEvents,
@@ -734,6 +748,22 @@ export function SqlGenerator({
     onSandboxHeightChange?.(sandboxHeight);
   }, [sandboxHeight, onSandboxHeightChange]);
 
+  const sqlPreviewLine = useMemo(() => buildSqlPreviewLine(sql), [sql]);
+
+  useEffect(() => {
+    const previousCount = prevSelectionCountRef.current;
+    if (selectedTableNames.length > 0 && previousCount === 0 && !isExpanded) {
+      setShowExpandHint(true);
+      const timer = window.setTimeout(() => setShowExpandHint(false), 5000);
+      prevSelectionCountRef.current = selectedTableNames.length;
+      return () => window.clearTimeout(timer);
+    }
+    prevSelectionCountRef.current = selectedTableNames.length;
+    if (isExpanded) {
+      setShowExpandHint(false);
+    }
+  }, [selectedTableNames.length, isExpanded]);
+
   useEffect(() => {
     const handleWindowResize = () => {
       setSandboxHeight((previous) => clampSandboxHeight(previous));
@@ -813,10 +843,15 @@ export function SqlGenerator({
           )}
           aria-valuenow={sandboxHeight}
           onMouseDown={handleResizeStart}
-          className={`pointer-events-auto h-1.5 w-full shrink-0 cursor-row-resize bg-slate-800/40 transition-colors duration-150 hover:bg-sky-500/80 ${
+          className={`group pointer-events-auto relative flex h-1.5 w-full shrink-0 cursor-row-resize items-center justify-center bg-slate-800/40 transition-colors duration-150 hover:bg-sky-500/80 ${
             isResizing ? 'bg-sky-500/80' : ''
           }`}
-        />
+        >
+          <GripHorizontal
+            className="pointer-events-none absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-slate-300 opacity-0 transition-opacity duration-200 group-hover:opacity-60 dark:text-slate-400"
+            aria-hidden
+          />
+        </div>
       ) : null}
       <div
         className={SANDBOX_SHELL_CLASS}
@@ -829,27 +864,53 @@ export function SqlGenerator({
 
         <div className="mx-auto flex h-full w-full max-w-7xl min-h-0 flex-col px-4 sm:px-6 lg:px-8">
           {/* Dashboard chrome — always visible */}
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100 py-3 dark:border-slate-800/80">
-            <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={`flex shrink-0 gap-3 border-b border-slate-100 dark:border-slate-800/80 ${
+              isExpanded
+                ? 'items-center justify-between py-3'
+                : 'min-h-[72px] flex-col justify-center py-2 sm:flex-row sm:items-center sm:justify-between sm:py-3'
+            }`}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200/60 bg-white text-blue-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-blue-400">
                 <Terminal className="h-4 w-4" aria-hidden />
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base dark:text-white">
                   SQL Sandbox
                 </h2>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {userSelectedTables.length} target
-                  {userSelectedTables.length === 1 ? '' : 's'}
-                  {architecture.joinSteps.length > 0 &&
-                    ` · ${architecture.joinSteps.length} BFS join step${architecture.joinSteps.length === 1 ? '' : 's'}`}
-                  {bridgingTables.length > 0 &&
-                    ` · ${bridgingTables.length} bridge${bridgingTables.length === 1 ? '' : 's'}`}
-                </p>
+                {isExpanded ? (
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {userSelectedTables.length} target
+                    {userSelectedTables.length === 1 ? '' : 's'}
+                    {architecture.joinSteps.length > 0 &&
+                      ` · ${architecture.joinSteps.length} BFS join step${architecture.joinSteps.length === 1 ? '' : 's'}`}
+                    {bridgingTables.length > 0 &&
+                      ` · ${bridgingTables.length} bridge${bridgingTables.length === 1 ? '' : 's'}`}
+                  </p>
+                ) : (
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="inline-flex shrink-0 items-center rounded-md bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-cyan-700 ring-1 ring-inset ring-cyan-500/20 dark:text-cyan-300 dark:ring-cyan-500/30">
+                      {userSelectedTables.length}{' '}
+                      {userSelectedTables.length === 1 ? 'table' : 'tables'}
+                    </span>
+                    <p className="min-w-0 flex-1 truncate font-mono text-[10px] leading-snug text-slate-400 dark:text-slate-500">
+                      {sqlPreviewLine ||
+                        (userSelectedTables.length > 0
+                          ? 'Generating query preview…'
+                          : 'Select canvas cards to build SQL')}
+                    </p>
+                    {showExpandHint && (
+                      <span className="shrink-0 animate-pulse text-[10px] font-medium text-cyan-600 dark:text-cyan-400">
+                        Open workspace →
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
                 onClick={handleCopy}
@@ -893,7 +954,9 @@ export function SqlGenerator({
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-2 pt-2">
               <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-3 lg:gap-5 lg:overflow-hidden">
                 {/* Left — query architecture & filters */}
-                <aside className="scrollbar-card flex min-h-0 flex-col gap-4 lg:col-span-1 lg:overflow-y-auto">
+                <aside
+                  className={`scrollbar-card flex min-h-0 flex-col gap-4 lg:col-span-1 lg:overflow-y-auto ${SIDEBAR_COLUMN_CLASS}`}
+                >
                   <p className={SECTION_LABEL_CLASS}>Query architecture &amp; filters</p>
 
                   <section className={`${GLASS_PANEL_CLASS} p-3`}>
