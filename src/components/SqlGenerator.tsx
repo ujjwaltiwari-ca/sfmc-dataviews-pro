@@ -35,6 +35,13 @@ import { sfmcDataViews } from '../data/sfmcSchema';
 import { FieldExpressionLabel, SqlStyledCode, SqlSyntaxSnippet } from './SqlStyledCode';
 import { getIdentifierSyntaxClass, IDE_DARK_EDITOR_ROOT, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
 import type { SandboxEditorTab, SandboxPreferences } from '../utils/workspacePersistence';
+import {
+  buildDefaultParameterValues,
+  buildTemplateParameterDefinitions,
+  interpolateTemplateSql,
+  parseTemplatePlaceholders,
+} from '../utils/templatePlaceholders';
+import { TemplateParametersPanel } from './TemplateParametersPanel';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
@@ -393,8 +400,30 @@ export function SqlGenerator({
     editorTab: preferenceEditorTab,
   } = sandboxPreferences;
   const editorTab = editorTabProp ?? preferenceEditorTab;
+  const [templateBaseSql, setTemplateBaseSql] = useState<string | null>(null);
+  const [templateParamValues, setTemplateParamValues] = useState<Record<string, string>>({});
   const sqlTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sqlHighlightRef = useRef<HTMLDivElement>(null);
+
+  const activeTemplate = useMemo(
+    () => sfmcQueryTemplates.find((item) => item.id === activeTemplateId) ?? null,
+    [activeTemplateId],
+  );
+
+  const templatePlaceholders = useMemo(
+    () => (templateBaseSql ? parseTemplatePlaceholders(templateBaseSql) : []),
+    [templateBaseSql],
+  );
+
+  const templateParameterDefinitions = useMemo(
+    () => buildTemplateParameterDefinitions(templatePlaceholders),
+    [templatePlaceholders],
+  );
+
+  const showTemplateParametersPanel =
+    editorTab === 'templates' &&
+    activeTemplateId !== null &&
+    templatePlaceholders.length > 0;
 
   const schema = schemaTables ?? sfmcDataViews;
 
@@ -476,11 +505,46 @@ export function SqlGenerator({
     applySqlKeywordCase(expression, keywordCase);
 
   useEffect(() => {
+    if (!activeTemplateId) {
+      setTemplateBaseSql(null);
+      setTemplateParamValues({});
+      return;
+    }
+
+    const template = sfmcQueryTemplates.find((item) => item.id === activeTemplateId);
+    if (!template) {
+      return;
+    }
+
+    setTemplateBaseSql(template.sql);
+    const placeholders = parseTemplatePlaceholders(template.sql);
+    setTemplateParamValues(buildDefaultParameterValues(placeholders));
+  }, [activeTemplateId]);
+
+  useEffect(() => {
+    if (!templateBaseSql) {
+      return;
+    }
+
+    const placeholders = parseTemplatePlaceholders(templateBaseSql);
+    if (placeholders.length === 0) {
+      onSqlChange(templateBaseSql);
+      return;
+    }
+
+    onSqlChange(interpolateTemplateSql(templateBaseSql, templateParamValues));
+  }, [templateBaseSql, templateParamValues, onSqlChange]);
+
+  useEffect(() => {
     if (preserveSql || selectedTableNames.length === 0 || editorTab !== 'live') {
       return;
     }
     onSqlChange(displaySql);
   }, [displaySql, onSqlChange, preserveSql, selectedTableNames.length, editorTab]);
+
+  const handleTemplateParameterChange = useCallback((token: string, value: string) => {
+    setTemplateParamValues((previous) => ({ ...previous, [token]: value }));
+  }, []);
 
   const handleEditorTabChange = (tab: EditorTab) => {
     if (onEditorTabChange) {
@@ -514,7 +578,6 @@ export function SqlGenerator({
     }
     onActiveTemplateIdChange(templateId);
     onSandboxPreferencesChange({ editorTab: 'templates', isSandboxExpanded: true });
-    onSqlChange(template.sql);
   };
 
   const handleBackToTemplates = () => {
@@ -919,32 +982,49 @@ export function SqlGenerator({
                         id="sql-editor-panel"
                         role="tabpanel"
                         aria-labelledby={editorTab === 'live' ? 'sql-tab-live' : 'sql-tab-templates'}
-                        className="relative m-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117]"
+                        className={`m-2 flex min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117] ${
+                          showTemplateParametersPanel ? 'flex-row gap-2 p-2' : 'relative'
+                        }`}
                       >
                         {showTemplateLibrary ? (
                           <TemplateLibraryGrid onSelectTemplate={handleSelectTemplate} />
                         ) : showSqlEditor ? (
                           <>
+                            {showTemplateParametersPanel ? (
+                              <TemplateParametersPanel
+                                templateTitle={activeTemplate?.title}
+                                parameters={templateParameterDefinitions}
+                                values={templateParamValues}
+                                onValueChange={handleTemplateParameterChange}
+                                className="w-full shrink-0 sm:w-52 lg:w-56"
+                              />
+                            ) : null}
                             <div
-                              ref={sqlHighlightRef}
-                              className="pointer-events-none absolute inset-0 overflow-hidden"
-                              aria-hidden
+                              className={`relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-slate-800/60 ${
+                                showTemplateParametersPanel ? 'bg-[#010409]' : ''
+                              }`}
                             >
-                              <div className="min-w-max p-4">
-                                <SqlStyledCode sql={sql} showGutter={false} theme="editor-dark" />
+                              <div
+                                ref={sqlHighlightRef}
+                                className="pointer-events-none absolute inset-0 overflow-hidden"
+                                aria-hidden
+                              >
+                                <div className="min-w-max p-4">
+                                  <SqlStyledCode sql={sql} showGutter={false} theme="editor-dark" />
+                                </div>
                               </div>
+                              <textarea
+                                ref={sqlTextareaRef}
+                                value={sql}
+                                onChange={(event) => onSqlChange(event.target.value)}
+                                onScroll={syncSqlEditorScroll}
+                                spellCheck={false}
+                                readOnly={showTemplateParametersPanel}
+                                className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${IDE_DARK_EDITOR_ROOT}`}
+                                aria-label="SQL query editor"
+                                placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
+                              />
                             </div>
-                            <textarea
-                              ref={sqlTextareaRef}
-                              value={sql}
-                              onChange={(event) => onSqlChange(event.target.value)}
-                              onScroll={syncSqlEditorScroll}
-                              spellCheck={false}
-                              readOnly={activeTemplateId !== null}
-                              className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${IDE_DARK_EDITOR_ROOT}`}
-                              aria-label="SQL query editor"
-                              placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
-                            />
                           </>
                         ) : null}
                       </div>
