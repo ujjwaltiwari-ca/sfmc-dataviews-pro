@@ -166,16 +166,6 @@ export function Header({
                 <AccountProfileDropdown onSignedOut={onSignInRequired} />
               ) : null}
 
-              {onOpenSqlTemplates ? (
-                <button
-                  type="button"
-                  onClick={onOpenSqlTemplates}
-                  className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 md:flex"
-                >
-                  ⚡ SQL Templates
-                </button>
-              ) : null}
-
               <button
                 type="button"
                 onClick={() => setIsDocsOpen(true)}
@@ -186,6 +176,14 @@ export function Header({
                 <BookOpen className="h-4 w-4 text-cyan-600 dark:text-cyan-400" aria-hidden />
                 <span className="hidden sm:inline">Documentation &amp; User Guide</span>
                 <span className="sm:hidden">Docs</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenSqlTemplates?.()}
+                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                ⚡ SQL Templates
               </button>
 
               <button
