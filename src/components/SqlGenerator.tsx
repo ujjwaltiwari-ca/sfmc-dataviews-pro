@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Braces,
   Calendar,
@@ -11,6 +12,7 @@ import {
   FileText,
   GitBranch,
   Hash,
+  Info,
   Route,
   Shield,
   Terminal,
@@ -27,25 +29,88 @@ import {
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
 import { sfmcDataViews } from '../data/sfmcSchema';
+import { FieldExpressionLabel, SqlStyledCode, SqlSyntaxSnippet } from './SqlStyledCode';
+import { getIdentifierSyntaxClass, SQL_EDITOR_TYPO, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
 const COPIED_FEEDBACK_MS = 2200;
 /** Expanded drawer height — keep in sync with App canvas bottom padding. */
-const SANDBOX_DRAWER_HEIGHT_PX = 450;
-const SQL_EDITOR_MIN_HEIGHT_PX = 150;
-const SQL_EDITOR_MAX_HEIGHT_PX = 350;
+const SANDBOX_DRAWER_HEIGHT_PX = 520;
+const SANDBOX_SHELL_CLASS =
+  'pointer-events-auto flex flex-col bg-white border border-slate-200/60 shadow-[0_-4px_24px_rgba(15,23,42,0.06),0_-12px_40px_rgba(15,23,42,0.04)] dark:bg-slate-950 dark:border-slate-800/60 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]';
 
 const GLASS_PANEL_CLASS =
-  'rounded-2xl border border-slate-200/60 bg-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] backdrop-blur-md dark:border-slate-700/40 dark:bg-slate-900/80';
+  'rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.04)] dark:border-slate-800/60 dark:bg-slate-950 dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]';
 
 const SECTION_LABEL_CLASS =
-  'text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500';
+  'text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500';
 
-const SECTION_TITLE_CLASS = 'text-xs font-semibold tracking-tight text-slate-800 dark:text-slate-100';
+const SECTION_TITLE_CLASS = 'text-xs font-semibold tracking-tight text-slate-900 dark:text-slate-100';
 
-const MONO_BADGE_CLASS =
-  'font-mono text-[11px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded dark:bg-slate-800/80 dark:text-slate-500';
+const COUNT_BADGE_CLASS =
+  'font-mono text-[11px] font-semibold text-blue-500 dark:text-blue-400';
+
+function QueryStudioTipIcon({ tip }: { tip: string }) {
+  const tooltipId = useId();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const updatePosition = useCallback(() => {
+    const button = buttonRef.current;
+    if (!button) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    setPosition({
+      top: rect.top - 8,
+      left: rect.left + rect.width / 2,
+    });
+  }, []);
+
+  const show = () => {
+    updatePosition();
+    setIsVisible(true);
+  };
+
+  const hide = () => {
+    setIsVisible(false);
+  };
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className="inline-flex shrink-0 rounded p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+        aria-describedby={isVisible ? tooltipId : undefined}
+        aria-label="Query Studio quick tip"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+      >
+        <Info
+          className="h-4 w-4 cursor-help text-slate-400 transition-colors hover:text-slate-200"
+          aria-hidden
+        />
+      </button>
+      {isVisible &&
+        createPortal(
+          <span
+            id={tooltipId}
+            role="tooltip"
+            style={{ top: position.top, left: position.left }}
+            className="pointer-events-none fixed z-[100] w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-full rounded-lg border border-slate-700/90 bg-slate-900 px-3 py-2 text-left text-[11px] font-normal leading-snug tracking-normal text-slate-200 shadow-lg shadow-black/50"
+          >
+            {tip}
+          </span>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 interface SqlGeneratorProps {
   selectedTableNames: string[];
@@ -95,7 +160,9 @@ function UtilityToggle({
           <Icon className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" aria-hidden />
           {label}
         </span>
-        <span className={`mt-1 block leading-snug ${MONO_BADGE_CLASS}`}>{description}</span>
+        <span className="mt-1 block leading-snug">
+          <SqlSyntaxSnippet text={description} />
+        </span>
       </span>
     </label>
   );
@@ -138,7 +205,9 @@ function CampaignJobIdFilter({
             <Hash className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" aria-hidden />
             Filter by Campaign JobID
           </span>
-          <span className={`mt-1 block leading-snug ${MONO_BADGE_CLASS}`}>{previewPredicate}</span>
+          <span className="mt-1 block leading-snug">
+            <SqlSyntaxSnippet text={previewPredicate} />
+          </span>
         </span>
       </label>
       {checked && (
@@ -232,6 +301,7 @@ export function SqlGenerator({
   const [includeTargetDeScaffolding, setIncludeTargetDeScaffolding] = useState(false);
   const [keywordCase, setKeywordCase] = useState<SqlKeywordCase>('upper');
   const sqlTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const sqlHighlightRef = useRef<HTMLDivElement>(null);
 
   const schema = schemaTables ?? sfmcDataViews;
 
@@ -337,36 +407,21 @@ export function SqlGenerator({
     return () => clearTimeout(timer);
   }, [copied]);
 
-  useLayoutEffect(() => {
-    if (!isExpanded) {
-      return;
-    }
-
+  const syncSqlEditorScroll = useCallback(() => {
     const textarea = sqlTextareaRef.current;
-    if (!textarea) {
+    const highlight = sqlHighlightRef.current;
+    if (!textarea || !highlight) {
       return;
     }
+    highlight.scrollTop = textarea.scrollTop;
+    highlight.scrollLeft = textarea.scrollLeft;
+  }, []);
 
-    const applyEditorHeight = () => {
-      const isSideBySide = window.matchMedia('(min-width: 1024px)').matches;
-      if (isSideBySide) {
-        textarea.style.height = '';
-        return;
-      }
-
-      textarea.style.height = '0px';
-      const contentHeight = textarea.scrollHeight;
-      const nextHeight = Math.min(
-        SQL_EDITOR_MAX_HEIGHT_PX,
-        Math.max(SQL_EDITOR_MIN_HEIGHT_PX, contentHeight),
-      );
-      textarea.style.height = `${nextHeight}px`;
-    };
-
-    applyEditorHeight();
-    window.addEventListener('resize', applyEditorHeight);
-    return () => window.removeEventListener('resize', applyEditorHeight);
-  }, [sql, isExpanded]);
+  useEffect(() => {
+    if (isExpanded) {
+      syncSqlEditorScroll();
+    }
+  }, [sql, isExpanded, syncSqlEditorScroll]);
 
   const handleCopy = async () => {
     try {
@@ -385,23 +440,23 @@ export function SqlGenerator({
       aria-hidden={!isVisible}
     >
       <div
-        className="pointer-events-auto flex flex-col border-t border-slate-200/60 bg-white/90 shadow-[0_-8px_30px_rgb(0,0,0,0.04),0_-20px_40px_rgb(0,0,0,0.03)] backdrop-blur-md dark:border-slate-700/40 dark:bg-slate-900/90 dark:shadow-[0_-8px_30px_rgb(0,0,0,0.25)]"
+        className={SANDBOX_SHELL_CLASS}
         style={{
           height: isExpanded ? `${SANDBOX_DRAWER_HEIGHT_PX}px` : 'auto',
           maxHeight: isExpanded ? `${SANDBOX_DRAWER_HEIGHT_PX}px` : '4.5rem',
         }}
       >
-        <div className="h-1 w-full shrink-0 bg-gradient-to-r from-cyan-400/70 via-blue-300/30 to-transparent" aria-hidden />
+        <div className="h-0.5 w-full shrink-0 bg-blue-500" aria-hidden />
 
         <div className="mx-auto flex h-full w-full max-w-7xl min-h-0 flex-col px-4 sm:px-6 lg:px-8">
           {/* Dashboard chrome — always visible */}
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100/80 py-3 dark:border-slate-800/60">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100 py-3 dark:border-slate-800/80">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/15 to-blue-500/10 text-cyan-600 ring-1 ring-cyan-500/20 dark:text-cyan-400">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200/60 bg-white text-blue-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-blue-400">
                 <Terminal className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <h2 className="text-sm font-semibold tracking-tight text-slate-800 sm:text-base dark:text-slate-100">
+                <h2 className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base dark:text-white">
                   SQL Sandbox
                 </h2>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
@@ -456,41 +511,8 @@ export function SqlGenerator({
           </div>
 
           {isExpanded && (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-4 pt-4">
-              <p
-                className="mb-4 shrink-0 rounded-xl border border-blue-200/60 bg-blue-50/80 p-3 text-[12px] leading-relaxed text-blue-800 backdrop-blur-sm dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300"
-                role="note"
-              >
-                <span className="mr-1" aria-hidden>
-                  💡
-                </span>
-                {QUERY_STUDIO_TIP}
-              </p>
-
-              {(bridgingTables.length > 0 || disconnectedTables.length > 0) && (
-                <div className="mb-4 shrink-0 space-y-2">
-                  {bridgingTables.length > 0 && (
-                    <div className="flex gap-2 rounded-xl border border-amber-200/60 bg-amber-50/80 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-                      <Route className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-                      <p>
-                        <span className="font-semibold text-amber-800 dark:text-amber-200">Pathfinder bridges</span>
-                        {' — '}
-                        injected to connect your selection:{' '}
-                        <span className="font-mono text-amber-900 dark:text-amber-50">
-                          {bridgingTables.join(', ')}
-                        </span>
-                      </p>
-                    </div>
-                  )}
-                  {disconnectedTables.length > 0 && (
-                    <div className="rounded-xl border border-red-200/60 bg-red-50/80 px-3 py-2 text-xs text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
-                      Unreachable from graph: {disconnectedTables.join(', ')}. Review join path below.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-y-auto lg:grid-cols-3 lg:overflow-hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-2 pt-2">
+              <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-3 lg:gap-5 lg:overflow-hidden">
                 {/* Left — query architecture & filters */}
                 <aside className="scrollbar-card flex min-h-0 flex-col gap-4 lg:col-span-1 lg:overflow-y-auto">
                   <p className={SECTION_LABEL_CLASS}>Query architecture &amp; filters</p>
@@ -499,23 +521,23 @@ export function SqlGenerator({
                     <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
                       <Braces className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" aria-hidden />
                       SELECT fields
-                      <span className={`ml-auto font-normal ${MONO_BADGE_CLASS}`}>
+                      <span className={`ml-auto font-normal ${COUNT_BADGE_CLASS}`}>
                         {architecture.selectFields.length}
                       </span>
                     </div>
                     <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
                       {[...fieldsByTable.entries()].map(([tableName, fields]) => (
                         <div key={tableName}>
-                          <p className="font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                          <p className={`font-mono text-[10px] font-semibold tracking-tight ${SYNTAX_TEXT_CLASS}`}>
                             {tableName}
                           </p>
                           <ul className="mt-0.5 space-y-0.5">
                             {fields.map((item) => (
                               <li
                                 key={item.expression}
-                                className="truncate rounded px-1.5 py-0.5 font-mono text-[10px] text-slate-500 transition-colors hover:bg-slate-50/80 dark:text-slate-400 dark:hover:bg-slate-800/50"
+                                className="truncate rounded px-1.5 py-0.5 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
                               >
-                                {item.expression}
+                                <FieldExpressionLabel expression={item.expression} />
                               </li>
                             ))}
                           </ul>
@@ -530,13 +552,32 @@ export function SqlGenerator({
                       Base target (FROM)
                     </div>
                     {architecture.rootTable ? (
-                      <p className="font-mono text-sm text-emerald-700 dark:text-emerald-300">
-                        {architecture.rootTable}{' '}
-                        <span className="text-slate-400">AS</span>{' '}
-                        <span className="text-slate-600 dark:text-slate-300">{architecture.rootAlias}</span>
+                      <p className="font-mono text-sm">
+                        <span className={getIdentifierSyntaxClass(architecture.rootTable)}>
+                          {architecture.rootTable}
+                        </span>{' '}
+                        <span className="font-semibold text-violet-500 dark:text-violet-400">AS</span>{' '}
+                        <span className={getIdentifierSyntaxClass(architecture.rootAlias)}>
+                          {architecture.rootAlias}
+                        </span>
                       </p>
                     ) : (
                       <p className="text-xs text-slate-500">—</p>
+                    )}
+                    {bridgingTables.length > 0 && (
+                      <p className="mt-2 flex items-start gap-1.5 text-[10px] leading-snug text-amber-700 dark:text-amber-300/90">
+                        <Route className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                        <span>
+                          Pathfinder bridges:{' '}
+                          <span className="font-mono font-medium">{bridgingTables.join(', ')}</span>
+                        </span>
+                      </p>
+                    )}
+                    {disconnectedTables.length > 0 && (
+                      <p className="mt-2 text-[10px] leading-snug text-red-600 dark:text-red-400">
+                        Unreachable:{' '}
+                        <span className="font-mono">{disconnectedTables.join(', ')}</span>
+                      </p>
                     )}
                   </section>
 
@@ -562,7 +603,7 @@ export function SqlGenerator({
                               <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100 font-mono text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                                 {step.order}
                               </span>
-                              <span className="font-mono text-xs font-medium text-slate-800 dark:text-slate-200">
+                              <span className={`font-mono text-xs font-semibold tracking-tight ${getIdentifierSyntaxClass(step.table)}`}>
                                 {step.table}
                               </span>
                               {step.isBridgingTable && (
@@ -571,8 +612,8 @@ export function SqlGenerator({
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 font-mono text-[10px] leading-relaxed text-slate-400">
-                              ON {step.conditions.join(' AND ')}
+                            <p className="mt-1 text-[10px] leading-relaxed">
+                              <SqlSyntaxSnippet text={`ON ${step.conditions.join(' AND ')}`} />
                             </p>
                           </li>
                         ))}
@@ -655,32 +696,36 @@ export function SqlGenerator({
 
                 {/* Right — SQL editor */}
                 <section
-                  className="flex min-h-[280px] flex-col lg:col-span-2 lg:min-h-0"
+                  className="flex min-h-0 flex-1 flex-col lg:col-span-2"
                   aria-label="SQL query editor"
                 >
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/50 p-1 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm dark:border-slate-700/40 dark:bg-slate-900/30">
-                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-800/20 bg-slate-900 shadow-[inset_0_2px_8px_rgb(0,0,0,0.15)] dark:border-slate-700/40">
-                      <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 bg-slate-900/95 px-3 py-2">
-                        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                          query.sql
-                        </span>
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_24px_rgba(15,23,42,0.07),0_1px_3px_rgba(15,23,42,0.04)] dark:border-slate-800/60 dark:bg-slate-950 dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
+                    <div className="h-0.5 w-full shrink-0 bg-blue-500" aria-hidden />
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                      <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#0d1117] px-3 py-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                            query.sql
+                          </span>
+                          <QueryStudioTipIcon tip={QUERY_STUDIO_TIP} />
+                        </div>
                         <div className="flex items-center gap-2">
                           {(limitPast30Days ||
                             excludeTestSends ||
                             (filterActiveSubscribersOnly && subscribersInJoinPath) ||
                             campaignJobIdActive ||
                             includeTargetDeScaffolding) && (
-                            <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                            <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
                               utilities active
                             </span>
                           )}
                           <button
                             type="button"
                             onClick={handleCopy}
-                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
+                            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-sky-500/40 ${
                               copied
                                 ? 'border-emerald-500/40 bg-emerald-600/90 text-white'
-                                : 'border-slate-700/60 bg-slate-800/80 text-slate-300 hover:border-slate-600 hover:bg-slate-700 hover:text-white'
+                                : 'border-slate-700/60 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white'
                             }`}
                             aria-live="polite"
                           >
@@ -698,16 +743,27 @@ export function SqlGenerator({
                           </button>
                         </div>
                       </div>
-                      <textarea
-                        ref={sqlTextareaRef}
-                        value={sql}
-                        onChange={(event) => onSqlChange(event.target.value)}
-                        spellCheck={false}
-                        rows={6}
-                        className="scrollbar-card block w-full min-h-[150px] flex-1 resize-none overflow-y-auto bg-transparent p-4 font-mono text-xs leading-relaxed text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-500/30 max-h-[350px] lg:max-h-none sm:text-sm"
-                        aria-label="SQL query editor"
-                        placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
-                      />
+                      <div className="relative m-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117]">
+                        <div
+                          ref={sqlHighlightRef}
+                          className="pointer-events-none absolute inset-0 overflow-hidden"
+                          aria-hidden
+                        >
+                          <div className="min-w-max p-4">
+                            <SqlStyledCode sql={sql} showGutter={false} theme="editor-dark" />
+                          </div>
+                        </div>
+                        <textarea
+                          ref={sqlTextareaRef}
+                          value={sql}
+                          onChange={(event) => onSqlChange(event.target.value)}
+                          onScroll={syncSqlEditorScroll}
+                          spellCheck={false}
+                          className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${SQL_EDITOR_TYPO}`}
+                          aria-label="SQL query editor"
+                          placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
+                        />
+                      </div>
                     </div>
                   </div>
                 </section>

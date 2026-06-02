@@ -1,6 +1,27 @@
 import { SQL_CORE_KEYWORDS } from '../utils/sqlGenerator';
+import {
+  SYNTAX_COMMENT_EDITOR,
+  SYNTAX_COMMENT_LIGHT,
+  SYNTAX_IDENTIFIER_EDITOR,
+  SYNTAX_IDENTIFIER_LIGHT,
+  SYNTAX_KEYWORD_EDITOR,
+  SYNTAX_KEYWORD_LIGHT,
+  SYNTAX_PUNCTUATION_EDITOR,
+  SYNTAX_PUNCTUATION_LIGHT,
+  SQL_EDITOR_TYPO,
+  getIdentifierSyntaxClass,
+  type SqlSyntaxTheme,
+} from '../utils/typeSyntax';
 
-type TokenKind = 'keyword' | 'comment' | 'string' | 'function' | 'punctuation' | 'plain';
+type TokenKind =
+  | 'keyword'
+  | 'comment'
+  | 'string'
+  | 'function'
+  | 'number'
+  | 'identifier'
+  | 'punctuation'
+  | 'plain';
 
 type Token = { kind: TokenKind; text: string };
 
@@ -31,16 +52,21 @@ function tokenizeSqlLine(line: string): Token[] {
     }
 
     const rest = line.slice(index);
+    const numberMatch = /^\d+(?:\.\d+)?/.exec(rest);
+    if (numberMatch) {
+      tokens.push({ kind: 'number', text: numberMatch[0] });
+      index += numberMatch[0].length;
+      continue;
+    }
+
     const wordMatch = /^[A-Za-z_][\w]*/.exec(rest);
     if (wordMatch) {
       const word = wordMatch[0];
       const upper = word.toUpperCase();
-      if (KEYWORDS.has(upper)) {
+      if (KEYWORDS.has(upper) || FUNCTIONS.has(upper)) {
         tokens.push({ kind: 'keyword', text: word });
-      } else if (FUNCTIONS.has(upper)) {
-        tokens.push({ kind: 'function', text: word });
       } else {
-        tokens.push({ kind: 'plain', text: word });
+        tokens.push({ kind: 'identifier', text: word });
       }
       index += word.length;
       continue;
@@ -66,24 +92,70 @@ function tokenizeSqlLine(line: string): Token[] {
   return tokens;
 }
 
-const tokenClass: Record<TokenKind, string> = {
-  keyword: 'text-violet-300 font-semibold',
-  comment: 'text-slate-500 italic',
-  string: 'text-amber-300',
-  function: 'text-cyan-300',
-  punctuation: 'text-slate-400',
-  plain: 'text-emerald-100/95',
-};
+function buildTokenClass(theme: SqlSyntaxTheme): Record<TokenKind, string> {
+  if (theme === 'editor-dark') {
+    const identifier = SYNTAX_IDENTIFIER_EDITOR;
+    return {
+      keyword: SYNTAX_KEYWORD_EDITOR,
+      comment: SYNTAX_COMMENT_EDITOR,
+      string: identifier,
+      function: SYNTAX_KEYWORD_EDITOR,
+      number: identifier,
+      identifier,
+      punctuation: SYNTAX_PUNCTUATION_EDITOR,
+      plain: identifier,
+    };
+  }
 
-function CodeLine({ line }: { line: string }) {
+  if (theme === 'editor-light') {
+    const identifier = SYNTAX_IDENTIFIER_LIGHT;
+    return {
+      keyword: SYNTAX_KEYWORD_LIGHT,
+      comment: SYNTAX_COMMENT_LIGHT,
+      string: identifier,
+      function: SYNTAX_KEYWORD_LIGHT,
+      number: identifier,
+      identifier,
+      punctuation: SYNTAX_PUNCTUATION_LIGHT,
+      plain: identifier,
+    };
+  }
+
+  return {
+    keyword: SYNTAX_KEYWORD_LIGHT,
+    comment: SYNTAX_COMMENT_LIGHT,
+    string: SYNTAX_IDENTIFIER_LIGHT,
+    function: SYNTAX_KEYWORD_LIGHT,
+    number: SYNTAX_IDENTIFIER_LIGHT,
+    identifier: SYNTAX_IDENTIFIER_LIGHT,
+    punctuation: SYNTAX_PUNCTUATION_LIGHT,
+    plain: SYNTAX_IDENTIFIER_LIGHT,
+  };
+}
+
+function CodeLine({ line, theme }: { line: string; theme: SqlSyntaxTheme }) {
+  const tokenClass = buildTokenClass(theme);
+  const useUniformIdentifiers = theme === 'editor-dark' || theme === 'editor-light';
+
   if (line.length === 0) {
-    return <span className="text-emerald-100/40">{'\u00a0'}</span>;
+    return (
+      <span className={theme === 'editor-dark' ? 'text-slate-600' : 'text-slate-400'}>
+        {'\u00a0'}
+      </span>
+    );
   }
 
   return (
     <>
       {tokenizeSqlLine(line).map((token, tokenIndex) => (
-        <span key={tokenIndex} className={tokenClass[token.kind]}>
+        <span
+          key={tokenIndex}
+          className={
+            token.kind === 'identifier' && !useUniformIdentifiers
+              ? getIdentifierSyntaxClass(token.text, theme)
+              : tokenClass[token.kind]
+          }
+        >
           {token.text}
         </span>
       ))}
@@ -94,40 +166,82 @@ function CodeLine({ line }: { line: string }) {
 type SqlStyledCodeProps = {
   sql: string;
   className?: string;
+  showGutter?: boolean;
+  theme?: SqlSyntaxTheme;
 };
 
-export function SqlStyledCode({ sql, className = '' }: SqlStyledCodeProps) {
+export function SqlStyledCode({
+  sql,
+  className = '',
+  showGutter = true,
+  theme = 'editor-dark',
+}: SqlStyledCodeProps) {
   const lines = sql.split('\n');
   const gutterWidth = Math.max(2, String(lines.length).length);
+  const isDarkIde = theme === 'editor-dark';
+
+  const editorTypo = isDarkIde ? `${SQL_EDITOR_TYPO} text-[#e1e4e8]` : SQL_EDITOR_TYPO;
 
   return (
-    <div
-      className={`flex min-h-0 w-full font-mono text-xs leading-[1.65] sm:text-sm ${className}`}
-    >
-      <div
-        className="shrink-0 select-none border-r border-slate-800/80 bg-slate-950 py-0.5 pr-3 text-right text-slate-600"
-        aria-hidden
-      >
-        {lines.map((_, lineIndex) => (
-          <div
-            key={`gutter-${lineIndex}`}
-            className="tabular-nums"
-            style={{ minWidth: `${gutterWidth}ch` }}
-          >
-            {lineIndex + 1}
-          </div>
-        ))}
-      </div>
+    <div className={`flex min-h-0 w-max min-w-full ${editorTypo} ${className}`}>
+      {showGutter && (
+        <div
+          className={`shrink-0 select-none border-r border-slate-800/80 py-0.5 pr-3 text-right tabular-nums ${
+            isDarkIde ? 'bg-[#0d1117] text-slate-600' : 'bg-slate-50 text-slate-400'
+          }`}
+          aria-hidden
+        >
+          {lines.map((_, lineIndex) => (
+            <div key={`gutter-${lineIndex}`} style={{ minWidth: `${gutterWidth}ch` }}>
+              {lineIndex + 1}
+            </div>
+          ))}
+        </div>
+      )}
 
-      <pre className="min-w-0 flex-1 py-0.5 pl-4">
-        <code className="block whitespace-pre text-slate-100">
+      <pre className={`min-w-0 flex-1 py-0.5 ${showGutter ? 'pl-4' : 'px-0'} ${editorTypo}`}>
+        <code className={`block whitespace-pre ${editorTypo}`}>
           {lines.map((line, lineIndex) => (
             <div key={`code-${lineIndex}`} className="whitespace-pre">
-              <CodeLine line={line} />
+              <CodeLine line={line} theme={theme} />
             </div>
           ))}
         </code>
       </pre>
     </div>
+  );
+}
+
+/** Compact inline SQL snippet for sidebar labels and utility previews. */
+export function SqlSyntaxSnippet({ text, className = '' }: { text: string; className?: string }) {
+  return (
+    <span className={`block leading-snug ${className}`}>
+      <SqlStyledCode
+        sql={text}
+        showGutter={false}
+        theme="editor-light"
+        className="text-[10px] leading-snug sm:text-[10px]"
+      />
+    </span>
+  );
+}
+
+/** Sidebar field expression with card-aligned identifier syntax coloring. */
+export function FieldExpressionLabel({
+  expression,
+  className = '',
+}: {
+  expression: string;
+  className?: string;
+}) {
+  const fieldToken = expression.split('.').pop()?.trim().split(/\s+/)[0] ?? expression;
+
+  return (
+    <span
+      className={`truncate font-mono text-[10px] font-semibold tracking-tight ${getIdentifierSyntaxClass(fieldToken, 'card')} ${className}`}
+      title={expression}
+    >
+      {expression}
+    </span>
   );
 }
