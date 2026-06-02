@@ -121,20 +121,26 @@ export function Header({
           aria-hidden
         />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between gap-4">
-            <a href="/" className="group flex min-w-0 items-center gap-3">
-              <SchemaArchitectMark className="h-10 w-10 shrink-0 rounded-xl shadow-lg shadow-cyan-500/25 ring-1 ring-slate-900/5 transition-transform duration-200 ease-in-out group-hover:scale-[1.02] dark:ring-white/15" />
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-400">
+          <div className="flex h-16 items-center justify-between gap-2 md:gap-4">
+            <a
+              href="/"
+              className="group flex min-w-0 flex-1 items-center gap-2 md:gap-3 sm:max-w-[55%] md:max-w-none lg:max-w-none"
+            >
+              <SchemaArchitectMark className="h-8 w-8 shrink-0 rounded-xl shadow-lg shadow-cyan-500/25 ring-1 ring-slate-900/5 transition-transform duration-200 ease-in-out group-hover:scale-[1.02] sm:h-10 sm:w-10 dark:ring-white/15" />
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-sm font-bold tracking-wider text-slate-900 dark:text-white md:text-base">
                   DataViews.pro
-                </p>
-                <h1 className="truncate text-base font-bold tracking-tight text-slate-900 dark:text-white sm:text-lg">
-                  SFMC Schema Architect
                 </h1>
+                <p className="hidden truncate text-xs text-slate-500 sm:inline-block dark:text-slate-400">
+                  SFMC Schema Architect
+                </p>
               </div>
             </a>
 
-            <nav className="relative z-50 flex shrink-0 items-center gap-2" aria-label="Global">
+            <nav
+              className="relative z-50 flex shrink-0 items-center gap-2 md:gap-4"
+              aria-label="Global"
+            >
               <button
                 type="button"
                 onClick={onToggleCopilot}
