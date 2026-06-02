@@ -1112,7 +1112,9 @@ export function SqlGenerator({
                     )}
                   </section>
 
-                  <section className={`${GLASS_PANEL_CLASS} p-3`}>
+                  <section
+                    className={`${GLASS_PANEL_CLASS} p-3`}
+                  >
                     <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
                       <GitBranch className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" aria-hidden />
                       BFS join path

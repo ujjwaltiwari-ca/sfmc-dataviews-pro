@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 import {
   BookOpen,
   CheckSquare,
-  CircleHelp,
   ExternalLink,
   Info,
   Keyboard,
@@ -24,9 +23,7 @@ import { AccountProfileDropdown } from './AccountProfileDropdown';
 import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
 import {
-  dispatchOpenOnboardingTour,
   OPEN_DOCUMENTATION_EVENT,
-  OPEN_ONBOARDING_TOUR_EVENT,
   OPEN_PLATFORM_INFO_EVENT,
 } from '../constants/siteChromeEvents';
 
@@ -87,7 +84,6 @@ type HeaderProps = {
   isCopilotOpen?: boolean;
   onSignInRequired?: () => void;
   onOpenSqlTemplates?: () => void;
-  onStartOnboardingTour?: () => void;
 };
 
 export function Header({
@@ -95,7 +91,6 @@ export function Header({
   isCopilotOpen = false,
   onSignInRequired,
   onOpenSqlTemplates,
-  onStartOnboardingTour,
 }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
   const { user, isAuthLoading } = useAuth();
@@ -128,18 +123,15 @@ export function Header({
   useEffect(() => {
     const handleOpenDocumentation = () => setIsDocsOpen(true);
     const handleOpenPlatformInfo = () => setIsPlatformInfoOpen(true);
-    const handleOpenOnboardingTour = () => onStartOnboardingTour?.();
 
     window.addEventListener(OPEN_DOCUMENTATION_EVENT, handleOpenDocumentation);
     window.addEventListener(OPEN_PLATFORM_INFO_EVENT, handleOpenPlatformInfo);
-    window.addEventListener(OPEN_ONBOARDING_TOUR_EVENT, handleOpenOnboardingTour);
 
     return () => {
       window.removeEventListener(OPEN_DOCUMENTATION_EVENT, handleOpenDocumentation);
       window.removeEventListener(OPEN_PLATFORM_INFO_EVENT, handleOpenPlatformInfo);
-      window.removeEventListener(OPEN_ONBOARDING_TOUR_EVENT, handleOpenOnboardingTour);
     };
-  }, [onStartOnboardingTour]);
+  }, []);
 
   return (
     <>
@@ -210,16 +202,6 @@ export function Header({
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden />
                 <span className="hidden sm:inline">SQL Templates</span>
                 <span className="sm:hidden">Templates</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => dispatchOpenOnboardingTour()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/90 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-cyan-50/80 hover:text-cyan-800 hover:shadow-[0_8px_20px_rgba(6,182,212,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-cyan-600/50 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-200"
-                aria-label="Start 60-second onboarding tour"
-                title="60-Second Onboarding Tour"
-              >
-                <CircleHelp className="h-4 w-4" aria-hidden />
               </button>
 
               <button

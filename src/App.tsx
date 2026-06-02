@@ -217,6 +217,13 @@ function AppMain() {
     setCopilotSqlActive(false);
   }, [selectedTableNames]);
 
+  const handleSandboxExpandedChange = useCallback(
+    (expanded: boolean) => {
+      setIsSandboxExpanded(expanded);
+    },
+    [setIsSandboxExpanded],
+  );
+
   const clearRelationLeaveTimer = () => {
     if (relationLeaveTimerRef.current !== null) {
       clearTimeout(relationLeaveTimerRef.current);
@@ -303,7 +310,7 @@ function AppMain() {
         onSqlChange={setSandboxSql}
         isVisible={sandboxOpen}
         isExpanded={isSandboxExpanded}
-        onExpandedChange={setIsSandboxExpanded}
+        onExpandedChange={handleSandboxExpandedChange}
         sandboxPreferences={sandboxPreferences}
         onSandboxPreferencesChange={updateSandboxPreferences}
         activeTemplateId={activeTemplateId}
@@ -322,6 +329,7 @@ function AppMain() {
         activeTables={selectedTableNames}
         currentQueryText={sandboxSql}
       />
+
       </div>
     </AuthProvider>
   );

@@ -1,5 +1,5 @@
-import type { DataViewTable } from '../data/sfmcSchema';
-import { sfmcDataViews } from '../data/sfmcSchema';
+import type { DataViewTable } from '../data/schemas/types.js';
+import { sfmcDataViews } from '../data/sfmcSchema.js';
 
 export interface SqlJoinEdge {
   fromTable: string;
