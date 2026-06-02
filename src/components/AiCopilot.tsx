@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Bot,
@@ -23,8 +25,89 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { logCopilotApiError } from '../utils/copilotFallback';
+import { lacksTrackingViewDateLookback } from '../utils/sqlGenerator';
 import { supabase } from '../utils/supabaseClient';
 import { AuthForm } from './AuthForm';
+
+const APPLY_TRACKING_WARNING =
+  '⚠️ Architect Warning: This query scans tracking views without an EventDate lookback filter, which may cause timeouts in high-volume SFMC accounts. Apply to the sandbox anyway?';
+
+function ApplyTrackingWarningModal({
+  isOpen,
+  onCancel,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, onCancel]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+        aria-label="Cancel apply"
+        onClick={onCancel}
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-amber-400/30 bg-slate-950/95 shadow-[0_24px_64px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md"
+      >
+        <div className="border-b border-amber-400/20 bg-amber-500/[0.08] px-5 py-4">
+          <p id={titleId} className="text-sm font-medium leading-relaxed text-amber-100/95">
+            {APPLY_TRACKING_WARNING}
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-slate-700/80 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-lg border border-amber-500/40 bg-amber-600/90 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+          >
+            Apply anyway
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 type ChatRole = 'user' | 'assistant';
 
@@ -219,6 +302,10 @@ export function AiCopilot({
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appliedMessageId, setAppliedMessageId] = useState<string | null>(null);
+  const [applyWarningOpen, setApplyWarningOpen] = useState(false);
+  const [pendingApply, setPendingApply] = useState<{ messageId: string; sql: string } | null>(
+    null,
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -390,19 +477,49 @@ export function AiCopilot({
     }
   };
 
+  const commitApplyToSandbox = useCallback(
+    (messageId: string, sql: string) => {
+      onApplyToSandbox(sql);
+      onClose();
+      setAppliedMessageId(messageId);
+      window.setTimeout(() => setAppliedMessageId(null), 2200);
+    },
+    [onApplyToSandbox, onClose],
+  );
+
   const handleApplyToSandbox = (messageId: string, content: string) => {
     const sql = extractSqlFromMessage(content);
     if (!sql) {
       return;
     }
-    onApplyToSandbox(sql);
-    onClose();
-    setAppliedMessageId(messageId);
-    window.setTimeout(() => setAppliedMessageId(null), 2200);
+    if (lacksTrackingViewDateLookback(sql)) {
+      setPendingApply({ messageId, sql });
+      setApplyWarningOpen(true);
+      return;
+    }
+    commitApplyToSandbox(messageId, sql);
+  };
+
+  const handleConfirmRiskyApply = () => {
+    setApplyWarningOpen(false);
+    if (pendingApply) {
+      commitApplyToSandbox(pendingApply.messageId, pendingApply.sql);
+      setPendingApply(null);
+    }
+  };
+
+  const handleCancelRiskyApply = () => {
+    setApplyWarningOpen(false);
+    setPendingApply(null);
   };
 
   return (
     <>
+      <ApplyTrackingWarningModal
+        isOpen={applyWarningOpen}
+        onCancel={handleCancelRiskyApply}
+        onConfirm={handleConfirmRiskyApply}
+      />
       <button
         type="button"
         aria-label="Close AI copilot"

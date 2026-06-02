@@ -116,7 +116,9 @@ ORDER BY TotalComplaints DESC`,
     sql: `SELECT
   Mobile,
   MessageID,
+  CodeID,
   SMSStandardStatusCodeId,
+  Description,
   SendJobID,
   ActionDateTime
 FROM _SMSMessageTracking
