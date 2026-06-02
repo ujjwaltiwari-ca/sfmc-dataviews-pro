@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import CodeMirror from '@uiw/react-codemirror';
@@ -228,11 +229,13 @@ function EditorTabButton({
   label,
   isActive,
   onClick,
+  icon,
 }: {
   id: string;
   label: string;
   isActive: boolean;
   onClick: () => void;
+  icon?: ReactNode;
 }) {
   return (
     <button
@@ -242,12 +245,13 @@ function EditorTabButton({
       aria-selected={isActive}
       aria-controls="sql-editor-panel"
       onClick={onClick}
-      className={`relative px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
+      className={`relative inline-flex items-center gap-1 px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
         isActive
           ? 'text-sky-400 after:absolute after:inset-x-0 after:-bottom-1.5 after:h-px after:bg-sky-400/80'
           : 'text-slate-500 hover:text-slate-300'
       }`}
     >
+      {icon}
       {label}
     </button>
   );
@@ -1118,7 +1122,10 @@ export function SqlGenerator({
                             />
                             <EditorTabButton
                               id="sql-tab-templates"
-                              label="⚡ Starter Templates"
+                              label="Starter Templates"
+                              icon={
+                                <Zap className="h-3 w-3 shrink-0 text-amber-400/90" aria-hidden />
+                              }
                               isActive={editorTab === 'templates'}
                               onClick={() => handleEditorTabChange('templates')}
                             />

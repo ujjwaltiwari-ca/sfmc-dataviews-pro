@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Lock } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
 import { AiCopilot } from './components/AiCopilot';
+import { CanvasHero } from './components/CanvasHero';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
+import { SchemaArchitectMark } from './components/SchemaArchitectMark';
 import { SiteFooter } from './components/SiteFooter';
 import {
   getDefaultSandboxHeight,
@@ -77,11 +80,18 @@ function StagingGateScreen({
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 text-white">
-      <div className="w-full max-w-sm text-center">
-        <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-          <span aria-hidden>🔒 </span>
-          dataviews.pro - Pre-launch Verification
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 text-white">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(6,182,212,0.15),transparent)]"
+        aria-hidden
+      />
+
+      <div className="relative w-full max-w-sm text-center">
+        <SchemaArchitectMark className="mx-auto h-14 w-14 rounded-xl shadow-lg shadow-cyan-500/30 ring-1 ring-white/10" />
+
+        <h1 className="mt-6 flex items-center justify-center gap-2 text-lg font-semibold tracking-tight sm:text-xl">
+          <Lock className="h-5 w-5 shrink-0 text-cyan-400" aria-hidden />
+          dataviews.pro — Pre-launch Verification
         </h1>
         <p className="mt-2 text-sm text-slate-400">
           Enter the staging password to continue.
@@ -98,7 +108,7 @@ function StagingGateScreen({
             value={passwordInput}
             onChange={(event) => setPasswordInput(event.target.value)}
             placeholder="Password"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+            className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           />
 
           {error ? (
@@ -110,7 +120,7 @@ function StagingGateScreen({
           <button
             type="submit"
             disabled={!passwordInput.trim()}
-            className="w-full rounded-lg bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Unlock
           </button>
@@ -257,6 +267,7 @@ function AppMain() {
         style={canvasBottomPaddingPx > 0 ? { paddingBottom: canvasBottomPaddingPx } : undefined}
       >
         <main className="mx-auto w-full max-w-7xl p-6 sm:p-8">
+          <CanvasHero />
           <div
             key={activeSegment}
             className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"

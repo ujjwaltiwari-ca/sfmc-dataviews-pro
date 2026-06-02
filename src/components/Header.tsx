@@ -14,6 +14,7 @@ import {
   Table2,
   Terminal,
   X,
+  Zap,
   ZoomOut,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -181,9 +182,11 @@ export function Header({
               <button
                 type="button"
                 onClick={() => onOpenSqlTemplates?.()}
-                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/90 px-3.5 py-2 text-sm font-medium text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-gradient-to-b hover:from-amber-50/80 hover:to-white hover:text-amber-950 hover:shadow-[0_8px_20px_rgba(245,158,11,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:border-amber-500/50 dark:hover:from-amber-950/40 dark:hover:to-slate-900 dark:hover:text-amber-100"
               >
-                ⚡ SQL Templates
+                <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden />
+                <span className="hidden sm:inline">SQL Templates</span>
+                <span className="sm:hidden">Templates</span>
               </button>
 
               <button
