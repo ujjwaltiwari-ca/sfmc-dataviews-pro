@@ -30,7 +30,7 @@ import {
 } from '../utils/sqlGenerator';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { FieldExpressionLabel, SqlStyledCode, SqlSyntaxSnippet } from './SqlStyledCode';
-import { getIdentifierSyntaxClass, SQL_EDITOR_TYPO, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
+import { getIdentifierSyntaxClass, IDE_DARK_EDITOR_ROOT, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
@@ -759,7 +759,7 @@ export function SqlGenerator({
                           onChange={(event) => onSqlChange(event.target.value)}
                           onScroll={syncSqlEditorScroll}
                           spellCheck={false}
-                          className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${SQL_EDITOR_TYPO}`}
+                          className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${IDE_DARK_EDITOR_ROOT}`}
                           aria-label="SQL query editor"
                           placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
                         />

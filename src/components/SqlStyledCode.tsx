@@ -8,7 +8,8 @@ import {
   SYNTAX_KEYWORD_LIGHT,
   SYNTAX_PUNCTUATION_EDITOR,
   SYNTAX_PUNCTUATION_LIGHT,
-  SQL_EDITOR_TYPO,
+  IDE_DARK_EDITOR_ROOT,
+  MONO_EDITOR_TYPO,
   getIdentifierSyntaxClass,
   type SqlSyntaxTheme,
 } from '../utils/typeSyntax';
@@ -180,7 +181,7 @@ export function SqlStyledCode({
   const gutterWidth = Math.max(2, String(lines.length).length);
   const isDarkIde = theme === 'editor-dark';
 
-  const editorTypo = isDarkIde ? `${SQL_EDITOR_TYPO} text-[#e1e4e8]` : SQL_EDITOR_TYPO;
+  const editorTypo = isDarkIde ? IDE_DARK_EDITOR_ROOT : MONO_EDITOR_TYPO;
 
   return (
     <div className={`flex min-h-0 w-max min-w-full ${editorTypo} ${className}`}>
