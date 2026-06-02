@@ -6,7 +6,7 @@ import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
 import { SiteFooter } from './components/SiteFooter';
-import { SqlGenerator } from './components/SqlGenerator';
+import { SqlGenerator, type SandboxEditorTab } from './components/SqlGenerator';
 import type { DataViewField } from './data/sfmcSchema';
 import {
   dedupeTablesByName,
@@ -24,7 +24,7 @@ const STAGING_UNLOCK_STORAGE_KEY = 'isStagingUnlocked';
 const RELATION_LEAVE_DELAY_MS = 40;
 const SHOW_DETAILS_STORAGE_KEY = 'sfmc-show-details';
 /** Matches SqlGenerator expanded drawer height so cards clear the sandbox. */
-const SANDBOX_CANVAS_PADDING = 'pb-[450px]';
+const SANDBOX_CANVAS_PADDING = 'pb-[520px]';
 
 function readShowDetailsPreference(): boolean {
   try {
@@ -131,7 +131,9 @@ function AppMain() {
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [sandboxSql, setSandboxSql] = useState('');
   const [showSandbox, setShowSandbox] = useState(false);
-  const [isSandboxExpanded, setIsSandboxExpanded] = useState(true);
+  const [isSandboxExpanded, setIsSandboxExpanded] = useState(false);
+  const [sandboxEditorTab, setSandboxEditorTab] = useState<SandboxEditorTab>('live');
+  const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
   const [copilotSqlActive, setCopilotSqlActive] = useState(false);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -144,6 +146,13 @@ function AppMain() {
     setShowSandbox(true);
     setIsSandboxExpanded(true);
     setCopilotSqlActive(true);
+  }, []);
+
+  const handleOpenSqlTemplates = useCallback(() => {
+    setShowSandbox(true);
+    setIsSandboxExpanded(true);
+    setSandboxEditorTab('templates');
+    setTemplatesShortcutNonce((nonce) => nonce + 1);
   }, []);
 
   const activeTables = useMemo(
@@ -241,6 +250,7 @@ function AppMain() {
           onToggleCopilot={handleToggleCopilot}
           isCopilotOpen={isCopilotOpen}
           onSignInRequired={handleSignInRequired}
+          onOpenSqlTemplates={handleOpenSqlTemplates}
         />
         <CommandToolbar
           activeSegment={activeSegment}
@@ -290,6 +300,9 @@ function AppMain() {
         isExpanded={isSandboxExpanded}
         onExpandedChange={setIsSandboxExpanded}
         preserveSql={copilotSqlActive}
+        editorTab={sandboxEditorTab}
+        onEditorTabChange={setSandboxEditorTab}
+        templatesShortcutNonce={templatesShortcutNonce}
       />
 
       <AiCopilot
