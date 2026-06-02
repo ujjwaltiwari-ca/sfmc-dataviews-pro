@@ -51,14 +51,14 @@ WHERE s.SubscriberID IN (
       'Identify all Automation Studio tasks that failed or skipped in the last 24 hours.',
     sql: `SELECT
   AutomationName,
-  CustomerKey,
-  StartTime,
-  EndTime,
-  Status
+  AutomationCustomerKey,
+  AutomationInstanceStartTime_UTC,
+  AutomationInstanceEndTime_UTC,
+  AutomationInstanceStatus
 FROM _AutomationInstance
-WHERE Status IN ('Error', 'Skipped')
-  AND StartTime >= DATEADD(hour, -24, GETDATE())
-ORDER BY StartTime DESC`,
+WHERE AutomationInstanceStatus IN ('Error', 'Skipped')
+  AND AutomationInstanceStartTime_UTC >= DATEADD(hour, -24, GETDATE())
+ORDER BY AutomationInstanceStartTime_UTC DESC`,
   },
   {
     id: 'high-friction-unsubscribes',
@@ -83,11 +83,11 @@ WHERE u.EventDate <= DATEADD(hour, 24, s.EventDate)
     sql: `SELECT
   s.SubscriberKey,
   s.Status,
-  b.BounceReason,
+  b.SMTPBounceReason,
   b.EventDate AS LastBounceDate
 FROM _Subscribers s
 JOIN _Bounce b ON s.SubscriberID = b.SubscriberID
-WHERE s.Status = 'Held'
+WHERE s.Status = 'held'
   AND b.EventDate = (
     SELECT MAX(InternalB.EventDate)
     FROM _Bounce InternalB
@@ -114,10 +114,10 @@ ORDER BY TotalComplaints DESC`,
     description:
       'Isolate text messages that returned an undelivered or error state from the gateway.',
     sql: `SELECT
-  MobileNumber,
+  Mobile,
   MessageID,
-  Code,
-  OutboundActionID,
+  SMSStandardStatusCodeId,
+  SendJobID,
   ActionDateTime
 FROM _SMSMessageTracking
 WHERE Delivered = 0
