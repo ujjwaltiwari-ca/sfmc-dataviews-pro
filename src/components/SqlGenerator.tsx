@@ -17,6 +17,7 @@ import {
   Route,
   Shield,
   Terminal,
+  TriangleAlert,
   Users,
   Zap,
 } from 'lucide-react';
@@ -46,6 +47,21 @@ import {
   parseTemplatePlaceholders,
 } from '../utils/templatePlaceholders';
 import { TemplateParametersPanel } from './TemplateParametersPanel';
+
+const SFMC_PERFORMANCE_WARNING =
+  'Optimization Warning: Ensure large event data sets (_Sent, _Click, _Open) are filtered by EventDate in Automation Studio to avoid query runtime timeouts.';
+
+function SfmcPerformanceWarningBanner() {
+  return (
+    <div
+      role="status"
+      className="mx-2 mt-2 flex shrink-0 items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 backdrop-blur-sm"
+    >
+      <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
+      <p className="text-xs leading-relaxed text-amber-600 dark:text-amber-500">{SFMC_PERFORMANCE_WARNING}</p>
+    </div>
+  );
+}
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
@@ -1014,6 +1030,7 @@ export function SqlGenerator({
                           </button>
                         </div>
                       </div>
+                      {showSqlEditor ? <SfmcPerformanceWarningBanner /> : null}
                       <div
                         id="sql-editor-panel"
                         role="tabpanel"

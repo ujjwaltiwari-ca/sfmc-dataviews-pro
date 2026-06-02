@@ -606,7 +606,7 @@ function isValidJobJoinEdge(edge: SqlJoinEdge): boolean {
  * Resolves join type for a BFS step. All generated joins use LEFT JOIN by default to avoid
  * row loss from SFMC logging latency and nullable optional attributes (composite ON keys unchanged).
  */
-export function resolveJoinTypeForTables(_tableA: string, _tableB: string): SqlJoinType {
+export function resolveJoinTypeForTables(): SqlJoinType {
   return DEFAULT_SQL_JOIN_TYPE;
 }
 
@@ -758,7 +758,7 @@ function buildJoinSteps(
             pairedTable: joinedTable,
             conditions,
             isBridgingTable: bridgingTableNames.has(nextTable),
-            joinType: resolveJoinTypeForTables(joinedTable, nextTable),
+            joinType: resolveJoinTypeForTables(),
           });
           joined.add(nextTable);
           remaining.delete(nextTable);

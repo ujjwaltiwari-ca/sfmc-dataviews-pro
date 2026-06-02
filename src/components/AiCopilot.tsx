@@ -44,6 +44,8 @@ export type AiCopilotProps = {
   isOpen: boolean;
   onClose: () => void;
   onApplyToSandbox: (sql: string) => void;
+  /** Data view names currently selected on the workspace canvas. */
+  activeTables?: string[];
 };
 
 function createMessageId(): string {
@@ -125,6 +127,7 @@ function processSseLine(
 async function streamChatFromProxy(
   messages: ApiChatMessage[],
   accessToken: string,
+  activeTables: string[],
   onDelta: (accumulated: string) => void,
 ): Promise<string> {
   const bearerToken = accessToken.trim();
@@ -138,7 +141,7 @@ async function streamChatFromProxy(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${bearerToken}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, activeTables }),
   });
 
   if (response.status === 401) {
@@ -194,7 +197,12 @@ async function streamChatFromProxy(
   return accumulated;
 }
 
-export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps) {
+export function AiCopilot({
+  isOpen,
+  onClose,
+  onApplyToSandbox,
+  activeTables = [],
+}: AiCopilotProps) {
   const { user, refreshUsage, applyKnownUsageCount, signOut } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -314,7 +322,12 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
     };
 
     try {
-      const accumulated = await streamChatFromProxy(apiMessages, accessToken, appendAssistantDelta);
+      const accumulated = await streamChatFromProxy(
+        apiMessages,
+        accessToken,
+        activeTables,
+        appendAssistantDelta,
+      );
       finalizeAssistant(accumulated || 'No response received.');
       if (isDailyCopilotLimitMessage(accumulated)) {
         applyKnownUsageCount(DAILY_COPILOT_QUERY_LIMIT);
@@ -341,7 +354,7 @@ export function AiCopilot({ isOpen, onClose, onApplyToSandbox }: AiCopilotProps)
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, messages, refreshUsage, applyKnownUsageCount, signOut]);
+  }, [input, isSending, messages, activeTables, refreshUsage, applyKnownUsageCount, signOut]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

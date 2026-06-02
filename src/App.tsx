@@ -293,6 +293,7 @@ function AppMain() {
         isOpen={isCopilotOpen}
         onClose={() => setIsCopilotOpen(false)}
         onApplyToSandbox={handleApplyToSandbox}
+        activeTables={selectedTableNames}
       />
       </div>
     </AuthProvider>
