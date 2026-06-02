@@ -6,7 +6,12 @@ import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
 import { SiteFooter } from './components/SiteFooter';
-import { SqlGenerator } from './components/SqlGenerator';
+import {
+  getDefaultSandboxHeight,
+  SANDBOX_COLLAPSED_CHROME_HEIGHT_PX,
+  SANDBOX_RESIZE_GUTTER_HEIGHT_PX,
+  SqlGenerator,
+} from './components/SqlGenerator';
 import type { DataViewField } from './data/sfmcSchema';
 import { dedupeTablesByName, getTablesForSegment } from './data/viewSegments';
 import { useWorkspaceState } from './hooks/useWorkspaceState';
@@ -18,8 +23,6 @@ const STAGING_UNLOCK_STORAGE_KEY = 'isStagingUnlocked';
 
 const RELATION_LEAVE_DELAY_MS = 40;
 const SHOW_DETAILS_STORAGE_KEY = 'sfmc-show-details';
-/** Matches SqlGenerator expanded drawer height so cards clear the sandbox. */
-const SANDBOX_CANVAS_PADDING = 'pb-[520px]';
 
 function readShowDetailsPreference(): boolean {
   try {
@@ -142,6 +145,7 @@ function AppMain() {
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [sandboxSql, setSandboxSql] = useState(() => initialTemplateSql ?? '');
+  const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
   const [copilotSqlActive, setCopilotSqlActive] = useState(false);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,6 +197,12 @@ function AppMain() {
 
   const sandboxOpen = selectedTableNames.length > 0 || showSandbox;
 
+  const canvasBottomPaddingPx = sandboxOpen
+    ? isSandboxExpanded
+      ? sandboxDrawerHeight + SANDBOX_RESIZE_GUTTER_HEIGHT_PX
+      : SANDBOX_COLLAPSED_CHROME_HEIGHT_PX
+    : 0;
+
   useEffect(() => {
     setCopilotSqlActive(false);
   }, [selectedTableNames]);
@@ -243,9 +253,8 @@ function AppMain() {
       </div>
 
       <div
-        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 ${
-          sandboxOpen ? SANDBOX_CANVAS_PADDING : ''
-        }`}
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-slate-50 via-slate-100/70 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900"
+        style={canvasBottomPaddingPx > 0 ? { paddingBottom: canvasBottomPaddingPx } : undefined}
       >
         <main className="mx-auto w-full max-w-7xl p-6 sm:p-8">
           <div
@@ -287,6 +296,7 @@ function AppMain() {
         editorTab={sandboxEditorTab}
         onEditorTabChange={setSandboxEditorTab}
         templatesShortcutNonce={templatesShortcutNonce}
+        onSandboxHeightChange={setSandboxDrawerHeight}
       />
 
       <AiCopilot

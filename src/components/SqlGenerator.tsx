@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import CodeMirror from '@uiw/react-codemirror';
 import { sql } from '@codemirror/lang-sql';
@@ -70,8 +78,28 @@ function SfmcPerformanceWarningBanner() {
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
 const COPIED_FEEDBACK_MS = 2200;
-/** Expanded drawer height — keep in sync with App canvas bottom padding. */
-const SANDBOX_DRAWER_HEIGHT_PX = 520;
+const SANDBOX_MIN_HEIGHT_PX = 150;
+const SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO = 0.4;
+const SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO = 0.8;
+/** Collapsed header chrome — keep in sync with App canvas padding when minimized. */
+export const SANDBOX_COLLAPSED_CHROME_HEIGHT_PX = 72;
+/** Draggable resize gutter (`h-1.5`) above the expanded drawer. */
+export const SANDBOX_RESIZE_GUTTER_HEIGHT_PX = 6;
+
+export function clampSandboxHeight(height: number): number {
+  if (typeof window === 'undefined') {
+    return Math.max(height, SANDBOX_MIN_HEIGHT_PX);
+  }
+  const maxHeight = Math.floor(window.innerHeight * SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO);
+  return Math.min(Math.max(height, SANDBOX_MIN_HEIGHT_PX), maxHeight);
+}
+
+export function getDefaultSandboxHeight(): number {
+  if (typeof window === 'undefined') {
+    return 400;
+  }
+  return clampSandboxHeight(Math.round(window.innerHeight * SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO));
+}
 const sandboxSqlScrollerTheme = EditorView.theme({
   '&': {
     height: '100%',
@@ -279,6 +307,8 @@ interface SqlGeneratorProps {
   onEditorTabChange?: (tab: SandboxEditorTab) => void;
   /** Increment to reset template selection (e.g. header shortcut). */
   templatesShortcutNonce?: number;
+  /** Notifies parent when the user-resized drawer height changes (for canvas padding). */
+  onSandboxHeightChange?: (height: number) => void;
 }
 
 function UtilityToggle({
@@ -455,8 +485,13 @@ export function SqlGenerator({
   editorTab: editorTabProp,
   onEditorTabChange,
   templatesShortcutNonce = 0,
+  onSandboxHeightChange,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
+  const [sandboxHeight, setSandboxHeight] = useState(getDefaultSandboxHeight);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartYRef = useRef(0);
+  const resizeStartHeightRef = useRef(getDefaultSandboxHeight());
   const {
     limitPast30Days,
     filterUniqueEvents,
@@ -691,6 +726,59 @@ export function SqlGenerator({
     return () => clearTimeout(timer);
   }, [copied]);
 
+  useEffect(() => {
+    onSandboxHeightChange?.(sandboxHeight);
+  }, [sandboxHeight, onSandboxHeightChange]);
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setSandboxHeight((previous) => clampSandboxHeight(previous));
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) {
+      return;
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const deltaY = resizeStartYRef.current - event.clientY;
+      const nextHeight = clampSandboxHeight(resizeStartHeightRef.current + deltaY);
+      setSandboxHeight(nextHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+    };
+
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
+    };
+  }, [isResizing]);
+
+  const handleResizeStart = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      resizeStartYRef.current = event.clientY;
+      resizeStartHeightRef.current = sandboxHeight;
+      setIsResizing(true);
+    },
+    [sandboxHeight],
+  );
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(stripLeadingSqlComments(sql));
@@ -700,18 +788,37 @@ export function SqlGenerator({
     }
   };
 
+  const expandedDrawerHeightPx = isExpanded ? sandboxHeight : SANDBOX_COLLAPSED_CHROME_HEIGHT_PX;
+
   return (
     <div
-      className={`pointer-events-none fixed bottom-0 left-0 right-0 z-50 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+      className={`pointer-events-none fixed bottom-0 left-0 right-0 z-50 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
         isVisible ? 'translate-y-0' : 'translate-y-full'
       }`}
       aria-hidden={!isVisible}
     >
+      {isVisible && isExpanded ? (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize SQL sandbox height"
+          aria-valuemin={SANDBOX_MIN_HEIGHT_PX}
+          aria-valuemax={Math.floor(
+            (typeof window !== 'undefined' ? window.innerHeight : 800) *
+              SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO,
+          )}
+          aria-valuenow={sandboxHeight}
+          onMouseDown={handleResizeStart}
+          className={`pointer-events-auto h-1.5 w-full shrink-0 cursor-row-resize bg-slate-800/40 transition-colors duration-150 hover:bg-sky-500/80 ${
+            isResizing ? 'bg-sky-500/80' : ''
+          }`}
+        />
+      ) : null}
       <div
         className={SANDBOX_SHELL_CLASS}
         style={{
-          height: isExpanded ? `${SANDBOX_DRAWER_HEIGHT_PX}px` : 'auto',
-          maxHeight: isExpanded ? `${SANDBOX_DRAWER_HEIGHT_PX}px` : '4.5rem',
+          height: isExpanded ? `${expandedDrawerHeightPx}px` : 'auto',
+          maxHeight: `${expandedDrawerHeightPx}px`,
         }}
       >
         <div className="h-0.5 w-full shrink-0 bg-blue-500" aria-hidden />
