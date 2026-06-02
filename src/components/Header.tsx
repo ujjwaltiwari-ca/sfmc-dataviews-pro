@@ -78,12 +78,14 @@ type HeaderProps = {
   onToggleCopilot: () => void;
   isCopilotOpen?: boolean;
   onSignInRequired?: () => void;
+  onOpenSqlTemplates?: () => void;
 };
 
 export function Header({
   onToggleCopilot,
   isCopilotOpen = false,
   onSignInRequired,
+  onOpenSqlTemplates,
 }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
   const { user, isAuthLoading } = useAuth();
@@ -162,6 +164,16 @@ export function Header({
 
               {!isAuthLoading && user ? (
                 <AccountProfileDropdown onSignedOut={onSignInRequired} />
+              ) : null}
+
+              {onOpenSqlTemplates ? (
+                <button
+                  type="button"
+                  onClick={onOpenSqlTemplates}
+                  className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 md:flex"
+                >
+                  ⚡ SQL Templates
+                </button>
               ) : null}
 
               <button

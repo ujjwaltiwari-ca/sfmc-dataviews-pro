@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  ArrowLeft,
   Braces,
   Calendar,
   CaseSensitive,
@@ -17,6 +18,7 @@ import {
   Shield,
   Terminal,
   Users,
+  Zap,
 } from 'lucide-react';
 import type { DataViewTable } from '../data/sfmcSchema';
 import {
@@ -28,6 +30,7 @@ import {
   resolveFilterAlias,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
+import { sfmcQueryTemplates } from '../data/queryTemplates';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { FieldExpressionLabel, SqlStyledCode, SqlSyntaxSnippet } from './SqlStyledCode';
 import { getIdentifierSyntaxClass, IDE_DARK_EDITOR_ROOT, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
@@ -112,6 +115,76 @@ function QueryStudioTipIcon({ tip }: { tip: string }) {
   );
 }
 
+type EditorTab = 'live' | 'templates';
+
+export type SandboxEditorTab = EditorTab;
+
+function EditorTabButton({
+  id,
+  label,
+  isActive,
+  onClick,
+}: {
+  id: string;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      aria-controls="sql-editor-panel"
+      onClick={onClick}
+      className={`relative px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
+        isActive
+          ? 'text-sky-400 after:absolute after:inset-x-0 after:-bottom-1.5 after:h-px after:bg-sky-400/80'
+          : 'text-slate-500 hover:text-slate-300'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function TemplateLibraryGrid({
+  onSelectTemplate,
+}: {
+  onSelectTemplate: (templateId: string) => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-slate-800/80 px-3 py-2">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+          {sfmcQueryTemplates.length} production templates
+        </p>
+      </div>
+      <div className="scrollbar-sql-editor min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
+        <div className="grid auto-rows-min grid-cols-1 content-start gap-2 sm:grid-cols-2">
+          {sfmcQueryTemplates.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onSelectTemplate(template.id)}
+              className="group flex flex-col rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2.5 text-left transition-all hover:border-sky-500/40 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+            >
+              <span className="flex items-center gap-1.5 font-mono text-xs font-semibold text-slate-100 group-hover:text-sky-300">
+                <Zap className="h-3 w-3 shrink-0 text-amber-400/90" aria-hidden />
+                {template.title}
+              </span>
+              <span className="mt-1 text-[11px] leading-snug text-slate-400 group-hover:text-slate-300">
+                {template.description}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SqlGeneratorProps {
   selectedTableNames: string[];
   schemaTables?: DataViewTable[];
@@ -122,6 +195,10 @@ interface SqlGeneratorProps {
   onExpandedChange: (expanded: boolean) => void;
   /** When true, skip overwriting sql from card-driven generation (e.g. copilot apply). */
   preserveSql?: boolean;
+  editorTab?: SandboxEditorTab;
+  onEditorTabChange?: (tab: SandboxEditorTab) => void;
+  /** Increment to reset template selection (e.g. header shortcut). */
+  templatesShortcutNonce?: number;
 }
 
 function UtilityToggle({
@@ -291,6 +368,9 @@ export function SqlGenerator({
   isExpanded,
   onExpandedChange,
   preserveSql = false,
+  editorTab: editorTabProp,
+  onEditorTabChange,
+  templatesShortcutNonce = 0,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const [limitPast30Days, setLimitPast30Days] = useState(false);
@@ -300,6 +380,9 @@ export function SqlGenerator({
   const [campaignJobId, setCampaignJobId] = useState('');
   const [includeTargetDeScaffolding, setIncludeTargetDeScaffolding] = useState(false);
   const [keywordCase, setKeywordCase] = useState<SqlKeywordCase>('upper');
+  const [internalEditorTab, setInternalEditorTab] = useState<EditorTab>('live');
+  const editorTab = editorTabProp ?? internalEditorTab;
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const sqlTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sqlHighlightRef = useRef<HTMLDivElement>(null);
 
@@ -383,11 +466,47 @@ export function SqlGenerator({
     applySqlKeywordCase(expression, keywordCase);
 
   useEffect(() => {
-    if (preserveSql || selectedTableNames.length === 0) {
+    if (preserveSql || selectedTableNames.length === 0 || editorTab !== 'live') {
       return;
     }
     onSqlChange(displaySql);
-  }, [displaySql, onSqlChange, preserveSql, selectedTableNames.length]);
+  }, [displaySql, onSqlChange, preserveSql, selectedTableNames.length, editorTab]);
+
+  const handleEditorTabChange = (tab: EditorTab) => {
+    if (onEditorTabChange) {
+      onEditorTabChange(tab);
+    } else {
+      setInternalEditorTab(tab);
+    }
+    if (tab === 'live') {
+      setActiveTemplateId(null);
+      if (!preserveSql && selectedTableNames.length > 0) {
+        onSqlChange(displaySql);
+      }
+      return;
+    }
+    setActiveTemplateId(null);
+  };
+
+  useEffect(() => {
+    setActiveTemplateId(null);
+  }, [templatesShortcutNonce]);
+
+  const handleSelectTemplate = (templateId: string) => {
+    const template = sfmcQueryTemplates.find((item) => item.id === templateId);
+    if (!template) {
+      return;
+    }
+    setActiveTemplateId(templateId);
+    onSqlChange(template.sql);
+  };
+
+  const handleBackToTemplates = () => {
+    setActiveTemplateId(null);
+  };
+
+  const showTemplateLibrary = editorTab === 'templates' && activeTemplateId === null;
+  const showSqlEditor = editorTab === 'live' || activeTemplateId !== null;
 
   const fieldsByTable = useMemo(() => {
     const groups = new Map<string, typeof architecture.selectFields>();
@@ -703,22 +822,48 @@ export function SqlGenerator({
                     <div className="h-0.5 w-full shrink-0 bg-blue-500" aria-hidden />
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                       <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#0d1117] px-3 py-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                            query.sql
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="flex items-center gap-1 border-r border-slate-800/80 pr-2"
+                            role="tablist"
+                            aria-label="SQL editor mode"
+                          >
+                            <EditorTabButton
+                              id="sql-tab-live"
+                              label="Live Query"
+                              isActive={editorTab === 'live'}
+                              onClick={() => handleEditorTabChange('live')}
+                            />
+                            <EditorTabButton
+                              id="sql-tab-templates"
+                              label="⚡ Starter Templates"
+                              isActive={editorTab === 'templates'}
+                              onClick={() => handleEditorTabChange('templates')}
+                            />
+                          </div>
                           <QueryStudioTipIcon tip={QUERY_STUDIO_TIP} />
+                          {activeTemplateId && (
+                            <button
+                              type="button"
+                              onClick={handleBackToTemplates}
+                              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                            >
+                              <ArrowLeft className="h-3 w-3" aria-hidden />
+                              Back to Templates
+                            </button>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {(limitPast30Days ||
-                            excludeTestSends ||
-                            (filterActiveSubscribersOnly && subscribersInJoinPath) ||
-                            campaignJobIdActive ||
-                            includeTargetDeScaffolding) && (
-                            <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
-                              utilities active
-                            </span>
-                          )}
+                          {editorTab === 'live' &&
+                            (limitPast30Days ||
+                              excludeTestSends ||
+                              (filterActiveSubscribersOnly && subscribersInJoinPath) ||
+                              campaignJobIdActive ||
+                              includeTargetDeScaffolding) && (
+                              <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
+                                utilities active
+                              </span>
+                            )}
                           <button
                             type="button"
                             onClick={handleCopy}
@@ -743,26 +888,38 @@ export function SqlGenerator({
                           </button>
                         </div>
                       </div>
-                      <div className="relative m-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117]">
-                        <div
-                          ref={sqlHighlightRef}
-                          className="pointer-events-none absolute inset-0 overflow-hidden"
-                          aria-hidden
-                        >
-                          <div className="min-w-max p-4">
-                            <SqlStyledCode sql={sql} showGutter={false} theme="editor-dark" />
-                          </div>
-                        </div>
-                        <textarea
-                          ref={sqlTextareaRef}
-                          value={sql}
-                          onChange={(event) => onSqlChange(event.target.value)}
-                          onScroll={syncSqlEditorScroll}
-                          spellCheck={false}
-                          className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${IDE_DARK_EDITOR_ROOT}`}
-                          aria-label="SQL query editor"
-                          placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
-                        />
+                      <div
+                        id="sql-editor-panel"
+                        role="tabpanel"
+                        aria-labelledby={editorTab === 'live' ? 'sql-tab-live' : 'sql-tab-templates'}
+                        className="relative m-2 min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117]"
+                      >
+                        {showTemplateLibrary ? (
+                          <TemplateLibraryGrid onSelectTemplate={handleSelectTemplate} />
+                        ) : showSqlEditor ? (
+                          <>
+                            <div
+                              ref={sqlHighlightRef}
+                              className="pointer-events-none absolute inset-0 overflow-hidden"
+                              aria-hidden
+                            >
+                              <div className="min-w-max p-4">
+                                <SqlStyledCode sql={sql} showGutter={false} theme="editor-dark" />
+                              </div>
+                            </div>
+                            <textarea
+                              ref={sqlTextareaRef}
+                              value={sql}
+                              onChange={(event) => onSqlChange(event.target.value)}
+                              onScroll={syncSqlEditorScroll}
+                              spellCheck={false}
+                              readOnly={activeTemplateId !== null}
+                              className={`scrollbar-sql-editor relative z-10 block h-full min-h-0 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 text-transparent caret-sky-400 selection:bg-sky-500/25 placeholder:text-slate-500 [-webkit-text-fill-color:transparent] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500/30 ${IDE_DARK_EDITOR_ROOT}`}
+                              aria-label="SQL query editor"
+                              placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
+                            />
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </div>
