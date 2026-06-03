@@ -280,8 +280,27 @@ const BRIDGE_TABLE_PRIORITY: string[] = [
   '_AutomationActivityInstance',
 ];
 
+/** Core tracking data views — single-letter aliases (SFMC-safe; avoids OPEN reserved keyword). */
+const CORE_TRACKING_TABLE_ALIASES: Readonly<Record<string, string>> = {
+  _sent: 's',
+  _job: 'j',
+  _open: 'o',
+  _click: 'c',
+  _bounce: 'b',
+  _unsubscribe: 'u',
+};
+
 export function tableToAlias(tableName: string): string {
-  const stripped = tableName.startsWith('_') ? tableName.slice(1) : tableName;
+  const trimmed = tableName.trim();
+  const coreAlias = CORE_TRACKING_TABLE_ALIASES[trimmed.toLowerCase()];
+  if (coreAlias) {
+    return coreAlias;
+  }
+
+  const stripped = trimmed.startsWith('_') ? trimmed.slice(1) : trimmed;
+  if (!stripped) {
+    return trimmed;
+  }
   return stripped.charAt(0).toLowerCase() + stripped.slice(1);
 }
 
