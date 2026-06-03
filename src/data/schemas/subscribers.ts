@@ -1,5 +1,5 @@
 import type { DataViewTable } from './types.js';
-import { appendDynamicProfileAttributeField, ENGAGEMENT_LIST, field, rel } from './helpers.js';
+import { ENGAGEMENT_LIST, field, rel } from './helpers.js';
 
 export const subscriberDataViews: DataViewTable[] = [
   {
@@ -27,7 +27,6 @@ export const subscriberDataViews: DataViewTable[] = [
         isNullable: true,
       }),
       field('Locale', 'Number', 'Locale code for the subscriber.', { isNullable: true }),
-      ...appendDynamicProfileAttributeField([]),
     ],
   },
   {
@@ -39,10 +38,6 @@ export const subscriberDataViews: DataViewTable[] = [
       field('_SubscriberID', 'Number', 'Subscriber ID; underscore prefix is required in queries.', {
         isPrimaryKey: true,
         relatesTo: [rel('_Subscribers', 'SubscriberID')],
-      }),
-      field('(Your Attribute Columns)', 'Text', 'One column per profile or preference attribute created in Email Studio.', {
-        isNullable: true,
-        isDynamicProfileAttribute: true,
       }),
     ],
   },

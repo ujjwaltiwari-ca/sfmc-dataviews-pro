@@ -1,5 +1,4 @@
-import { Info, Link2 } from 'lucide-react';
-import { ProfileAttributeHelp } from './ProfileAttributeHelp';
+import { Link2 } from 'lucide-react';
 import type { DataViewField, DataViewTable } from '../data/sfmcSchema';
 import type { HoveredRelation } from '../utils/schemaExplorer';
 import {
@@ -9,10 +8,7 @@ import {
   isSameFieldRef,
   tableHasMatchingField,
 } from '../utils/schemaExplorer';
-import {
-  getFieldTypeSyntaxClass,
-  SYNTAX_NEUTRAL_CLASS,
-} from '../utils/typeSyntax';
+import { getFieldTypeSyntaxClass } from '../utils/typeSyntax';
 
 type DataViewCategory = DataViewTable['category'];
 
@@ -155,14 +151,8 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
 
 const CARD_HEADER_HEIGHT = 'h-[5.5rem]';
 
-/** Cards at or below this field count show a flex-grown empty-state panel */
-const SPARSE_FIELD_THRESHOLD = 4;
-
 const FIELD_COLUMN_HEADER_CLASS =
   'text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500';
-
-const FIELD_EMPTY_PLACEHOLDER =
-  'Custom Profile Attributes from your Enterprise 2.0 configuration will dynamically map here.';
 
 const FIELD_GRID_COLS =
   'grid-cols-[minmax(0,1fr)_minmax(3.5rem,auto)_2.5rem]';
@@ -229,8 +219,6 @@ export function DataViewCard({
   const isSearchActive = normalizedSearchQuery.length > 0;
   const tableMatches = tableHasMatchingField(table, normalizedSearchQuery);
   const isCardDimmed = isSearchActive && !tableMatches;
-  const showSparseFieldPlaceholder = table.fields.length <= SPARSE_FIELD_THRESHOLD;
-
   return (
     <article
       className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden transition-all duration-300 ease-out ${CARD_BASE_CLASS} ${
@@ -288,9 +276,7 @@ export function DataViewCard({
         </div>
 
         <div
-          className={`scrollbar-card-fields flex min-h-0 flex-1 flex-col overflow-x-hidden px-4 ${
-            showSparseFieldPlaceholder ? 'overflow-hidden' : 'overflow-y-auto'
-          }`}
+          className="scrollbar-card-fields flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4"
           role="table"
           aria-label={`${table.name} fields`}
         >
@@ -312,23 +298,6 @@ export function DataViewCard({
               />
             ))}
           </div>
-
-          {showSparseFieldPlaceholder && (
-            <div
-              className="mx-0 mb-4 mt-2 flex min-h-0 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200/80 bg-slate-50/50 px-6 py-8 text-center dark:border-slate-800 dark:bg-slate-900/40"
-              role="status"
-              aria-label={FIELD_EMPTY_PLACEHOLDER}
-            >
-              <Info
-                className="mb-3 h-5 w-5 text-slate-300 dark:text-slate-600"
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <p className="max-w-[15.5rem] text-[12px] font-normal italic leading-relaxed text-slate-400 dark:text-slate-500">
-                {FIELD_EMPTY_PLACEHOLDER}
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </article>
@@ -373,20 +342,16 @@ function FieldRow({
   const isTargetGlow = isRelationHighlighted && !isSource;
   const isPathActive = isSource || isTargetGlow;
   const isRelationInteractive =
-    !field.isDynamicProfileAttribute &&
     buildRelationHighlight(tableName, field, schemaTables) !== null;
-  const isProfileAttribute = field.isDynamicProfileAttribute === true;
   const hasForeignKey = Boolean(field.relatesTo?.length);
   const showForeignKeyMark =
     hasForeignKey || (isRelationInteractive && !field.isPrimaryKey);
   const showIndexedMark =
     field.isIndexed === true && !field.isPrimaryKey && !showForeignKeyMark;
 
-  const fieldNameClass = isProfileAttribute
-    ? 'italic font-medium text-sm text-slate-500 antialiased dark:text-slate-400'
-    : isPathActive
-      ? `${categoryTheme.pathText} font-medium text-sm antialiased`
-      : 'font-medium text-sm text-slate-800 antialiased dark:text-slate-100';
+  const fieldNameClass = isPathActive
+    ? `${categoryTheme.pathText} font-medium text-sm antialiased`
+    : 'font-medium text-sm text-slate-800 antialiased dark:text-slate-100';
 
   const descriptionClass = isPathActive
     ? `${categoryTheme.pathText} opacity-80`
@@ -427,7 +392,6 @@ function FieldRow({
         <div className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className={`truncate ${fieldNameClass}`}>{field.name}</span>
-            {isProfileAttribute && <ProfileAttributeHelp />}
           </span>
           <div
             className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-in-out ${
@@ -441,11 +405,7 @@ function FieldRow({
         </div>
       </div>
       <div role="cell" className="self-center">
-        {isProfileAttribute ? (
-          <span className={`${SYNTAX_NEUTRAL_CLASS} italic`}>dynamic</span>
-        ) : (
-          <span className={getFieldTypeSyntaxClass(field)}>{formatFieldType(field)}</span>
-        )}
+        <span className={getFieldTypeSyntaxClass(field)}>{formatFieldType(field)}</span>
       </div>
       <div role="cell" className="flex items-center justify-end self-center">
         {field.isPrimaryKey ? (

@@ -8,8 +8,6 @@ export interface DataViewField {
   relatesTo?: { table: string; field: string }[];
   /** When true, field is commonly indexed for lookups and joins. */
   isIndexed?: boolean;
-  /** When true, shows contextual help for BU-specific profile attribute columns. */
-  isDynamicProfileAttribute?: boolean;
 }
 
 export type DataViewCategory =
