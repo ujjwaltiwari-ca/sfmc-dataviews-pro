@@ -286,28 +286,76 @@ const BRIDGE_TABLE_PRIORITY: string[] = [
   '_AutomationActivityInstance',
 ];
 
-/** Core tracking data views — single-letter aliases (SFMC-safe; avoids OPEN reserved keyword). */
-const CORE_TRACKING_TABLE_ALIASES: Readonly<Record<string, string>> = {
+/**
+ * Canonical short aliases for SFMC system data views.
+ * Keys are lowercase table names for case-insensitive lookup.
+ */
+const SFMC_SYSTEM_TABLE_ALIASES: Readonly<Record<string, string>> = {
+  // Core Email Tracking (strict 1-letter anchors; avoids OPEN reserved keyword)
   _sent: 's',
   _job: 'j',
   _open: 'o',
   _click: 'c',
   _bounce: 'b',
   _unsubscribe: 'u',
+  _complaint: 'comp',
+
+  // Core Directories & Lists
+  _subscribers: 'sub',
+  _listsubscribers: 'lsb',
+
+  // MobileConnect & MobilePush Channels
+  _smsmessagetracking: 'smt',
+  _smssubscriptionlog: 'ssl',
+  _undeliverablesms: 'usms',
+  _pushaddresstext: 'padd',
+  _pushaddress: 'padd',
+  _pushmessagetracking: 'pmt',
+
+  // Journey Builder Context
+  _journey: 'jny',
+  _journeyactivity: 'ja',
+
+  // Advanced Automation & Health Execution
+  _automationinstance: 'aut',
+  _automationactivityinstance: 'aai',
+  _fileuploadstatus: 'fus',
+
+  // Premium Infrastructure & Multi-Org
+  _enterpriseattribute: 'entattr',
+  _businessunitunsubscribes: 'buunsub',
+  _ftaf: 'ftaf',
 };
 
-export function tableToAlias(tableName: string): string {
-  const trimmed = tableName.trim();
-  const coreAlias = CORE_TRACKING_TABLE_ALIASES[trimmed.toLowerCase()];
-  if (coreAlias) {
-    return coreAlias;
+const CUSTOM_TABLE_ALIAS_LENGTH = 4;
+
+function normalizeTableNameLookupKey(tableName: string): string {
+  return tableName.trim().toLowerCase();
+}
+
+/** 4-letter alias for canvas Data Extensions and other tables outside the system dictionary. */
+function buildCustomTableAlias(tableName: string): string {
+  let cleaned = tableName.trim();
+  while (cleaned.startsWith('_')) {
+    cleaned = cleaned.slice(1);
   }
 
-  const stripped = trimmed.startsWith('_') ? trimmed.slice(1) : trimmed;
-  if (!stripped) {
-    return trimmed;
+  const alphanumeric = cleaned.replace(/[^A-Za-z0-9]/g, '');
+  if (!alphanumeric) {
+    return 'tbl';
   }
-  return stripped.charAt(0).toLowerCase() + stripped.slice(1);
+
+  return alphanumeric.slice(0, CUSTOM_TABLE_ALIAS_LENGTH).toLowerCase();
+}
+
+export function tableToAlias(tableName: string): string {
+  const lookupKey = normalizeTableNameLookupKey(tableName);
+  const systemAlias = SFMC_SYSTEM_TABLE_ALIASES[lookupKey];
+  if (systemAlias) {
+    return systemAlias;
+  }
+
+  return buildCustomTableAlias(tableName);
 }
 
 function getTableByName(tableName: string, tables: DataViewTable[]): DataViewTable | undefined {
