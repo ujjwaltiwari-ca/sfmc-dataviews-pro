@@ -102,6 +102,12 @@ const BEHAVIORAL_TRACKING_COMPOSITE_KEYS = [
 /** Required keys when mapping a behavioral tracking event to list membership. */
 const TRACKING_TO_LIST_SUBSCRIBERS_KEYS = ['SubscriberID', 'ListID'] as const;
 
+/** _Subscribers has no physical SubscriberID — identity joins use SubscriberKey only. */
+const TRACKING_TO_SUBSCRIBERS_JOIN_KEY = 'SubscriberKey' as const;
+
+/** Not queryable on _Subscribers in SFMC; excluded from generated SELECT lists. */
+const SUBSCRIBERS_NON_QUERYABLE_FIELDS = new Set(['SubscriberID']);
+
 /**
  * Behavioral family views with an IsUnique column (_Sent excluded — no IsUnique in schema).
  * Keeps unique-event filtering in lockstep with BEHAVIORAL_TRACKING_FAMILY.
@@ -594,6 +600,35 @@ function isTrackingToListSubscribersJoin(tableA: string, tableB: string): boolea
   return getBehavioralTrackingTableForListSubscribersJoin(tableA, tableB) !== null;
 }
 
+function getBehavioralTrackingTableForSubscribersJoin(
+  tableA: string,
+  tableB: string,
+): string | null {
+  if (tableA === SUBSCRIBERS_TABLE && isBehavioralTrackingFamilyTable(tableB)) {
+    return tableB;
+  }
+  if (tableB === SUBSCRIBERS_TABLE && isBehavioralTrackingFamilyTable(tableA)) {
+    return tableA;
+  }
+  return null;
+}
+
+function isBehavioralTrackingToSubscribersJoin(tableA: string, tableB: string): boolean {
+  return getBehavioralTrackingTableForSubscribersJoin(tableA, tableB) !== null;
+}
+
+function buildTrackingToSubscribersConditions(tableA: string, tableB: string): string[] {
+  const trackingTable = getBehavioralTrackingTableForSubscribersJoin(tableA, tableB);
+  if (!trackingTable) {
+    return [];
+  }
+  const trackingAlias = tableToAlias(trackingTable);
+  const subscribersAlias = tableToAlias(SUBSCRIBERS_TABLE);
+  return [
+    `${trackingAlias}.${TRACKING_TO_SUBSCRIBERS_JOIN_KEY} = ${subscribersAlias}.${TRACKING_TO_SUBSCRIBERS_JOIN_KEY}`,
+  ];
+}
+
 function buildTrackingToListSubscribersConditions(tableA: string, tableB: string): string[] {
   const trackingTable = getBehavioralTrackingTableForListSubscribersJoin(tableA, tableB);
   if (!trackingTable) {
@@ -640,6 +675,10 @@ function getJoinConditionsBetween(
 
   if (isTrackingToListSubscribersJoin(tableA, tableB)) {
     return buildTrackingToListSubscribersConditions(tableA, tableB);
+  }
+
+  if (isBehavioralTrackingToSubscribersJoin(tableA, tableB)) {
+    return buildTrackingToSubscribersConditions(tableA, tableB);
   }
 
   const conditions: string[] = [];
@@ -822,6 +861,12 @@ function buildSelectFields(
     const alias = tableToAlias(tableName);
     for (const field of table.fields) {
       if (isDocumentationPlaceholderField(field.name)) {
+        continue;
+      }
+      if (
+        tableName === SUBSCRIBERS_TABLE &&
+        SUBSCRIBERS_NON_QUERYABLE_FIELDS.has(field.name)
+      ) {
         continue;
       }
       if (outputColumnNames.has(field.name)) {
