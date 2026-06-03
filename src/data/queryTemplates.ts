@@ -11,14 +11,15 @@ export const sfmcQueryTemplates: QueryTemplate[] = [
     title: 'Recent Hard Bounces',
     description:
       'Find subscribers who hit a hard bounce in the last 30 days for list hygiene.',
-    sql: `SELECT
-  s.SubscriberKey,
-  s.EmailAddress,
+    sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
+SELECT
+  sub.SubscriberKey,
+  sub.EmailAddress,
   b.BounceCategory,
   b.SMTPCode,
   b.EventDate
-FROM _Subscribers s
-JOIN _Bounce b ON s.SubscriberID = b.SubscriberID
+FROM _Subscribers sub
+JOIN _Bounce b ON sub.SubscriberKey = b.SubscriberKey
 WHERE b.BounceCategory = 'Hard Bounce'
   AND b.EventDate >= DATEADD(day, -30, GETDATE())`,
   },
@@ -27,21 +28,22 @@ WHERE b.BounceCategory = 'Hard Bounce'
     title: "Unengaged 'Ghost' Subscribers",
     description:
       'Identify users sent 10+ emails in the last 90 days with zero recorded opens.',
-    sql: `SELECT
-  s.SubscriberKey,
-  s.EmailAddress
-FROM _Subscribers s
-WHERE s.SubscriberID IN (
-    SELECT Sent.SubscriberID
-    FROM _Sent Sent
-    WHERE Sent.EventDate >= DATEADD(day, -90, GETDATE())
-    GROUP BY Sent.SubscriberID
-    HAVING COUNT(Sent.JobID) >= 10
+    sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
+SELECT
+  sub.SubscriberKey,
+  sub.EmailAddress
+FROM _Subscribers sub
+WHERE sub.SubscriberKey IN (
+    SELECT s.SubscriberKey
+    FROM _Sent s
+    WHERE s.EventDate >= DATEADD(day, -90, GETDATE())
+    GROUP BY s.SubscriberKey
+    HAVING COUNT(s.JobID) >= 10
   )
-  AND s.SubscriberID NOT IN (
-    SELECT O.SubscriberID
-    FROM _Open O
-    WHERE O.EventDate >= DATEADD(day, -90, GETDATE())
+  AND sub.SubscriberKey NOT IN (
+    SELECT o.SubscriberKey
+    FROM _Open o
+    WHERE o.EventDate >= DATEADD(day, -90, GETDATE())
   )`,
   },
   {
@@ -71,7 +73,11 @@ ORDER BY AutomationInstanceStartTime_UTC DESC`,
   s.EventDate AS SentDate,
   u.JobID
 FROM _Unsubscribe u
-JOIN _Sent s ON u.SubscriberID = s.SubscriberID AND u.JobID = s.JobID
+JOIN _Sent s
+  ON u.JobID = s.JobID
+  AND u.ListID = s.ListID
+  AND u.BatchID = s.BatchID
+  AND u.SubscriberID = s.SubscriberID
 WHERE u.EventDate <= DATEADD(hour, 24, s.EventDate)
   AND u.EventDate >= DATEADD(day, -30, GETDATE())`,
   },
@@ -80,18 +86,19 @@ WHERE u.EventDate <= DATEADD(hour, 24, s.EventDate)
     title: 'Held Status Audit',
     description:
       "Find 'Held' subscribers along with their last recorded bounce reason to clear delivery blocks.",
-    sql: `SELECT
-  s.SubscriberKey,
-  s.Status,
+    sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
+SELECT
+  sub.SubscriberKey,
+  sub.Status,
   b.SMTPBounceReason,
   b.EventDate AS LastBounceDate
-FROM _Subscribers s
-JOIN _Bounce b ON s.SubscriberID = b.SubscriberID
-WHERE s.Status = 'held'
+FROM _Subscribers sub
+JOIN _Bounce b ON sub.SubscriberKey = b.SubscriberKey
+WHERE sub.Status = 'held'
   AND b.EventDate = (
     SELECT MAX(InternalB.EventDate)
     FROM _Bounce InternalB
-    WHERE InternalB.SubscriberID = s.SubscriberID
+    WHERE InternalB.SubscriberKey = sub.SubscriberKey
   )`,
   },
   {
@@ -131,15 +138,20 @@ ORDER BY ActionDateTime DESC`,
     title: 'Targeted Campaign Non-Openers',
     description:
       'Find all subscribers who were sent a specific email Job ID but never recorded an Open event.',
-    sql: `SELECT
-  s.SubscriberKey,
-  s.EmailAddress,
-  sent.JobID,
-  sent.EventDate AS SentDate
-FROM _Sent sent
-JOIN _Subscribers s ON sent.SubscriberID = s.SubscriberID
-LEFT JOIN _Open o ON sent.JobID = o.JobID AND sent.SubscriberID = o.SubscriberID
-WHERE sent.JobID = 'YOUR_JOB_ID_HERE'
+    sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
+SELECT
+  sub.SubscriberKey,
+  sub.EmailAddress,
+  s.JobID,
+  s.EventDate AS SentDate
+FROM _Sent s
+JOIN _Subscribers sub ON s.SubscriberKey = sub.SubscriberKey
+LEFT JOIN _Open o
+  ON s.JobID = o.JobID
+  AND s.ListID = o.ListID
+  AND s.BatchID = o.BatchID
+  AND s.SubscriberID = o.SubscriberID
+WHERE s.JobID = 'YOUR_JOB_ID_HERE'
   AND o.SubscriberID IS NULL`,
   },
   {
@@ -154,10 +166,11 @@ WHERE sent.JobID = 'YOUR_JOB_ID_HERE'
   c.EventDate AS ClickDate
 FROM _Click c
 WHERE c.JobID = 'YOUR_JOB_ID_HERE'
+  AND c.EventDate >= DATEADD(day, -30, GETDATE())
   AND c.SubscriberID NOT IN (
-    -- Exclude based on custom confirmation data extension if applicable
-    -- Replace with specific exclusion logic as needed
-    SELECT SubscriberID FROM _Unsubscribe WHERE JobID = c.JobID
+    SELECT u.SubscriberID
+    FROM _Unsubscribe u
+    WHERE u.JobID = c.JobID
   )`,
   },
   {
@@ -166,13 +179,14 @@ WHERE c.JobID = 'YOUR_JOB_ID_HERE'
     description:
       'Identify which specific email activities within Journeys are triggering the highest unsubscribe volumes.',
     sql: `SELECT
-  j.JourneyName,
+  jny.JourneyName,
   ja.ActivityName AS EmailActivityName,
   COUNT(u.SubscriberID) AS TotalUnsubscribes
-FROM _Journey j
-JOIN _JourneyActivity ja ON j.VersionID = ja.VersionID
+FROM _Journey jny
+JOIN _JourneyActivity ja ON jny.VersionID = ja.VersionID
 JOIN _Unsubscribe u ON ja.JourneyActivityObjectID = u.TriggererSendDefinitionObjectID
-GROUP BY j.JourneyName, ja.ActivityName
+WHERE u.EventDate >= DATEADD(day, -30, GETDATE())
+GROUP BY jny.JourneyName, ja.ActivityName
 ORDER BY TotalUnsubscribes DESC`,
   },
 ];

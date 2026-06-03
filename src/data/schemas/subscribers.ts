@@ -37,7 +37,6 @@ export const subscriberDataViews: DataViewTable[] = [
     fields: [
       field('_SubscriberID', 'Number', 'Subscriber ID; underscore prefix is required in queries.', {
         isPrimaryKey: true,
-        relatesTo: [rel('_Subscribers', 'SubscriberID')],
       }),
     ],
   },

@@ -11,7 +11,6 @@ export const subscriptionDataViews: DataViewTable[] = [
       field('BusinessUnitID', 'Number', 'Business Unit account ID (MID).', { isPrimaryKey: true }),
       field('SubscriberID', 'Number', 'Subscriber record ID.', {
         isPrimaryKey: true,
-        relatesTo: [rel('_Subscribers', 'SubscriberID')],
       }),
       field('SubscriberKey', 'Text', 'Subscriber key.', {
         length: 254,

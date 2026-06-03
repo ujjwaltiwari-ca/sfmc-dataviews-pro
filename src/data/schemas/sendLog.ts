@@ -26,7 +26,6 @@ export const sendLogDataViews: DataViewTable[] = [
       }),
       field('SubscriberID', 'Number', 'Numeric subscriber ID when populated by the send pipeline.', {
         isNullable: true,
-        relatesTo: [rel('_Subscribers', 'SubscriberID')],
       }),
       field('EmailAddress', 'Text', 'Recipient email at send time.', { length: 254, isNullable: true }),
       field('EventDate', 'Date', 'Timestamp the message was accepted for delivery.'),

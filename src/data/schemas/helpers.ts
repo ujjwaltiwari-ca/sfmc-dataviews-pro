@@ -32,6 +32,11 @@ export const ENGAGEMENT_SUBSCRIBER_ID: FieldRelation[] = [
 export const ENGAGEMENT_SUBSCRIBER_KEY: FieldRelation[] = [
   rel('_Subscribers', 'SubscriberKey'),
   rel('_Sent', 'SubscriberKey'),
+  rel('_Open', 'SubscriberKey'),
+  rel('_Click', 'SubscriberKey'),
+  rel('_Bounce', 'SubscriberKey'),
+  rel('_Complaint', 'SubscriberKey'),
+  rel('_Unsubscribe', 'SubscriberKey'),
 ];
 
 /** List context for sends and list membership. */
