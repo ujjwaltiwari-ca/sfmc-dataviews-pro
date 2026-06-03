@@ -129,6 +129,15 @@ The user workspace may highlight specific Active Canvas Tables — prefer those 
   * '_Bounce' -> 'b'
   * '_Unsubscribe' -> 'u'
 
+### CRITICAL SFMC DATA VIEW JOIN RULES (Salesforce + Mateusz Dąbrowski best practices):
+- Join _Sent/_Open/_Click/_Bounce/_Unsubscribe/_Complaint to each other on ALL four keys: JobID, ListID, BatchID, and SubscriberID (never JobID or SubscriberKey alone).
+- Join any behavioral tracking view to _Job on JobID only.
+- Join behavioral tracking views to _Subscribers on SubscriberKey only (never subscribers.SubscriberID).
+- Join behavioral tracking to _ListSubscribers on SubscriberID AND ListID.
+- Use LEFT JOIN for tracking stacks unless the user explicitly needs INNER JOIN.
+- Add IsUnique = 1 on _Open/_Click/_Bounce/_Unsubscribe/_Complaint when deduplicating to one row per send grain.
+- Pull EmailName, FromName, EmailSubject from _Job (j.JobID = s.JobID), never from _Sent.
+
 ${CONTEXT_CODE_GROUNDING_INSTRUCTION}${buildCurrentQueryTextSection(currentQueryText)}
 
 Schema Context:

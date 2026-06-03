@@ -80,6 +80,20 @@ const JOIN_BLACKLISTED_FIELDS = new Set([
 ]);
 
 /**
+ * SFMC data view join rules (aligned with Salesforce docs, sfmarketing.cloud, and
+ * Mateusz Dąbrowski’s system data view / SQL join guidance):
+ *
+ * - Tracking ↔ tracking (_Sent, _Open, _Click, _Bounce, _Complaint, _Unsubscribe):
+ *   JobID + ListID + BatchID + SubscriberID (send grain). Optional IsUnique = 1 in WHERE/ON.
+ * - Tracking ↔ _Job: JobID only (_Job has no subscriber grain).
+ * - Tracking ↔ _Subscribers: SubscriberKey only (not SubscriberID on _Subscribers).
+ * - Tracking ↔ _ListSubscribers: SubscriberID + ListID (list membership grain).
+ * - _ListSubscribers ↔ _Subscribers: SubscriberKey only.
+ * - Default JOIN type: LEFT JOIN (preserve driving send rows).
+ * - Never join on TriggererSendDefinitionObjectID / TriggeredSendCustomerKey for standard sends.
+ */
+
+/**
  * Behavioral tracking family — shares JobID + ListID + BatchID + SubscriberID quadrinity.
  * Tracking-to-tracking joins use only these keys; tracking-to-_Job uses JobID only.
  */
@@ -102,8 +116,8 @@ const BEHAVIORAL_TRACKING_COMPOSITE_KEYS = [
 /** Required keys when mapping a behavioral tracking event to list membership. */
 const TRACKING_TO_LIST_SUBSCRIBERS_KEYS = ['SubscriberID', 'ListID'] as const;
 
-/** _Subscribers has no physical SubscriberID — identity joins use SubscriberKey only. */
-const TRACKING_TO_SUBSCRIBERS_JOIN_KEY = 'SubscriberKey' as const;
+/** _Subscribers identity link — SubscriberKey (Mateusz / Stack Exchange send→sub patterns). */
+const SUBSCRIBERS_IDENTITY_JOIN_KEY = 'SubscriberKey' as const;
 
 /** Not queryable on _Subscribers in SFMC; excluded from generated SELECT lists. */
 const SUBSCRIBERS_NON_QUERYABLE_FIELDS = new Set(['SubscriberID']);
@@ -673,8 +687,38 @@ function buildTrackingToSubscribersConditions(tableA: string, tableB: string): s
   const trackingAlias = tableToAlias(trackingTable);
   const subscribersAlias = tableToAlias(SUBSCRIBERS_TABLE);
   return [
-    `${trackingAlias}.${TRACKING_TO_SUBSCRIBERS_JOIN_KEY} = ${subscribersAlias}.${TRACKING_TO_SUBSCRIBERS_JOIN_KEY}`,
+    `${trackingAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY} = ${subscribersAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY}`,
   ];
+}
+
+function isListSubscribersToSubscribersJoin(tableA: string, tableB: string): boolean {
+  return (
+    (tableA === SUBSCRIBERS_TABLE && tableB === LIST_SUBSCRIBERS_TABLE) ||
+    (tableB === SUBSCRIBERS_TABLE && tableA === LIST_SUBSCRIBERS_TABLE)
+  );
+}
+
+function buildListSubscribersToSubscribersConditions(): string[] {
+  const listAlias = tableToAlias(LIST_SUBSCRIBERS_TABLE);
+  const subscribersAlias = tableToAlias(SUBSCRIBERS_TABLE);
+  return [
+    `${listAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY} = ${subscribersAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY}`,
+  ];
+}
+
+function involvesSubscribersTable(tableA: string, tableB: string): boolean {
+  return tableA === SUBSCRIBERS_TABLE || tableB === SUBSCRIBERS_TABLE;
+}
+
+/** _Subscribers is not joinable on SubscriberID in generated SQL. */
+function isInvalidSubscribersJoinEdge(edge: SqlJoinEdge): boolean {
+  if (edge.fromTable === SUBSCRIBERS_TABLE && edge.fromField === 'SubscriberID') {
+    return true;
+  }
+  if (edge.toTable === SUBSCRIBERS_TABLE && edge.toField === 'SubscriberID') {
+    return true;
+  }
+  return false;
 }
 
 function buildTrackingToListSubscribersConditions(tableA: string, tableB: string): string[] {
@@ -729,11 +773,23 @@ function getJoinConditionsBetween(
     return buildTrackingToSubscribersConditions(tableA, tableB);
   }
 
+  if (isListSubscribersToSubscribersJoin(tableA, tableB)) {
+    return buildListSubscribersToSubscribersConditions();
+  }
+
   const conditions: string[] = [];
   const restrictToJobIdOnly = involvesJobTable(tableA, tableB);
+  const restrictSubscribersIdentity =
+    involvesSubscribersTable(tableA, tableB) &&
+    !isBehavioralTrackingToSubscribersJoin(tableA, tableB) &&
+    !isListSubscribersToSubscribersJoin(tableA, tableB);
 
   for (const edge of edges) {
     if (restrictToJobIdOnly && !isValidJobJoinEdge(edge)) {
+      continue;
+    }
+
+    if (restrictSubscribersIdentity && isInvalidSubscribersJoinEdge(edge)) {
       continue;
     }
 

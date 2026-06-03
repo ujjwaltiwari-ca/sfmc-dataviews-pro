@@ -15,10 +15,17 @@ export const rel = (table: string, field: string): FieldRelation => ({ table, fi
 /** Standard email engagement join keys (Job + Sent). */
 export const ENGAGEMENT_JOB: FieldRelation[] = [rel('_Job', 'JobID'), rel('_Sent', 'JobID')];
 
-/** Subscriber ID joins for engagement and subscriber tables. */
+/**
+ * SubscriberID grain for behavioral tracking views only (JobID+ListID+BatchID+SubscriberID).
+ * Do not link _Subscribers here — use ENGAGEMENT_SUBSCRIBER_KEY / SubscriberKey instead.
+ */
 export const ENGAGEMENT_SUBSCRIBER_ID: FieldRelation[] = [
-  rel('_Subscribers', 'SubscriberID'),
   rel('_Sent', 'SubscriberID'),
+  rel('_Open', 'SubscriberID'),
+  rel('_Click', 'SubscriberID'),
+  rel('_Bounce', 'SubscriberID'),
+  rel('_Complaint', 'SubscriberID'),
+  rel('_Unsubscribe', 'SubscriberID'),
 ];
 
 /** SubscriberKey joins for engagement and subscriber tables. */
