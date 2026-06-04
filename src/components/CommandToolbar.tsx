@@ -45,9 +45,9 @@ export function CommandToolbar({
 
   return (
     <div className="border-b border-slate-200/80 bg-white/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-950/80 dark:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 lg:px-8">
         <div
-          className="flex flex-wrap gap-1 rounded-xl border border-slate-200/60 bg-slate-100/50 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] dark:border-slate-700/50 dark:bg-slate-800/40"
+          className="flex shrink-0 flex-nowrap gap-1 overflow-x-auto rounded-xl border border-slate-200/60 bg-slate-100/50 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] dark:border-slate-700/50 dark:bg-slate-800/40"
           role="tablist"
           aria-label="Schema canvas segments"
         >
@@ -59,8 +59,9 @@ export function CommandToolbar({
                 type="button"
                 role="tab"
                 aria-selected={isActive}
+                title={segment.label}
                 onClick={() => onSegmentChange(segment.id)}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-300 ease-out sm:text-sm ${
+                className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all duration-300 ease-out sm:px-3 sm:py-2 sm:text-sm ${
                   isActive
                     ? 'bg-white text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-slate-200/60 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700/60'
                     : 'text-slate-600 hover:bg-white/80 hover:text-slate-800 hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-slate-200'
@@ -72,7 +73,7 @@ export function CommandToolbar({
           })}
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="relative min-w-0 flex-1 sm:w-72 lg:w-96">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"

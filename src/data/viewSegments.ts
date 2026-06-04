@@ -19,7 +19,7 @@ export const VIEW_SEGMENTS: ViewSegment[] = [
     id: 'core',
     label: 'Core System Data Views',
     shortLabel: 'Core Data Views',
-    toolbarLabel: `Core Data Views (${sfmcDataViews.length})`,
+    toolbarLabel: `Core (${sfmcDataViews.length})`,
     description: `Full modular schema — all ${sfmcDataViews.length} SFMC system data views across subscribers, sending, tracking, journeys, mobile push, and more.`,
     tableCount: sfmcDataViews.length,
   },
@@ -27,7 +27,7 @@ export const VIEW_SEGMENTS: ViewSegment[] = [
     id: 'sendlog',
     label: 'SendLog Template View',
     shortLabel: 'SendLog',
-    toolbarLabel: 'SendLog Templates',
+    toolbarLabel: 'SendLog',
     description:
       'Corporate SendLog DE layout with JobID, ListID, BatchID, SubKey, and standard triggered-send attribution fields.',
     tableCount: sendLogDataViews.length,
@@ -36,7 +36,7 @@ export const VIEW_SEGMENTS: ViewSegment[] = [
     id: 'synchronized',
     label: 'Synchronized Data Extensions',
     shortLabel: 'Sync DEs',
-    toolbarLabel: 'Synchronized CRM Extensions',
+    toolbarLabel: 'Sync CRM',
     description:
       'Salesforce CRM synchronized objects — Account, Contact, and Lead — with standard Id keys and replication flags.',
     tableCount: synchronizedDeDataViews.length,
