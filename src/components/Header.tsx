@@ -257,8 +257,8 @@ export function Header({
                     Documentation &amp; User Guide
                   </h2>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Workspace instructions inspired by the DataViews.pro workflow — redesigned for this
-                    open-source architect.
+                    Step-by-step guides for the schema canvas, SQL Sandbox, and shareable workspace
+                    links.
                   </p>
                 </div>
                 <button

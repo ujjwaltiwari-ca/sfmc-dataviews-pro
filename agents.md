@@ -1,4 +1,4 @@
-# AGENTS.md — Full Stack Blueprint: SFMC Dataviews Clone
+# AGENTS.md — Full Stack Blueprint: SFMC Schema Architect
 
 > **Tech Stack**: Vite + React (TypeScript) + Tailwind CSS
 > **Architecture**: Pure Client-Side State, No Database Required

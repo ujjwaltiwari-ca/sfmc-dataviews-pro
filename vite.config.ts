@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { handleChatRequest, resetSupabaseServerClient } from './api/chat';
+import { handleStagingRequest } from './api/staging';
 import { handleUsageRequest } from './api/usage';
 
 function readAuthorizationHeader(req: IncomingMessage): string | undefined {
@@ -109,7 +110,7 @@ async function handleLocalApiRoutes(
   server: ViteDevServer,
 ): Promise<void> {
   const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-  if (pathname !== '/api/chat' && pathname !== '/api/usage') {
+  if (pathname !== '/api/chat' && pathname !== '/api/usage' && pathname !== '/api/staging') {
     next();
     return;
   }
@@ -123,6 +124,11 @@ async function handleLocalApiRoutes(
     await withServerEnv(server, async () => {
       if (pathname === '/api/usage') {
         await handleUsageRequest(req, res);
+        return;
+      }
+
+      if (pathname === '/api/staging') {
+        await handleStagingRequest(req, res);
         return;
       }
 

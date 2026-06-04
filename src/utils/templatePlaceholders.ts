@@ -1,3 +1,5 @@
+import { escapeSqlStringLiteral } from './sqlSanitize';
+
 export type TemplateParameterInputType = 'text' | 'number';
 
 export type TemplateParameterDefinition = {
@@ -106,10 +108,6 @@ export function buildDefaultParameterValues(tokens: string[]): Record<string, st
   return Object.fromEntries(tokens.map((token) => [token, getDefaultParameterValue(token)]));
 }
 
-function escapeSqlLiteral(value: string): string {
-  return value.replace(/'/g, "''");
-}
-
 /** Substitutes placeholder tokens with user-supplied values (SQL-safe escaping for text). */
 export function interpolateTemplateSql(
   baseSql: string,
@@ -124,7 +122,7 @@ export function interpolateTemplateSql(
         ? trimmed.length > 0
           ? trimmed.replace(/[^\d-]/g, '') || getDefaultParameterValue(token)
           : getDefaultParameterValue(token)
-        : escapeSqlLiteral(trimmed);
+        : escapeSqlStringLiteral(trimmed);
 
     result = result.split(token).join(replacement);
   }

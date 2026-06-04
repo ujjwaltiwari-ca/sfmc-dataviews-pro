@@ -1369,7 +1369,11 @@ export function applySqlUtilityFilters(
   }
 
   if (applyJobIdFilter) {
-    const escapedJobId = trimmedJobId.replace(/'/g, "''");
+    const numericJobId = trimmedJobId.replace(/[^\d]/g, '');
+    if (!numericJobId) {
+      return baseSql;
+    }
+    const escapedJobId = numericJobId.replace(/'/g, "''");
     predicates.push(
       options.jobIdFilterAlias
         ? `${options.jobIdFilterAlias}.JobID = '${escapedJobId}'`

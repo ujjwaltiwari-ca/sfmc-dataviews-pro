@@ -6,6 +6,7 @@ import {
   type ViewSegmentId,
 } from '../data/viewSegments';
 import type { SqlKeywordCase } from './sqlGenerator';
+import { sanitizeNumericSqlLiteral } from './sqlSanitize';
 
 export type SandboxEditorTab = 'live' | 'templates';
 
@@ -337,7 +338,7 @@ function mergeSandboxPreferences(
     : null;
 
   const jobIdFromUrl = params.has(WORKSPACE_URL_KEYS.campaignJobId)
-    ? (params.get(WORKSPACE_URL_KEYS.campaignJobId) ?? '').trim()
+    ? sanitizeNumericSqlLiteral((params.get(WORKSPACE_URL_KEYS.campaignJobId) ?? '').trim())
     : null;
 
   return {
@@ -373,7 +374,7 @@ function mergeSandboxPreferences(
     campaignJobId:
       jobIdFromUrl ??
       (typeof storedPrefs.campaignJobId === 'string'
-        ? storedPrefs.campaignJobId
+        ? sanitizeNumericSqlLiteral(storedPrefs.campaignJobId)
         : DEFAULT_SANDBOX_PREFERENCES.campaignJobId),
     includeTargetDeScaffolding:
       deFromUrl ??

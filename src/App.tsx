@@ -1,8 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import { Lock } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
-import { AiCopilot } from './components/AiCopilot';
+
+const AiCopilot = lazy(() =>
+  import('./components/AiCopilot').then((module) => ({ default: module.AiCopilot })),
+);
 import { CanvasHero } from './components/CanvasHero';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
@@ -22,8 +34,7 @@ import { workspaceHasCustomState } from './utils/workspacePersistence';
 import type { HoveredRelation } from './utils/schemaExplorer';
 import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExplorer';
 
-const stagingPassword = import.meta.env.VITE_STAGING_PASSWORD?.trim();
-const STAGING_UNLOCK_STORAGE_KEY = 'isStagingUnlocked';
+type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
 const RELATION_LEAVE_DELAY_MS = 40;
 const SHOW_DETAILS_STORAGE_KEY = 'sfmc-show-details';
@@ -40,44 +51,61 @@ function readShowDetailsPreference(): boolean {
   }
 }
 
-function readStagingUnlocked(): boolean {
+async function fetchStagingGateStatus(): Promise<StagingGateStatus> {
   try {
-    return localStorage.getItem(STAGING_UNLOCK_STORAGE_KEY) === 'true';
+    const response = await fetch('/api/staging', { credentials: 'include' });
+    if (!response.ok) {
+      return 'locked';
+    }
+    const payload = (await response.json()) as { enabled?: boolean; unlocked?: boolean };
+    if (!payload.enabled) {
+      return 'disabled';
+    }
+    return payload.unlocked ? 'unlocked' : 'locked';
+  } catch {
+    return 'locked';
+  }
+}
+
+async function submitStagingPassword(password: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/staging', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const payload = (await response.json()) as { unlocked?: boolean };
+    return payload.unlocked === true;
   } catch {
     return false;
   }
 }
 
-function isStagingGateActive(): boolean {
-  return Boolean(stagingPassword);
-}
-
-function StagingGateScreen({
-  onUnlock,
-  onSubmitPassword,
-}: {
-  onUnlock: () => void;
-  onSubmitPassword: (password: string) => boolean;
-}) {
+function StagingGateScreen({ onUnlock }: { onUnlock: () => void }) {
   const [passwordInput, setPasswordInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+    setIsSubmitting(true);
 
-    if (onSubmitPassword(passwordInput)) {
-      try {
-        localStorage.setItem(STAGING_UNLOCK_STORAGE_KEY, 'true');
-      } catch {
-        /* ignore storage errors */
+    try {
+      const accepted = await submitStagingPassword(passwordInput);
+      if (accepted) {
+        onUnlock();
+        return;
       }
-      onUnlock();
-      return;
+      setError('Incorrect password. Please try again.');
+      setPasswordInput('');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setError('Incorrect password. Please try again.');
-    setPasswordInput('');
   };
 
   return (
@@ -92,7 +120,7 @@ function StagingGateScreen({
 
         <h1 className="mt-6 flex items-center justify-center gap-2 text-lg font-semibold tracking-tight sm:text-xl">
           <Lock className="h-5 w-5 shrink-0 text-cyan-400" aria-hidden />
-          dataviews.pro — Pre-launch Verification
+          SFMC Schema Architect — Pre-launch Verification
         </h1>
         <p className="mt-2 text-sm text-slate-400">
           Enter the staging password to continue.
@@ -120,10 +148,10 @@ function StagingGateScreen({
 
           <button
             type="submit"
-            disabled={!passwordInput.trim()}
+            disabled={!passwordInput.trim() || isSubmitting}
             className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Unlock
+            {isSubmitting ? 'Verifying…' : 'Unlock'}
           </button>
         </form>
       </div>
@@ -356,13 +384,17 @@ function AppMain() {
         onSandboxHeightChange={setSandboxDrawerHeight}
       />
 
-      <AiCopilot
-        isOpen={isCopilotOpen}
-        onClose={() => setIsCopilotOpen(false)}
-        onApplyToSandbox={handleApplyToSandbox}
-        activeTables={selectedTableNames}
-        currentQueryText={sandboxSql}
-      />
+      {isCopilotOpen ? (
+        <Suspense fallback={null}>
+          <AiCopilot
+            isOpen={isCopilotOpen}
+            onClose={() => setIsCopilotOpen(false)}
+            onApplyToSandbox={handleApplyToSandbox}
+            activeTables={selectedTableNames}
+            currentQueryText={sandboxSql}
+          />
+        </Suspense>
+      ) : null}
 
       </div>
     </AuthProvider>
@@ -370,18 +402,32 @@ function AppMain() {
 }
 
 function App() {
-  const stagingGateActive = isStagingGateActive();
-  const [isStagingUnlocked, setIsStagingUnlocked] = useState(
-    () => !stagingGateActive || readStagingUnlocked(),
-  );
+  const [stagingStatus, setStagingStatus] = useState<StagingGateStatus>('loading');
 
-  if (stagingGateActive && !isStagingUnlocked) {
+  useEffect(() => {
+    let isMounted = true;
+    void fetchStagingGateStatus().then((status) => {
+      if (isMounted) {
+        setStagingStatus(status);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (stagingStatus === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-400">
+        Loading…
+      </div>
+    );
+  }
+
+  if (stagingStatus === 'locked') {
     return (
       <>
-        <StagingGateScreen
-          onUnlock={() => setIsStagingUnlocked(true)}
-          onSubmitPassword={(attempt) => attempt === stagingPassword}
-        />
+        <StagingGateScreen onUnlock={() => setStagingStatus('unlocked')} />
         <Analytics />
       </>
     );

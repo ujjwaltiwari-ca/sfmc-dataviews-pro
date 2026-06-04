@@ -80,6 +80,7 @@ async function getTodayCopilotUsageCount(userId: string): Promise<number> {
 }
 
 const MAX_CURRENT_QUERY_TEXT_CHARACTERS = 16_000;
+const MAX_REQUEST_BODY_BYTES = 256 * 1024;
 
 const CONTEXT_CODE_GROUNDING_INSTRUCTION = `CONTEXT CODE GROUNDING:
 You are provided with a parameter called \`currentQueryText\`, representing the code currently loaded in the user's workspace editor window.
@@ -399,15 +400,28 @@ function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | n
 function readRequestBody(req: NodeApiRequest): Promise<string> {
   if (req.body !== undefined && req.body !== null) {
     if (typeof req.body === 'string') {
+      if (Buffer.byteLength(req.body, 'utf8') > MAX_REQUEST_BODY_BYTES) {
+        return Promise.reject(new Error('Request body too large'));
+      }
       return Promise.resolve(req.body);
     }
-    return Promise.resolve(JSON.stringify(req.body));
+    const serialized = JSON.stringify(req.body);
+    if (Buffer.byteLength(serialized, 'utf8') > MAX_REQUEST_BODY_BYTES) {
+      return Promise.reject(new Error('Request body too large'));
+    }
+    return Promise.resolve(serialized);
   }
 
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
+    let totalBytes = 0;
 
     req.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        return;
+      }
       chunks.push(chunk);
     });
 
@@ -462,8 +476,12 @@ export async function handleChatRequest(
   try {
     const rawBody = await readRequestBody(req);
     body = rawBody ? (JSON.parse(rawBody) as ChatRequestBody) : {};
-  } catch {
-    sendJsonError(res, 'Invalid JSON body', 400);
+  } catch (parseError) {
+    const message =
+      parseError instanceof Error && parseError.message === 'Request body too large'
+        ? 'Request body too large'
+        : 'Invalid JSON body';
+    sendJsonError(res, message, parseError instanceof Error && message.includes('large') ? 413 : 400);
     return;
   }
 

@@ -9,10 +9,6 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import CodeMirror from '@uiw/react-codemirror';
-import { sql } from '@codemirror/lang-sql';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { EditorView } from '@codemirror/view';
 import {
   ArrowLeft,
   Braces,
@@ -62,6 +58,8 @@ import {
 } from '../utils/templatePlaceholders';
 import { TemplateParametersPanel } from './TemplateParametersPanel';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
+import { SandboxSqlCodeMirror } from './SandboxSqlCodeMirror';
+import { sanitizeNumericSqlLiteral } from '../utils/sqlSanitize';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
@@ -89,18 +87,6 @@ export function getDefaultSandboxHeight(): number {
   }
   return clampSandboxHeight(Math.round(window.innerHeight * SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO));
 }
-const sandboxSqlScrollerTheme = EditorView.theme({
-  '&': {
-    height: '100%',
-    maxHeight: '100%',
-  },
-  '.cm-scroller': {
-    overflow: 'auto',
-    minHeight: 0,
-  },
-});
-
-const sqlEditorExtensions = [sql(), sandboxSqlScrollerTheme];
 const SANDBOX_SHELL_CLASS =
   'pointer-events-auto flex flex-col bg-white border border-slate-200/60 shadow-[0_-4px_24px_rgba(15,23,42,0.06),0_-12px_40px_rgba(15,23,42,0.04)] dark:bg-slate-950 dark:border-slate-800/60 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]';
 
@@ -187,38 +173,6 @@ function QueryStudioTipIcon({ tip }: { tip: string }) {
 type EditorTab = SandboxEditorTab;
 
 export type { SandboxEditorTab };
-
-function SandboxSqlCodeMirror({
-  value,
-  onChange,
-  readOnly,
-  placeholder,
-}: {
-  value: string;
-  onChange: (sql: string) => void;
-  readOnly: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
-      <CodeMirror
-        value={value}
-        height="100%"
-        theme={oneDark}
-        extensions={sqlEditorExtensions}
-        readOnly={readOnly}
-        placeholder={placeholder}
-        onChange={onChange}
-        basicSetup={{
-          lineNumbers: true,
-          bracketMatching: true,
-        }}
-        className="sandbox-sql-codemirror flex-1 min-h-0 overflow-auto rounded-md border border-slate-800/60 text-base"
-        aria-label="SQL query editor"
-      />
-    </div>
-  );
-}
 
 function EditorTabButton({
   id,
@@ -450,7 +404,7 @@ function CampaignJobIdFilter({
             type="text"
             inputMode="numeric"
             value={jobId}
-            onChange={(event) => onJobIdChange(event.target.value)}
+            onChange={(event) => onJobIdChange(sanitizeNumericSqlLiteral(event.target.value))}
             placeholder="e.g., 123456"
             className="w-full rounded-lg border border-slate-200/60 bg-white/90 px-2.5 py-1.5 font-mono text-xs text-slate-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] placeholder:text-slate-400 transition-all duration-300 focus:border-cyan-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500"
           />

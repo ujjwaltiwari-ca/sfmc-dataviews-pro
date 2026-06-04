@@ -87,7 +87,16 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
             </p>
             <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               Engineered with the assistance of Gemini and Cursor AI. System prompts and schemas are
-              closely grounded on official Salesforce Documentation, the pioneering ecosystem research of{' '}
+              closely grounded on the schema-browsing workflow at{' '}
+              <a
+                href="https://dataviews.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-cyan-600 underline-offset-2 transition-colors hover:text-cyan-700 hover:underline dark:text-cyan-400 dark:hover:text-cyan-300"
+              >
+                dataviews.io
+              </a>
+              , official Salesforce Documentation, the pioneering ecosystem research of{' '}
               <a
                 href="https://mateuszdabrowski.pl/"
                 target="_blank"
