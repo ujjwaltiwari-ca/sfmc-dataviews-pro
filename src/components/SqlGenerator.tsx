@@ -29,6 +29,7 @@ import {
   Users,
   Zap,
   GripHorizontal,
+  Maximize2,
 } from 'lucide-react';
 import type { DataViewTable } from '../data/sfmcSchema';
 import {
@@ -86,6 +87,13 @@ export function getDefaultSandboxHeight(): number {
     return 400;
   }
   return clampSandboxHeight(Math.round(window.innerHeight * SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO));
+}
+
+export function getMaxSandboxHeight(): number {
+  if (typeof window === 'undefined') {
+    return 640;
+  }
+  return clampSandboxHeight(Math.floor(window.innerHeight * SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO));
 }
 const SANDBOX_SHELL_CLASS =
   'pointer-events-auto flex flex-col bg-white border border-slate-200/60 shadow-[0_-4px_24px_rgba(15,23,42,0.06),0_-12px_40px_rgba(15,23,42,0.04)] dark:bg-slate-950 dark:border-slate-800/60 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]';
@@ -808,6 +816,10 @@ export function SqlGenerator({
     };
   }, [isResizing]);
 
+  const handleMaximizeSandboxHeight = useCallback(() => {
+    setSandboxHeight(getMaxSandboxHeight());
+  }, []);
+
   const handleResizeStart = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
       event.preventDefault();
@@ -879,6 +891,7 @@ export function SqlGenerator({
           )}
           aria-valuenow={sandboxHeight}
           onMouseDown={handleResizeStart}
+          title="Drag to resize SQL sandbox height"
           className={`group pointer-events-auto relative flex h-1.5 w-full shrink-0 cursor-row-resize items-center justify-center bg-slate-800/40 transition-colors duration-150 hover:bg-sky-500/80 ${
             isResizing ? 'bg-sky-500/80' : ''
           }`}
@@ -979,17 +992,29 @@ export function SqlGenerator({
                   </>
                 )}
               </button>
+              {isExpanded ? (
+                <button
+                  type="button"
+                  onClick={handleMaximizeSandboxHeight}
+                  className="rounded-xl border border-slate-200/60 bg-white/90 p-2 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-slate-300/60 hover:bg-slate-50 hover:text-slate-800 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-2 focus:ring-slate-400/30 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  aria-label="Maximize SQL sandbox height"
+                  title="Maximize height (or drag the top edge)"
+                >
+                  <Maximize2 className="h-5 w-5" aria-hidden />
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => onExpandedChange(!isExpanded)}
                 className="rounded-xl border border-slate-200/60 bg-white/90 p-2 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-slate-300/60 hover:bg-slate-50 hover:text-slate-800 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-2 focus:ring-slate-400/30 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                 aria-expanded={isExpanded}
                 aria-label={isExpanded ? 'Collapse SQL sandbox' : 'Expand SQL sandbox'}
+                title={isExpanded ? 'Collapse sandbox' : 'Expand sandbox'}
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-5 w-5" />
+                  <ChevronDown className="h-5 w-5" aria-hidden />
                 ) : (
-                  <ChevronUp className="h-5 w-5" />
+                  <ChevronUp className="h-5 w-5" aria-hidden />
                 )}
               </button>
             </div>

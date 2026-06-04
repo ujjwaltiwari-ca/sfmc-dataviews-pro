@@ -3,7 +3,6 @@ import {
   BookOpen,
   CheckSquare,
   ExternalLink,
-  Info,
   Keyboard,
   Lightbulb,
   Link2,
@@ -188,10 +187,10 @@ export function Header({
                 className="btn-nav btn-nav-cyan"
                 aria-haspopup="dialog"
                 aria-expanded={isDocsOpen}
+                title="Documentation & user guide"
               >
                 <BookOpen className="h-4 w-4 text-cyan-600 dark:text-cyan-400" aria-hidden />
-                <span className="hidden sm:inline">Documentation &amp; User Guide</span>
-                <span className="sm:hidden">Docs</span>
+                <span>Docs</span>
               </button>
 
               <button
@@ -202,18 +201,6 @@ export function Header({
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden />
                 <span className="hidden sm:inline">SQL Templates</span>
                 <span className="sm:hidden">Templates</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsPlatformInfoOpen(true)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/60 bg-white/90 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-slate-300/80 hover:bg-slate-50 hover:text-slate-700 hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-slate-600/60 dark:hover:bg-slate-800/90 dark:hover:text-slate-200"
-                aria-haspopup="dialog"
-                aria-expanded={isPlatformInfoOpen}
-                aria-label="Platform Info & Credits"
-                title="Platform Info & Credits"
-              >
-                <Info className="h-4 w-4" aria-hidden />
               </button>
 
               <button
