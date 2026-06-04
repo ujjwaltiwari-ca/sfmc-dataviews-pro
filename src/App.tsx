@@ -380,12 +380,12 @@ function AppMain() {
           <CanvasHero />
           <div
             key={activeSegment}
-            className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"
+            className="flex flex-wrap justify-center gap-5"
           >
             {activeTables.map((table, index) => (
               <div
                 key={table.name}
-                className="animate-fade-up"
+                className="animate-fade-up w-full min-w-0 md:w-[calc((100%-1.25rem)/2)] md:max-w-[calc((100%-1.25rem)/2)] xl:w-[calc((100%-2.5rem)/3)] xl:max-w-[calc((100%-2.5rem)/3)]"
                 style={{ ['--stagger-delay' as string]: `${index * 20}ms` }}
               >
                 <DataViewCard
