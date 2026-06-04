@@ -1,7 +1,18 @@
-import { lazy, Suspense } from 'react';
-import { sql } from '@codemirror/lang-sql';
+import { lazy, Suspense, useMemo } from 'react';
+import { completeFromList, ifNotIn } from '@codemirror/autocomplete';
+import { MSSQL, sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
+import type { DataViewTable } from '../data/sfmcSchema';
+import {
+  buildSqlCompletionSchema,
+  SFMC_SQL_FUNCTION_COMPLETIONS,
+} from '../utils/sqlEditorSchema';
+
+const sfmcFunctionCompletionSource = ifNotIn(
+  ['QuotedIdentifier', 'String', 'LineComment', 'BlockComment', '.'],
+  completeFromList([...SFMC_SQL_FUNCTION_COMPLETIONS]),
+);
 
 const LazyCodeMirror = lazy(() =>
   import('@uiw/react-codemirror').then((module) => ({ default: module.default })),
@@ -18,13 +29,16 @@ const sandboxSqlScrollerTheme = EditorView.theme({
   },
 });
 
-const sqlEditorExtensions = [sql(), sandboxSqlScrollerTheme];
-
 type SandboxSqlCodeMirrorProps = {
   value: string;
   onChange: (sql: string) => void;
   readOnly: boolean;
   placeholder?: string;
+  /** SFMC tables in the current query graph (for column autocomplete). */
+  completionTableNames?: readonly string[];
+  schemaTables?: readonly DataViewTable[];
+  /** When the query uses one table, allow completing columns without a prefix. */
+  defaultCompletionTable?: string;
 };
 
 export function SandboxSqlCodeMirror({
@@ -32,7 +46,27 @@ export function SandboxSqlCodeMirror({
   onChange,
   readOnly,
   placeholder,
+  completionTableNames = [],
+  schemaTables = [],
+  defaultCompletionTable,
 }: SandboxSqlCodeMirrorProps) {
+  const sqlEditorExtensions = useMemo(() => {
+    const completionSchema = buildSqlCompletionSchema(schemaTables, completionTableNames);
+    const hasSchema = Object.keys(completionSchema).length > 0;
+
+    return [
+      sql({
+        dialect: MSSQL,
+        upperCaseKeywords: true,
+        ...(hasSchema ? { schema: completionSchema } : {}),
+        ...(defaultCompletionTable ? { defaultTable: defaultCompletionTable } : {}),
+      }),
+      MSSQL.language.data.of({
+        autocomplete: sfmcFunctionCompletionSource,
+      }),
+      sandboxSqlScrollerTheme,
+    ];
+  }, [schemaTables, completionTableNames, defaultCompletionTable]);
   return (
     <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
       <Suspense

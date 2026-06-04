@@ -1314,6 +1314,10 @@ export function getUniqueEventTablesInJoinGraph(joinTableNames: string[]): strin
   return joinTableNames.filter((name) => isUniqueEventTrackingTable(name));
 }
 
+/** Sidebar hint when the current selection has no views with an IsUnique column (e.g. _Job only). */
+export const UNIQUE_EVENT_FILTER_INACTIVE_HINT =
+  'Not used for _Job alone. Applies when _Open, _Click, _Bounce, _Complaint, or _Unsubscribe are in your query.';
+
 function appendWherePredicates(baseSql: string, predicates: string[]): string {
   if (predicates.length === 0) {
     return baseSql;

@@ -41,7 +41,7 @@ import {
   generateSfmcSql,
   getUniqueEventTablesInJoinGraph,
   resolveFilterAlias,
-  UNIQUE_EVENT_TRACKING_TABLE_NAMES,
+  UNIQUE_EVENT_FILTER_INACTIVE_HINT,
   lacksTrackingViewDateLookback,
   stripLeadingSqlComments,
   type SqlKeywordCase,
@@ -323,6 +323,8 @@ function UtilityToggle({
   checked,
   onChange,
   icon: Icon,
+  disabled = false,
+  plainDescription = false,
 }: {
   id: string;
   label: string;
@@ -330,31 +332,42 @@ function UtilityToggle({
   checked: boolean;
   onChange: (value: boolean) => void;
   icon: typeof Calendar;
+  disabled?: boolean;
+  plainDescription?: boolean;
 }) {
   return (
     <label
       htmlFor={id}
-      className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition-all duration-300 ease-out ${
-        checked
-          ? 'border-cyan-400/50 bg-cyan-50/80 shadow-[0_4px_12px_rgba(6,182,212,0.08)] dark:border-cyan-500/40 dark:bg-cyan-950/30'
-          : 'border-slate-200/60 bg-white/60 hover:border-slate-300/60 hover:bg-slate-50/80 dark:border-slate-700/50 dark:bg-slate-900/40 dark:hover:border-slate-600/60 dark:hover:bg-slate-800/50'
+      className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-all duration-300 ease-out ${
+        disabled
+          ? 'cursor-not-allowed border-slate-200/50 bg-slate-50/50 opacity-70 dark:border-slate-800/50 dark:bg-slate-900/25'
+          : checked
+            ? 'cursor-pointer border-cyan-400/50 bg-cyan-50/80 shadow-[0_4px_12px_rgba(6,182,212,0.08)] dark:border-cyan-500/40 dark:bg-cyan-950/30'
+            : 'cursor-pointer border-slate-200/60 bg-white/60 hover:border-slate-300/60 hover:bg-slate-50/80 dark:border-slate-700/50 dark:bg-slate-900/40 dark:hover:border-slate-600/60 dark:hover:bg-slate-800/50'
       }`}
     >
       <input
         id={id}
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-cyan-600 focus:ring-cyan-500/30 dark:border-slate-600 dark:bg-slate-800"
+        className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-cyan-600 focus:ring-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800"
       />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100">
-          <Icon className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" aria-hidden />
+          <Icon className="h-3.5 w-3.5 shrink-0 text-cyan-600 dark:text-cyan-400" aria-hidden />
           {label}
         </span>
-        <span className="mt-1 block leading-snug">
-          <SqlSyntaxSnippet text={description} />
-        </span>
+        {plainDescription ? (
+          <span className="mt-1 block break-words text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+            {description}
+          </span>
+        ) : (
+          <span className="mt-1 block min-w-0 break-words leading-snug">
+            <SqlSyntaxSnippet text={description} className="whitespace-normal" />
+          </span>
+        )}
       </span>
     </label>
   );
@@ -575,14 +588,17 @@ export function SqlGenerator({
     [joinTables],
   );
 
+  const isUniqueEventFilterApplicable = uniqueEventTablesInGraph.length > 0;
+  const isUniqueEventFilterActive = filterUniqueEvents && isUniqueEventFilterApplicable;
+
   const uniqueEventFilterPreview = useMemo(() => {
-    if (uniqueEventTablesInGraph.length === 0) {
-      return `Applied on ${UNIQUE_EVENT_TRACKING_TABLE_NAMES.join(' / ')} when present in the query graph`;
+    if (!isUniqueEventFilterApplicable) {
+      return UNIQUE_EVENT_FILTER_INACTIVE_HINT;
     }
     return uniqueEventTablesInGraph
       .map((tableName) => `AND ${buildUniqueEventPredicate(tableName)}`)
       .join(' ');
-  }, [uniqueEventTablesInGraph]);
+  }, [isUniqueEventFilterApplicable, uniqueEventTablesInGraph]);
 
   const filteredSql = useMemo(
     () =>
@@ -1158,8 +1174,14 @@ export function SqlGenerator({
                       <UtilityToggle
                         id="filter-unique-events"
                         label="Filter unique behavioral events (IsUnique)"
-                        description={formatUtilityPreview(uniqueEventFilterPreview)}
-                        checked={filterUniqueEvents}
+                        description={
+                          isUniqueEventFilterApplicable
+                            ? formatUtilityPreview(uniqueEventFilterPreview)
+                            : uniqueEventFilterPreview
+                        }
+                        plainDescription={!isUniqueEventFilterApplicable}
+                        checked={isUniqueEventFilterActive}
+                        disabled={!isUniqueEventFilterApplicable}
                         onChange={(value) =>
                           onSandboxPreferencesChange({ filterUniqueEvents: value })
                         }
@@ -1303,7 +1325,7 @@ export function SqlGenerator({
                           )}
                           {editorTab === 'live' &&
                             (limitPast30Days ||
-                              (filterUniqueEvents && uniqueEventTablesInGraph.length > 0) ||
+                              isUniqueEventFilterActive ||
                               excludeTestSends ||
                               (filterActiveSubscribersOnly && subscribersInJoinPath) ||
                               campaignJobIdActive ||
@@ -1367,6 +1389,11 @@ export function SqlGenerator({
                                 onChange={handleSqlEditorChange}
                                 readOnly={isSqlEditorReadOnly}
                                 placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
+                                schemaTables={schema}
+                                completionTableNames={joinTables}
+                                defaultCompletionTable={
+                                  joinTables.length === 1 ? joinTables[0] : undefined
+                                }
                               />
                             </div>
                           </>
