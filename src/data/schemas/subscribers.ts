@@ -64,6 +64,7 @@ export const subscriberDataViews: DataViewTable[] = [
       field('Status', 'Text', 'Subscriber status on this list.', { length: 12, isNullable: true }),
       field('SubscriberID', 'Number', 'Subscriber record ID.', {
         isPrimaryKey: true,
+        relatesTo: [rel('_Subscribers', 'SubscriberID')],
       }),
       field('SubscriberKey', 'Text', 'Subscriber key.', {
         length: 254,

@@ -68,6 +68,9 @@ export interface SqlGenerationOptions {
 
 const SUBSCRIBERS_TABLE = '_Subscribers';
 const LIST_SUBSCRIBERS_TABLE = '_ListSubscribers';
+const SMS_MESSAGE_TRACKING_TABLE = '_SMSMessageTracking';
+const SMS_SUBSCRIPTION_LOG_TABLE = '_SMSSubscriptionLog';
+const UNDELIVERABLE_SMS_TABLE = '_UndeliverableSMS';
 const JOB_TABLE = '_Job';
 const AUTOMATION_INSTANCE_TABLE = '_AutomationInstance';
 const AUTOMATION_ACTIVITY_INSTANCE_TABLE = '_AutomationActivityInstance';
@@ -86,9 +89,9 @@ const JOIN_BLACKLISTED_FIELDS = new Set([
  * - Tracking ↔ tracking (_Sent, _Open, _Click, _Bounce, _Complaint, _Unsubscribe):
  *   JobID + ListID + BatchID + SubscriberID (send grain). Optional IsUnique = 1 in WHERE/ON.
  * - Tracking ↔ _Job: JobID only (_Job has no subscriber grain).
- * - Tracking ↔ _Subscribers: SubscriberKey only (not SubscriberID on _Subscribers).
+ * - Tracking ↔ _Subscribers: SubscriberID (matches dataviews.io / send grain).
  * - Tracking ↔ _ListSubscribers: SubscriberID + ListID (list membership grain).
- * - _ListSubscribers ↔ _Subscribers: SubscriberKey only.
+ * - _ListSubscribers ↔ _Subscribers: SubscriberID (list membership grain; matches dataviews.io).
  * - Default JOIN type: LEFT JOIN (preserve driving send rows).
  * - Never join on TriggererSendDefinitionObjectID / TriggeredSendCustomerKey for standard sends.
  */
@@ -116,11 +119,11 @@ const BEHAVIORAL_TRACKING_COMPOSITE_KEYS = [
 /** Required keys when mapping a behavioral tracking event to list membership. */
 const TRACKING_TO_LIST_SUBSCRIBERS_KEYS = ['SubscriberID', 'ListID'] as const;
 
-/** _Subscribers identity link — SubscriberKey (Mateusz / Stack Exchange send→sub patterns). */
-const SUBSCRIBERS_IDENTITY_JOIN_KEY = 'SubscriberKey' as const;
+/** Tracking ↔ _Subscribers join key (send event subscriber ID). */
+const TRACKING_TO_SUBSCRIBERS_JOIN_KEY = 'SubscriberID' as const;
 
-/** Not queryable on _Subscribers in SFMC; excluded from generated SELECT lists. */
-const SUBSCRIBERS_NON_QUERYABLE_FIELDS = new Set(['SubscriberID']);
+/** Fields documented as placeholders only; excluded from generated SELECT lists. */
+const SUBSCRIBERS_NON_QUERYABLE_FIELDS = new Set<string>();
 
 /**
  * Behavioral family views with an IsUnique column (_Sent excluded — no IsUnique in schema).
@@ -687,7 +690,7 @@ function buildTrackingToSubscribersConditions(tableA: string, tableB: string): s
   const trackingAlias = tableToAlias(trackingTable);
   const subscribersAlias = tableToAlias(SUBSCRIBERS_TABLE);
   return [
-    `${trackingAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY} = ${subscribersAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY}`,
+    `${trackingAlias}.${TRACKING_TO_SUBSCRIBERS_JOIN_KEY} = ${subscribersAlias}.${TRACKING_TO_SUBSCRIBERS_JOIN_KEY}`,
   ];
 }
 
@@ -701,9 +704,45 @@ function isListSubscribersToSubscribersJoin(tableA: string, tableB: string): boo
 function buildListSubscribersToSubscribersConditions(): string[] {
   const listAlias = tableToAlias(LIST_SUBSCRIBERS_TABLE);
   const subscribersAlias = tableToAlias(SUBSCRIBERS_TABLE);
-  return [
-    `${listAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY} = ${subscribersAlias}.${SUBSCRIBERS_IDENTITY_JOIN_KEY}`,
-  ];
+  return [`${listAlias}.SubscriberID = ${subscribersAlias}.SubscriberID`];
+}
+
+function isSmsTrackingToSubscriptionLogJoin(tableA: string, tableB: string): boolean {
+  return (
+    (tableA === SMS_MESSAGE_TRACKING_TABLE && tableB === SMS_SUBSCRIPTION_LOG_TABLE) ||
+    (tableB === SMS_MESSAGE_TRACKING_TABLE && tableA === SMS_SUBSCRIPTION_LOG_TABLE)
+  );
+}
+
+function isSmsTrackingToUndeliverableJoin(tableA: string, tableB: string): boolean {
+  return (
+    (tableA === SMS_MESSAGE_TRACKING_TABLE && tableB === UNDELIVERABLE_SMS_TABLE) ||
+    (tableB === SMS_MESSAGE_TRACKING_TABLE && tableA === UNDELIVERABLE_SMS_TABLE)
+  );
+}
+
+function isSmsSubscriptionLogToUndeliverableJoin(tableA: string, tableB: string): boolean {
+  return (
+    (tableA === SMS_SUBSCRIPTION_LOG_TABLE && tableB === UNDELIVERABLE_SMS_TABLE) ||
+    (tableB === SMS_SUBSCRIPTION_LOG_TABLE && tableA === UNDELIVERABLE_SMS_TABLE)
+  );
+}
+
+function buildSmsTrackingToSubscriptionLogConditions(): string[] {
+  const trackingAlias = tableToAlias(SMS_MESSAGE_TRACKING_TABLE);
+  const logAlias = tableToAlias(SMS_SUBSCRIPTION_LOG_TABLE);
+  return [`${trackingAlias}.Mobile = ${logAlias}.MobileNumber`];
+}
+
+function buildSmsMobileFieldPairConditions(
+  tableA: string,
+  fieldA: string,
+  tableB: string,
+  fieldB: string,
+): string[] {
+  const aliasA = tableToAlias(tableA);
+  const aliasB = tableToAlias(tableB);
+  return [`${aliasA}.${fieldA} = ${aliasB}.${fieldB}`];
 }
 
 function involvesSubscribersTable(tableA: string, tableB: string): boolean {
@@ -761,6 +800,28 @@ function getJoinConditionsBetween(
   tableB: string,
   edges: SqlJoinEdge[],
 ): string[] {
+  if (isSmsTrackingToSubscriptionLogJoin(tableA, tableB)) {
+    return buildSmsTrackingToSubscriptionLogConditions();
+  }
+
+  if (isSmsTrackingToUndeliverableJoin(tableA, tableB)) {
+    return buildSmsMobileFieldPairConditions(
+      SMS_MESSAGE_TRACKING_TABLE,
+      'Mobile',
+      UNDELIVERABLE_SMS_TABLE,
+      'MobileNumber',
+    );
+  }
+
+  if (isSmsSubscriptionLogToUndeliverableJoin(tableA, tableB)) {
+    return buildSmsMobileFieldPairConditions(
+      SMS_SUBSCRIPTION_LOG_TABLE,
+      'MobileNumber',
+      UNDELIVERABLE_SMS_TABLE,
+      'MobileNumber',
+    );
+  }
+
   if (isBehavioralTrackingFamilyJoin(tableA, tableB)) {
     return buildBehavioralTrackingCompositeConditions(tableA, tableB);
   }
@@ -823,6 +884,43 @@ function rootTablePreferenceForAutomationFamily(tableName: string, tableNames: s
   return 0;
 }
 
+/** Prefer _Subscribers as FROM when paired with _ListSubscribers (dataviews.io pattern). */
+function rootTablePreferenceForSubscriberListFamily(tableName: string, tableNames: string[]): number {
+  const hasSubscribers = tableNames.includes(SUBSCRIBERS_TABLE);
+  const hasListSubscribers = tableNames.includes(LIST_SUBSCRIBERS_TABLE);
+  if (!hasSubscribers || !hasListSubscribers) {
+    return 0;
+  }
+  if (tableName === SUBSCRIBERS_TABLE) {
+    return -2;
+  }
+  if (tableName === LIST_SUBSCRIBERS_TABLE) {
+    return 2;
+  }
+  return 0;
+}
+
+/** Prefer _SMSMessageTracking as FROM when other MobileConnect views are in the graph. */
+function rootTablePreferenceForSmsFamily(tableName: string, tableNames: string[]): number {
+  const hasTracking = tableNames.includes(SMS_MESSAGE_TRACKING_TABLE);
+  if (!hasTracking) {
+    return 0;
+  }
+  const hasOtherSms =
+    tableNames.includes(SMS_SUBSCRIPTION_LOG_TABLE) ||
+    tableNames.includes(UNDELIVERABLE_SMS_TABLE);
+  if (!hasOtherSms) {
+    return 0;
+  }
+  if (tableName === SMS_MESSAGE_TRACKING_TABLE) {
+    return -2;
+  }
+  if (tableName === SMS_SUBSCRIPTION_LOG_TABLE || tableName === UNDELIVERABLE_SMS_TABLE) {
+    return 2;
+  }
+  return 0;
+}
+
 /** Prefer behavioral tracking views as FROM root (LEFT JOIN semantics with _Job / _ListSubscribers). */
 function rootTablePreferenceForTrackingFamily(tableName: string, tableNames: string[]): number {
   const hasBehavioralTracking = tableNames.some((name) => isBehavioralTrackingFamilyTable(name));
@@ -859,6 +957,18 @@ function pickRootTable(
     if (aSelected !== bSelected) {
       return aSelected - bSelected;
     }
+    const smsFamilyPref =
+      rootTablePreferenceForSmsFamily(a, tableNames) -
+      rootTablePreferenceForSmsFamily(b, tableNames);
+    if (smsFamilyPref !== 0) {
+      return smsFamilyPref;
+    }
+    const subscriberListPref =
+      rootTablePreferenceForSubscriberListFamily(a, tableNames) -
+      rootTablePreferenceForSubscriberListFamily(b, tableNames);
+    if (subscriberListPref !== 0) {
+      return subscriberListPref;
+    }
     const trackingFamilyPref =
       rootTablePreferenceForTrackingFamily(a, tableNames) -
       rootTablePreferenceForTrackingFamily(b, tableNames);
@@ -889,6 +999,20 @@ interface JoinStep {
   joinType: SqlJoinType;
 }
 
+/** Attach behavioral satellites before _Job metadata (dataviews.io join order). */
+function joinAttachmentPriority(tableName: string): number {
+  if (tableName === JOB_TABLE) {
+    return 10;
+  }
+  if (isBehavioralTrackingFamilyTable(tableName)) {
+    return 0;
+  }
+  if (tableName === SUBSCRIBERS_TABLE || tableName === LIST_SUBSCRIBERS_TABLE) {
+    return 5;
+  }
+  return 3;
+}
+
 function buildJoinSteps(
   joinTableNames: string[],
   bridgingTableNames: Set<string>,
@@ -911,7 +1035,11 @@ function buildJoinSteps(
   while (remaining.size > 0) {
     let attached = false;
 
-    for (const nextTable of [...remaining]) {
+    const remainingOrdered = [...remaining].sort(
+      (a, b) => joinAttachmentPriority(a) - joinAttachmentPriority(b),
+    );
+
+    for (const nextTable of remainingOrdered) {
       for (const joinedTable of joined) {
         const conditions = getJoinConditionsBetween(joinedTable, nextTable, edges);
         if (conditions.length > 0) {
@@ -950,12 +1078,94 @@ function isDocumentationPlaceholderField(fieldName: string): boolean {
   return fieldName.includes('(');
 }
 
+function tableNameToSelectAliasPrefix(tableName: string): string {
+  return tableName.startsWith('_') ? tableName.slice(1) : tableName;
+}
+
+function buildSelectOutputAlias(tableName: string, fieldName: string): string {
+  return `${tableNameToSelectAliasPrefix(tableName)}${fieldName}`;
+}
+
+/** Columns dataviews.io prefixes when a tracking view drives the query. */
+const PROACTIVE_TRACKING_SATELLITE_ALIAS_FIELDS = new Set([
+  'Status',
+  'SubscriberType',
+  'DateUnsubscribed',
+  'CreatedDate',
+]);
+
+function selectionIncludesTrackingRoot(userSelectedTableNames: string[]): boolean {
+  return userSelectedTableNames.some(
+    (name) => name === '_Sent' || isBehavioralTrackingFamilyTable(name),
+  );
+}
+
+function shouldAliasSelectField(
+  tableName: string,
+  fieldName: string,
+  userSelectedTableNames: string[],
+  duplicateFieldNames: Set<string>,
+): boolean {
+  if (duplicateFieldNames.has(fieldName)) {
+    return true;
+  }
+  if (userSelectedTableNames.length <= 1 || !selectionIncludesTrackingRoot(userSelectedTableNames)) {
+    return false;
+  }
+  if (
+    fieldName === 'EventDate' &&
+    (tableName === '_Sent' || isBehavioralTrackingFamilyTable(tableName))
+  ) {
+    return true;
+  }
+  if (
+    (tableName === SUBSCRIBERS_TABLE || tableName === LIST_SUBSCRIBERS_TABLE) &&
+    PROACTIVE_TRACKING_SATELLITE_ALIAS_FIELDS.has(fieldName)
+  ) {
+    return true;
+  }
+  if (tableName === JOB_TABLE && fieldName === 'CreatedDate') {
+    return true;
+  }
+  return false;
+}
+
+function collectDuplicateSelectFieldNames(
+  userSelectedTableNames: string[],
+  tables: DataViewTable[],
+): Set<string> {
+  const counts = new Map<string, number>();
+
+  for (const tableName of userSelectedTableNames) {
+    const table = getTableByName(tableName, tables);
+    if (!table) {
+      continue;
+    }
+    for (const field of table.fields) {
+      if (isDocumentationPlaceholderField(field.name)) {
+        continue;
+      }
+      if (
+        tableName === SUBSCRIBERS_TABLE &&
+        SUBSCRIBERS_NON_QUERYABLE_FIELDS.has(field.name)
+      ) {
+        continue;
+      }
+      counts.set(field.name, (counts.get(field.name) ?? 0) + 1);
+    }
+  }
+
+  return new Set(
+    [...counts.entries()].filter(([, count]) => count > 1).map(([fieldName]) => fieldName),
+  );
+}
+
 function buildSelectFields(
   userSelectedTableNames: string[],
   tables: DataViewTable[],
 ): SqlSelectField[] {
   const fields: SqlSelectField[] = [];
-  const outputColumnNames = new Set<string>();
+  const duplicateFieldNames = collectDuplicateSelectFieldNames(userSelectedTableNames, tables);
 
   for (const tableName of userSelectedTableNames) {
     const table = getTableByName(tableName, tables);
@@ -973,15 +1183,19 @@ function buildSelectFields(
       ) {
         continue;
       }
-      if (outputColumnNames.has(field.name)) {
-        continue;
-      }
-      outputColumnNames.add(field.name);
+      const expression = shouldAliasSelectField(
+        tableName,
+        field.name,
+        userSelectedTableNames,
+        duplicateFieldNames,
+      )
+        ? `${alias}.${field.name} AS ${buildSelectOutputAlias(tableName, field.name)}`
+        : `${alias}.${field.name}`;
       fields.push({
         table: tableName,
         alias,
         field: field.name,
-        expression: `${alias}.${field.name}`,
+        expression,
       });
     }
   }
@@ -1261,16 +1475,7 @@ export function generateSfmcSql(
     lines.push(`-- ${SQL_INDENT}ON ...`);
   }
 
-  let baseSql = formatGeneratedSql(lines);
-
-  if (options.filterUniqueEvents) {
-    const uniquePredicatesForRoot = shouldApplyUniqueEventFilter(rootTable, true)
-      ? [buildUniqueEventPredicate(rootTable)]
-      : [];
-    if (uniquePredicatesForRoot.length > 0) {
-      baseSql = appendWherePredicates(baseSql, uniquePredicatesForRoot);
-    }
-  }
+  const baseSql = formatGeneratedSql(lines);
 
   const joinSteps: SqlJoinStepDetail[] = steps.map((step, index) => {
     const conditions = [...step.conditions];

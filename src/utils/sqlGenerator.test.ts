@@ -17,21 +17,71 @@ describe('generateSfmcSql join rules', () => {
     expect(sql).not.toContain('j.SubscriberID');
   });
 
-  it('joins tracking and _Subscribers on SubscriberKey only', () => {
-    const { sql } = generateSfmcSql(['_Sent', '_Subscribers']);
-    expect(sql).toContain('s.SubscriberKey = sub.SubscriberKey');
-    expect(sql).not.toMatch(/sub\.SubscriberID/);
+  it('joins tracking and _Subscribers on SubscriberID', () => {
+    const { sql } = generateSfmcSql(['_Sent', '_Subscribers'], undefined, {
+      filterUniqueEvents: false,
+    });
+    expect(sql).toContain('s.SubscriberID = sub.SubscriberID');
+    expect(sql).not.toContain('s.SubscriberKey = sub.SubscriberKey');
+    expect(sql).toContain('s.EventDate AS SentEventDate');
+    expect(sql).toContain('sub.DateUnsubscribed AS SubscribersDateUnsubscribed');
+    expect(sql).toContain('sub.Status AS SubscribersStatus');
   });
 
-  it('joins _ListSubscribers and _Subscribers on SubscriberKey only', () => {
-    const { sql } = generateSfmcSql(['_ListSubscribers', '_Subscribers']);
-    expect(sql).toContain('lsb.SubscriberKey = sub.SubscriberKey');
-    expect(sql).not.toMatch(/sub\.SubscriberID/);
-  });
-
-  it('joins tracking and _ListSubscribers on SubscriberID and ListID', () => {
-    const { sql } = generateSfmcSql(['_Sent', '_ListSubscribers']);
+  it('joins _Sent and _ListSubscribers on SubscriberID and ListID', () => {
+    const { sql } = generateSfmcSql(['_Sent', '_ListSubscribers'], undefined, {
+      filterUniqueEvents: false,
+    });
     expect(sql).toContain('s.SubscriberID = lsb.SubscriberID');
     expect(sql).toContain('s.ListID = lsb.ListID');
+    expect(sql).toContain('s.EventDate AS SentEventDate');
+    expect(sql).toContain('lsb.Status AS ListSubscribersStatus');
+    expect(sql).toContain('lsb.CreatedDate AS ListSubscribersCreatedDate');
   });
+
+  it('joins _Job + _Open + _Click with Click before Job and IsUnique only on Click', () => {
+    const { sql } = generateSfmcSql(['_Job', '_Open', '_Click'], undefined, {
+      filterUniqueEvents: true,
+    });
+    const clickJoinIndex = sql.indexOf('_Click AS c');
+    const jobJoinIndex = sql.indexOf('_Job AS j');
+    expect(clickJoinIndex).toBeGreaterThan(-1);
+    expect(jobJoinIndex).toBeGreaterThan(-1);
+    expect(clickJoinIndex).toBeLessThan(jobJoinIndex);
+    expect(sql).toContain('c.IsUnique = 1');
+    expect(sql).not.toMatch(/\bWHERE\b[\s\S]*o\.IsUnique = 1/);
+    expect(sql).toContain('o.EventDate AS OpenEventDate');
+    expect(sql).toContain('c.EventDate AS ClickEventDate');
+    expect(sql).toContain('j.CreatedDate AS JobCreatedDate');
+  });
+
+  it('joins _ListSubscribers and _Subscribers on SubscriberID with _Subscribers as root', () => {
+    const { sql } = generateSfmcSql(['_ListSubscribers', '_Subscribers']);
+    expect(sql).toContain('FROM');
+    expect(sql).toContain('_Subscribers AS sub');
+    expect(sql).toContain('lsb.SubscriberID = sub.SubscriberID');
+    expect(sql).not.toContain('lsb.SubscriberKey = sub.SubscriberKey');
+  });
+
+  it('aliases duplicate EventDate columns across tracking views', () => {
+    const { sql } = generateSfmcSql(['_Sent', '_Click'], undefined, {
+      filterUniqueEvents: false,
+    });
+    expect(sql).toContain('s.EventDate AS SentEventDate');
+    expect(sql).toContain('c.EventDate AS ClickEventDate');
+  });
+
+  it('joins SMS views on mobile number, not keyword GUID', () => {
+    const { sql } = generateSfmcSql([
+      '_SMSMessageTracking',
+      '_SMSSubscriptionLog',
+      '_UndeliverableSMS',
+    ]);
+    expect(sql).toContain('FROM');
+    expect(sql).toContain('_SMSMessageTracking AS smt');
+    expect(sql).toContain('smt.Mobile = ssl.MobileNumber');
+    expect(sql).toContain('smt.Mobile = usms.MobileNumber');
+    expect(sql).not.toContain('SubscriptionDefinitionID = smt.KeywordID');
+  });
+
 });
