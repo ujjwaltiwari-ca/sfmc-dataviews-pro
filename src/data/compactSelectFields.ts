@@ -1,6 +1,5 @@
 /**
- * Curated SELECT columns aligned with dataviews.io output for common Pathfinder combos.
- * Used when "Compact SELECT" is enabled in the SQL sandbox.
+ * Essential SELECT columns for common Pathfinder combos (Essential columns mode).
  */
 
 /** Shared email tracking event columns (_Sent, _Open, _Click, etc.). */

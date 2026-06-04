@@ -65,7 +65,7 @@ export interface SqlGenerationOptions {
   requireSubscribersJoin?: boolean;
   /** When true, applies IsUnique = 1 on behavioral views that expose IsUnique (excludes _Sent). */
   filterUniqueEvents?: boolean;
-  /** When true, emits a curated column list similar to dataviews.io instead of all schema fields. */
+  /** When true, emits essential columns per view instead of all schema fields. */
   compactSelect?: boolean;
 }
 
@@ -92,9 +92,9 @@ const JOIN_BLACKLISTED_FIELDS = new Set([
  * - Tracking ↔ tracking (_Sent, _Open, _Click, _Bounce, _Complaint, _Unsubscribe):
  *   JobID + ListID + BatchID + SubscriberID (send grain). Optional IsUnique = 1 in WHERE/ON.
  * - Tracking ↔ _Job: JobID only (_Job has no subscriber grain).
- * - Tracking ↔ _Subscribers: SubscriberID (matches dataviews.io / send grain).
+ * - Tracking ↔ _Subscribers: SubscriberID (send grain).
  * - Tracking ↔ _ListSubscribers: SubscriberID + ListID (list membership grain).
- * - _ListSubscribers ↔ _Subscribers: SubscriberID (list membership grain; matches dataviews.io).
+ * - _ListSubscribers ↔ _Subscribers: SubscriberID (list membership grain).
  * - Default JOIN type: LEFT JOIN (preserve driving send rows).
  * - Never join on TriggererSendDefinitionObjectID / TriggeredSendCustomerKey for standard sends.
  */
@@ -887,7 +887,7 @@ function rootTablePreferenceForAutomationFamily(tableName: string, tableNames: s
   return 0;
 }
 
-/** Prefer _Subscribers as FROM when paired with _ListSubscribers (dataviews.io pattern). */
+/** Prefer _Subscribers as FROM when paired with _ListSubscribers. */
 function rootTablePreferenceForSubscriberListFamily(tableName: string, tableNames: string[]): number {
   const hasSubscribers = tableNames.includes(SUBSCRIBERS_TABLE);
   const hasListSubscribers = tableNames.includes(LIST_SUBSCRIBERS_TABLE);
@@ -1002,7 +1002,7 @@ interface JoinStep {
   joinType: SqlJoinType;
 }
 
-/** Attach behavioral satellites before _Job metadata (dataviews.io join order). */
+/** Attach behavioral satellites before _Job metadata. */
 function joinAttachmentPriority(tableName: string): number {
   if (tableName === JOB_TABLE) {
     return 10;
@@ -1089,7 +1089,7 @@ function buildSelectOutputAlias(tableName: string, fieldName: string): string {
   return `${tableNameToSelectAliasPrefix(tableName)}${fieldName}`;
 }
 
-/** Columns dataviews.io prefixes when a tracking view drives the query. */
+/** Columns to prefix-alias when a tracking view drives the query. */
 const PROACTIVE_TRACKING_SATELLITE_ALIAS_FIELDS = new Set([
   'Status',
   'SubscriberType',

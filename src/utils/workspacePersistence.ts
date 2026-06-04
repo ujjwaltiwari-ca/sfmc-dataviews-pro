@@ -40,7 +40,7 @@ const TEMPLATE_IDS = new Set(sfmcQueryTemplates.map((template) => template.id));
 
 export type SandboxPreferences = {
   keywordCase: SqlKeywordCase;
-  /** Curated SELECT columns (dataviews.io-style) vs all fields from selected cards. */
+  /** Essential columns only vs all fields from selected cards. */
   compactSelect: boolean;
   limitPast30Days: boolean;
   filterUniqueEvents: boolean;

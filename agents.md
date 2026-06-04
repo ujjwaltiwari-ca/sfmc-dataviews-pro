@@ -2,7 +2,7 @@
 
 > **Tech Stack**: Vite + React (TypeScript) + Tailwind CSS
 > **Architecture**: Pure Client-Side State, No Database Required
-> **Goal**: Build a high-fidelity, interactive clone of dataviews.io for Salesforce Marketing Cloud Data Views.
+> **Goal**: Build a high-fidelity, interactive SFMC Data Views schema browser and SQL sandbox for practitioners.
 
 ---
 

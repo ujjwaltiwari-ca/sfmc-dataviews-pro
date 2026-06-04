@@ -105,7 +105,7 @@ Engineered with the assistance of **Gemini** and **Cursor AI**. System prompts a
 
 1. **Official Salesforce Documentation** — SFMC Data View field definitions and behavior
 2. **Mateusz Dąbrowski's technical blog** (https://mateuszdabrowski.pl/) — Pioneering SFMC ecosystem research and Data View deep-dives
-3. **dataviews.io** — Structural benchmarks for schema presentation and query workflow
+3. **Established SFMC practitioner query patterns** — Join grains and column conventions used in production Query Studio workflows
 
 ---
 

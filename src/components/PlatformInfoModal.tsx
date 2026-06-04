@@ -96,16 +96,7 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
               >
                 Mateusz Dąbrowski&apos;s technical blog
               </a>
-              , and structural benchmarks from{' '}
-              <a
-                href="https://dataviews.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-cyan-600 underline-offset-2 transition-colors hover:text-cyan-700 hover:underline dark:text-cyan-400 dark:hover:text-cyan-300"
-              >
-                dataviews.io
-              </a>
-              .
+              , and established SFMC practitioner query patterns.
             </p>
           </div>
 

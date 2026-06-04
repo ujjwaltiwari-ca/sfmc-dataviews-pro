@@ -25,4 +25,4 @@ https://dataviews.pro/llms-full.txt
 
 ## Attribution
 
-Engineered with Gemini and Cursor AI. Schemas grounded on official Salesforce Documentation, Mateusz Dąbrowski's SFMC technical blog, and structural benchmarks from dataviews.io.
+Engineered with Gemini and Cursor AI. Schemas grounded on official Salesforce Documentation, Mateusz Dąbrowski's SFMC technical blog, and established SFMC practitioner query patterns.

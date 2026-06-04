@@ -21,7 +21,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Columns2,
   Copy,
   Database,
   FileText,
@@ -67,8 +66,6 @@ import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
 
-const PATHFINDER_JOIN_STYLE_NOTE =
-  'Join keys follow dataviews.io-style Pathfinder output (composite tracking grain, JobID-only _Job links).';
 const COPIED_FEEDBACK_MS = 2200;
 const SANDBOX_MIN_HEIGHT_PX = 150;
 const SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO = 0.4;
@@ -312,6 +309,49 @@ interface SqlGeneratorProps {
   templatesShortcutNonce?: number;
   /** Notifies parent when the user-resized drawer height changes (for canvas padding). */
   onSandboxHeightChange?: (height: number) => void;
+}
+
+function SelectColumnModeControl({
+  compactSelect,
+  onChange,
+}: {
+  compactSelect: boolean;
+  onChange: (compact: boolean) => void;
+}) {
+  return (
+    <div
+      className="flex items-center rounded-lg border border-slate-700/60 bg-slate-900/80 p-0.5"
+      role="group"
+      aria-label="SELECT column mode"
+    >
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
+          compactSelect
+            ? 'bg-slate-700 text-white shadow-sm'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+        aria-pressed={compactSelect}
+        title="Include only the most common columns for each selected data view"
+      >
+        Essential columns
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
+          !compactSelect
+            ? 'bg-slate-700 text-white shadow-sm'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+        aria-pressed={!compactSelect}
+        title="Include every field from the data view cards you selected"
+      >
+        All columns
+      </button>
+    </div>
+  );
 }
 
 function UtilityToggle({
@@ -952,7 +992,16 @@ export function SqlGenerator({
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
+              {userSelectedTables.length > 0 && (
+                <SelectColumnModeControl
+                  compactSelect={compactSelect}
+                  onChange={(value) => {
+                    setManualSqlLocked(false);
+                    onSandboxPreferencesChange({ compactSelect: value });
+                  }}
+                />
+              )}
               <button
                 type="button"
                 onClick={handleCopy}
@@ -1113,22 +1162,7 @@ export function SqlGenerator({
                   </section>
 
                   <section className="space-y-3">
-                    <p className="micro-label">SELECT output</p>
-                    <div className="space-y-2">
-                      <UtilityToggle
-                        id="compact-select"
-                        label="Compact SELECT (dataviews.io-style)"
-                        description="Curated columns for copy-paste; turn off for every field on selected cards."
-                        checked={compactSelect}
-                        onChange={(value) => {
-                          setManualSqlLocked(false);
-                          onSandboxPreferencesChange({ compactSelect: value });
-                        }}
-                        icon={Columns2}
-                      />
-                    </div>
-
-                    <p className="micro-label pt-1">Performance &amp; Formatting</p>
+                    <p className="micro-label">Performance &amp; Formatting</p>
                     <div className="space-y-2">
                       <UtilityToggle
                         id="limit-30-days"
@@ -1253,14 +1287,6 @@ export function SqlGenerator({
                             />
                           </div>
                           <QueryStudioTipIcon tip={QUERY_STUDIO_TIP} />
-                          {editorTab === 'live' && selectedTableNames.length > 0 && (
-                            <span
-                              className="hidden max-w-[14rem] truncate text-[10px] leading-snug text-slate-500 sm:inline xl:max-w-xs"
-                              title={PATHFINDER_JOIN_STYLE_NOTE}
-                            >
-                              {PATHFINDER_JOIN_STYLE_NOTE}
-                            </span>
-                          )}
                           {activeTemplateId && (
                             <button
                               type="button"
@@ -1272,7 +1298,16 @@ export function SqlGenerator({
                             </button>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {editorTab === 'live' && selectedTableNames.length > 0 && (
+                            <SelectColumnModeControl
+                              compactSelect={compactSelect}
+                              onChange={(value) => {
+                                setManualSqlLocked(false);
+                                onSandboxPreferencesChange({ compactSelect: value });
+                              }}
+                            />
+                          )}
                           {manualSqlLocked && editorTab === 'live' && (
                             <div className="flex items-center gap-1.5">
                               <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
@@ -1286,11 +1321,6 @@ export function SqlGenerator({
                                 Sync with Pathfinder
                               </button>
                             </div>
-                          )}
-                          {editorTab === 'live' && !compactSelect && (
-                            <span className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-200">
-                              full columns
-                            </span>
                           )}
                           {editorTab === 'live' &&
                             (limitPast30Days ||
