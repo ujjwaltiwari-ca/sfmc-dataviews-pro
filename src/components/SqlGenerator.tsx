@@ -61,89 +61,7 @@ import {
   parseTemplatePlaceholders,
 } from '../utils/templatePlaceholders';
 import { TemplateParametersPanel } from './TemplateParametersPanel';
-
-const COPY_TRACKING_WARNING =
-  '⚠️ Architect Warning: This query scans tracking views without an EventDate lookback filter, which may cause timeouts in high-volume SFMC accounts. Do you want to copy anyway?';
-
-function CopyTrackingWarningModal({
-  isOpen,
-  onCancel,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const titleId = useId();
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen, onCancel]);
-
-  if (!isOpen) {
-    return null;
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
-        aria-label="Cancel copy"
-        onClick={onCancel}
-      />
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-amber-400/30 bg-slate-950/95 shadow-[0_24px_64px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md"
-      >
-        <div className="border-b border-amber-400/20 bg-amber-500/[0.08] px-5 py-4">
-          <p
-            id={titleId}
-            className="text-sm font-medium leading-relaxed text-amber-100/95"
-          >
-            {COPY_TRACKING_WARNING}
-          </p>
-        </div>
-        <div className="flex justify-end gap-2 px-5 py-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-slate-700/80 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-lg border border-amber-500/40 bg-amber-600/90 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
-          >
-            Copy anyway
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
+import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
@@ -590,6 +508,8 @@ export function SqlGenerator({
   const editorTab = editorTabProp ?? preferenceEditorTab;
   const [templateBaseSql, setTemplateBaseSql] = useState<string | null>(null);
   const [templateParamValues, setTemplateParamValues] = useState<Record<string, string>>({});
+  /** When true, Pathfinder stops overwriting sandbox SQL so manual edits (e.g. EventDate) persist. */
+  const [manualSqlLocked, setManualSqlLocked] = useState(false);
 
   const activeTemplate = useMemo(
     () => sfmcQueryTemplates.find((item) => item.id === activeTemplateId) ?? null,
@@ -737,11 +657,15 @@ export function SqlGenerator({
   }, [templateBaseSql, templateParamValues, onSqlChange]);
 
   useEffect(() => {
-    if (preserveSql || selectedTableNames.length === 0 || editorTab !== 'live') {
+    setManualSqlLocked(false);
+  }, [selectedTableNames]);
+
+  useEffect(() => {
+    if (preserveSql || manualSqlLocked || selectedTableNames.length === 0 || editorTab !== 'live') {
       return;
     }
     onSqlChange(displaySql);
-  }, [displaySql, onSqlChange, preserveSql, selectedTableNames.length, editorTab]);
+  }, [displaySql, onSqlChange, preserveSql, manualSqlLocked, selectedTableNames.length, editorTab]);
 
   const handleTemplateParameterChange = useCallback((token: string, value: string) => {
     setTemplateParamValues((previous) => ({ ...previous, [token]: value }));
@@ -788,9 +712,24 @@ export function SqlGenerator({
   const showTemplateLibrary = editorTab === 'templates' && activeTemplateId === null;
   const showSqlEditor = editorTab === 'live' || activeTemplateId !== null;
 
-  const isPathfinderLiveOutput =
+  const pathfinderAutoSyncActive =
     editorTab === 'live' && selectedTableNames.length > 0 && !preserveSql;
-  const isSqlEditorReadOnly = showTemplateParametersPanel || isPathfinderLiveOutput;
+  const isSqlEditorReadOnly = showTemplateParametersPanel;
+
+  const handleSqlEditorChange = useCallback(
+    (nextSql: string) => {
+      onSqlChange(nextSql);
+      if (pathfinderAutoSyncActive && nextSql !== displaySql) {
+        setManualSqlLocked(true);
+      }
+    },
+    [onSqlChange, pathfinderAutoSyncActive, displaySql],
+  );
+
+  const handleSyncWithPathfinder = useCallback(() => {
+    setManualSqlLocked(false);
+    onSqlChange(displaySql);
+  }, [displaySql, onSqlChange]);
 
   const fieldsByTable = useMemo(() => {
     const groups = new Map<string, typeof architecture.selectFields>();
@@ -905,14 +844,22 @@ export function SqlGenerator({
     setCopyWarningOpen(false);
   }, []);
 
+  const handleEnableDateFilterFromWarning = useCallback(() => {
+    setCopyWarningOpen(false);
+    setManualSqlLocked(false);
+    onSandboxPreferencesChange({ limitPast30Days: true });
+  }, [onSandboxPreferencesChange]);
+
   const expandedDrawerHeightPx = isExpanded ? sandboxHeight : SANDBOX_COLLAPSED_CHROME_HEIGHT_PX;
 
   return (
     <>
-      <CopyTrackingWarningModal
+      <TrackingQueryWarningDialog
         isOpen={copyWarningOpen}
         onCancel={handleCancelRiskyCopy}
         onConfirm={handleConfirmRiskyCopy}
+        confirmLabel="Copy without date filter"
+        onEnableDateFilter={handleEnableDateFilterFromWarning}
       />
     <div
       className={`pointer-events-none fixed bottom-0 left-0 right-0 z-50 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
@@ -1297,6 +1244,20 @@ export function SqlGenerator({
                           )}
                         </div>
                         <div className="flex items-center gap-2">
+                          {manualSqlLocked && editorTab === 'live' && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+                                manual edit
+                              </span>
+                              <button
+                                type="button"
+                                onClick={handleSyncWithPathfinder}
+                                className="rounded-md px-2 py-0.5 text-[10px] font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                              >
+                                Sync with Pathfinder
+                              </button>
+                            </div>
+                          )}
                           {editorTab === 'live' &&
                             (limitPast30Days ||
                               (filterUniqueEvents && uniqueEventTablesInGraph.length > 0) ||
@@ -1360,7 +1321,7 @@ export function SqlGenerator({
                             >
                               <SandboxSqlCodeMirror
                                 value={sql}
-                                onChange={onSqlChange}
+                                onChange={handleSqlEditorChange}
                                 readOnly={isSqlEditorReadOnly}
                                 placeholder="Select data views to generate SQL, or paste a query from AI Copilot…"
                               />

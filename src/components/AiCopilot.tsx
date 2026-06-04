@@ -1,13 +1,11 @@
 import {
   useCallback,
   useEffect,
-  useId,
   useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Bot,
@@ -28,86 +26,7 @@ import { logCopilotApiError } from '../utils/copilotFallback';
 import { lacksTrackingViewDateLookback } from '../utils/sqlGenerator';
 import { supabase } from '../utils/supabaseClient';
 import { AuthForm } from './AuthForm';
-
-const APPLY_TRACKING_WARNING =
-  '⚠️ Architect Warning: This query scans tracking views without an EventDate lookback filter, which may cause timeouts in high-volume SFMC accounts. Apply to the sandbox anyway?';
-
-function ApplyTrackingWarningModal({
-  isOpen,
-  onCancel,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const titleId = useId();
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen, onCancel]);
-
-  if (!isOpen) {
-    return null;
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
-        aria-label="Cancel apply"
-        onClick={onCancel}
-      />
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-amber-400/30 bg-slate-950/95 shadow-[0_24px_64px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md"
-      >
-        <div className="border-b border-amber-400/20 bg-amber-500/[0.08] px-5 py-4">
-          <p id={titleId} className="text-sm font-medium leading-relaxed text-amber-100/95">
-            {APPLY_TRACKING_WARNING}
-          </p>
-        </div>
-        <div className="flex justify-end gap-2 px-5 py-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-slate-700/80 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-lg border border-amber-500/40 bg-amber-600/90 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
-          >
-            Apply anyway
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
+import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -515,10 +434,11 @@ export function AiCopilot({
 
   return (
     <>
-      <ApplyTrackingWarningModal
+      <TrackingQueryWarningDialog
         isOpen={applyWarningOpen}
         onCancel={handleCancelRiskyApply}
         onConfirm={handleConfirmRiskyApply}
+        confirmLabel="Apply without date filter"
       />
       <button
         type="button"
