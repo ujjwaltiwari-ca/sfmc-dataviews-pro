@@ -1,9 +1,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { handleChatRequest, resetSupabaseServerClient } from './api/chat';
 import { handleStagingRequest } from './api/staging';
 import { handleUsageRequest } from './api/usage';
+import { generateSeoStaticAssets } from './src/build/generateSeoStatic';
+import { createSeoStaticDevMiddleware } from './src/build/seoStaticDevMiddleware';
+
+const PROJECT_ROOT = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC_VIEWS_DIR = path.join(PROJECT_ROOT, 'public', 'views');
 
 function readAuthorizationHeader(req: IncomingMessage): string | undefined {
   const raw = req.headers.authorization;
@@ -159,7 +166,29 @@ function localApiPlugin(): Plugin {
   };
 }
 
+function seoStaticPagesPlugin(): Plugin {
+  return {
+    name: 'vite-plugin-seo-static-pages',
+    buildStart() {
+      const { tableCount, pageCount } = generateSeoStaticAssets();
+      console.log(`[seo] Generated ${pageCount} static pages for ${tableCount} schema tables.`);
+    },
+  };
+}
+
+/** Serves `/views/...` HTML in dev (Vite otherwise falls through to the React SPA). */
+function seoStaticDevServePlugin(): Plugin {
+  return {
+    name: 'vite-plugin-seo-static-dev-serve',
+    apply: 'serve',
+    configureServer(server) {
+      const middleware = createSeoStaticDevMiddleware(PUBLIC_VIEWS_DIR);
+      server.middlewares.use(middleware);
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), localApiPlugin()],
+  plugins: [seoStaticPagesPlugin(), seoStaticDevServePlugin(), react(), localApiPlugin()],
 });

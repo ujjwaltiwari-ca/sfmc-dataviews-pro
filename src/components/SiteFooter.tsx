@@ -37,6 +37,9 @@ export function SiteFooter() {
           className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2"
           aria-label="Footer"
         >
+          <a href="/views/" className={footerLinkClassName}>
+            Data View Reference
+          </a>
           <button type="button" onClick={openDocumentation} className={footerLinkClassName}>
             Documentation
           </button>
