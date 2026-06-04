@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ListTree, Search } from 'lucide-react';
+import { ListTree, RotateCcw, Search } from 'lucide-react';
 import { VIEW_SEGMENTS, type ViewSegmentId } from '../data/viewSegments';
 
 type CommandToolbarProps = {
@@ -9,6 +9,8 @@ type CommandToolbarProps = {
   onSearchChange: (value: string) => void;
   showDetails: boolean;
   onShowDetailsChange: (value: boolean) => void;
+  canClearWorkspace: boolean;
+  onClearWorkspace: () => void;
 };
 
 export function CommandToolbar({
@@ -18,6 +20,8 @@ export function CommandToolbar({
   onSearchChange,
   showDetails,
   onShowDetailsChange,
+  canClearWorkspace,
+  onClearWorkspace,
 }: CommandToolbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +91,26 @@ export function CommandToolbar({
               /
             </kbd>
           </div>
+
+          <button
+            type="button"
+            onClick={onClearWorkspace}
+            disabled={!canClearWorkspace}
+            title={
+              canClearWorkspace
+                ? 'Clear table selections, sandbox settings, and URL parameters (like a fresh visit)'
+                : 'Nothing to clear — workspace is already at defaults'
+            }
+            className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 sm:text-sm ${
+              canClearWorkspace
+                ? 'border-slate-200/80 bg-white text-slate-700 shadow-sm hover:border-slate-300/80 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700/50'
+                : 'cursor-not-allowed border-slate-200/50 bg-slate-50 text-slate-400 opacity-60 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-600'
+            }`}
+          >
+            <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Clear workspace</span>
+            <span className="sm:hidden">Clear</span>
+          </button>
 
           <label
             className={`flex shrink-0 cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 transition-all duration-200 ease-in-out ${

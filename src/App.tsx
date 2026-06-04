@@ -18,6 +18,7 @@ import {
 import type { DataViewField } from './data/sfmcSchema';
 import { dedupeTablesByName, getTablesForSegment } from './data/viewSegments';
 import { useWorkspaceState } from './hooks/useWorkspaceState';
+import { workspaceHasCustomState } from './utils/workspacePersistence';
 import type { HoveredRelation } from './utils/schemaExplorer';
 import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExplorer';
 
@@ -148,6 +149,7 @@ function AppMain() {
     editorTab: sandboxEditorTab,
     setEditorTab: setSandboxEditorTab,
     initialTemplateSql,
+    resetWorkspace,
   } = workspace;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -224,6 +226,36 @@ function AppMain() {
     [setIsSandboxExpanded],
   );
 
+  const canClearWorkspace = useMemo(
+    () =>
+      workspaceHasCustomState(
+        {
+          segment: activeSegment,
+          selectedTableNames,
+          showSandbox,
+          activeTemplateId,
+          sandboxPreferences,
+        },
+        { searchQuery },
+      ),
+    [
+      activeSegment,
+      selectedTableNames,
+      showSandbox,
+      activeTemplateId,
+      sandboxPreferences,
+      searchQuery,
+    ],
+  );
+
+  const handleClearWorkspace = useCallback(() => {
+    resetWorkspace();
+    setSearchQuery('');
+    setSandboxSql('');
+    setCopilotSqlActive(false);
+    setHoveredRelation(null);
+  }, [resetWorkspace]);
+
   const clearRelationLeaveTimer = () => {
     if (relationLeaveTimerRef.current !== null) {
       clearTimeout(relationLeaveTimerRef.current);
@@ -266,6 +298,8 @@ function AppMain() {
           onSearchChange={setSearchQuery}
           showDetails={showDetails}
           onShowDetailsChange={setShowDetails}
+          canClearWorkspace={canClearWorkspace}
+          onClearWorkspace={handleClearWorkspace}
         />
       </div>
 

@@ -254,6 +254,25 @@ export function isDefaultWorkspaceSnapshot(snapshot: WorkspaceSnapshot): boolean
   );
 }
 
+export const DEFAULT_WORKSPACE_SNAPSHOT: WorkspaceSnapshot = {
+  segment: 'core',
+  selectedTableNames: [],
+  showSandbox: false,
+  activeTemplateId: null,
+  sandboxPreferences: { ...DEFAULT_SANDBOX_PREFERENCES },
+};
+
+/** True when the canvas, sandbox, URL, or local search differ from a fresh visit. */
+export function workspaceHasCustomState(
+  snapshot: WorkspaceSnapshot,
+  options?: { searchQuery?: string },
+): boolean {
+  if ((options?.searchQuery?.trim().length ?? 0) > 0) {
+    return true;
+  }
+  return !isDefaultWorkspaceSnapshot(snapshot);
+}
+
 /** Removes persisted canvas / sandbox keys so a bare URL can start clean. */
 export function clearWorkspaceStorage(): void {
   writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.segment, null);

@@ -3,6 +3,7 @@ import type { SandboxEditorTab } from '../utils/workspacePersistence';
 import type { ViewSegmentId } from '../data/viewSegments';
 import {
   DEFAULT_SANDBOX_PREFERENCES,
+  DEFAULT_WORKSPACE_SNAPSHOT,
   filterTableNamesForSegment,
   hydrateWorkspaceState,
   isWorkspaceUrlEmpty,
@@ -29,6 +30,8 @@ export type WorkspaceStateApi = {
   editorTab: SandboxEditorTab;
   setEditorTab: (tab: SandboxEditorTab) => void;
   initialTemplateSql: string | null;
+  /** Clears selections, sandbox, share URL params, and persisted workspace keys. */
+  resetWorkspace: () => void;
 };
 
 export function useWorkspaceState(): WorkspaceStateApi {
@@ -106,6 +109,15 @@ export function useWorkspaceState(): WorkspaceStateApi {
     [updateSandboxPreferences],
   );
 
+  const resetWorkspace = useCallback(() => {
+    setSegment(DEFAULT_WORKSPACE_SNAPSHOT.segment);
+    setSelectedTableNamesState([]);
+    setShowSandbox(false);
+    setActiveTemplateId(null);
+    setSandboxPreferences({ ...DEFAULT_SANDBOX_PREFERENCES });
+    persistWorkspaceState(DEFAULT_WORKSPACE_SNAPSHOT);
+  }, []);
+
   useEffect(() => {
     setSelectedTableNamesState((previous) => {
       const filtered = filterTableNamesForSegment(previous, segment);
@@ -159,6 +171,7 @@ export function useWorkspaceState(): WorkspaceStateApi {
     editorTab: sandboxPreferences.editorTab,
     setEditorTab,
     initialTemplateSql: hydrated.initialTemplateSql,
+    resetWorkspace,
   };
 }
 
