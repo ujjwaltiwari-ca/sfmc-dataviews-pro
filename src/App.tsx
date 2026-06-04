@@ -36,7 +36,48 @@ import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExpl
 
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
+const STAGING_STATUS_CACHE_KEY = 'sfmc-staging-status';
+
 const RELATION_LEAVE_DELAY_MS = 40;
+
+function readCachedStagingStatus(): StagingGateStatus | null {
+  try {
+    const cached = sessionStorage.getItem(STAGING_STATUS_CACHE_KEY);
+    if (cached === 'disabled' || cached === 'unlocked' || cached === 'locked') {
+      return cached;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function cacheStagingStatus(status: StagingGateStatus): void {
+  if (status === 'loading') {
+    return;
+  }
+  try {
+    sessionStorage.setItem(STAGING_STATUS_CACHE_KEY, status);
+  } catch {
+    /* ignore */
+  }
+}
+
+function resolveInitialStagingStatus(): StagingGateStatus {
+  if (!__STAGING_GATE_ENABLED__) {
+    return 'disabled';
+  }
+  return readCachedStagingStatus() ?? 'loading';
+}
+
+function StagingBootScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50/50 text-sm text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+      Loading…
+    </div>
+  );
+}
+
 const SHOW_DETAILS_STORAGE_KEY = 'sfmc-show-details';
 
 function readShowDetailsPreference(): boolean {
@@ -402,14 +443,20 @@ function AppMain() {
 }
 
 function App() {
-  const [stagingStatus, setStagingStatus] = useState<StagingGateStatus>('loading');
+  const [stagingStatus, setStagingStatus] = useState<StagingGateStatus>(resolveInitialStagingStatus);
 
   useEffect(() => {
+    if (!__STAGING_GATE_ENABLED__) {
+      return;
+    }
+
     let isMounted = true;
     void fetchStagingGateStatus().then((status) => {
-      if (isMounted) {
-        setStagingStatus(status);
+      if (!isMounted) {
+        return;
       }
+      cacheStagingStatus(status);
+      setStagingStatus(status);
     });
     return () => {
       isMounted = false;
@@ -417,17 +464,18 @@ function App() {
   }, []);
 
   if (stagingStatus === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-400">
-        Loading…
-      </div>
-    );
+    return <StagingBootScreen />;
   }
 
   if (stagingStatus === 'locked') {
     return (
       <>
-        <StagingGateScreen onUnlock={() => setStagingStatus('unlocked')} />
+        <StagingGateScreen
+          onUnlock={() => {
+            cacheStagingStatus('unlocked');
+            setStagingStatus('unlocked');
+          }}
+        />
         <Analytics />
       </>
     );

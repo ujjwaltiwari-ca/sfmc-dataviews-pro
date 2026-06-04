@@ -189,6 +189,14 @@ function seoStaticDevServePlugin(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [seoStaticPagesPlugin(), seoStaticDevServePlugin(), react(), localApiPlugin()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const stagingGateEnabled = Boolean(env.STAGING_PASSWORD?.trim());
+
+  return {
+    plugins: [seoStaticPagesPlugin(), seoStaticDevServePlugin(), react(), localApiPlugin()],
+    define: {
+      __STAGING_GATE_ENABLED__: JSON.stringify(stagingGateEnabled),
+    },
+  };
 });
