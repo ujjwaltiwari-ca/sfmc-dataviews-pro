@@ -1,5 +1,6 @@
 import { Link2 } from 'lucide-react';
 import type { DataViewField, DataViewTable } from '../data/sfmcSchema';
+import { TruncatedText } from './TruncatedText';
 import type { HoveredRelation } from '../utils/schemaExplorer';
 import {
   buildRelationHighlight,
@@ -238,7 +239,7 @@ export function DataViewCard({
         className={`${CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800/80`}
       >
         <div className="flex min-h-[1.5rem] items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <input
               type="checkbox"
               checked={isSelected}
@@ -246,9 +247,11 @@ export function DataViewCard({
               className="card-select-checkbox h-3.5 w-3.5 shrink-0 cursor-pointer"
               aria-label={`Include ${table.name} in SQL query`}
             />
-            <h2 className="truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-900 dark:text-white">
-              {table.name}
-            </h2>
+            <TruncatedText
+              as="h2"
+              text={table.name}
+              className="min-w-0 flex-1 truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-900 dark:text-white"
+            />
           </div>
           <span
             className={`inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] shadow-sm ${theme.categoryBadge}`}
@@ -256,9 +259,13 @@ export function DataViewCard({
             {table.category}
           </span>
         </div>
-        <p className="line-clamp-2 h-8 text-xs leading-4 text-slate-500 dark:text-slate-400">
-          {table.description}
-        </p>
+        <TruncatedText
+          as="p"
+          text={table.description}
+          clampLines={2}
+          tooltipVariant="prose"
+          className="line-clamp-2 h-8 text-xs leading-4 text-slate-500 dark:text-slate-400"
+        />
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">
