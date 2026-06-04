@@ -1,3 +1,4 @@
+import { isCompactSelectFieldAllowed } from '../data/compactSelectFields.js';
 import type { DataViewTable } from '../data/schemas/types.js';
 import { sfmcDataViews } from '../data/sfmcSchema.js';
 
@@ -64,6 +65,8 @@ export interface SqlGenerationOptions {
   requireSubscribersJoin?: boolean;
   /** When true, applies IsUnique = 1 on behavioral views that expose IsUnique (excludes _Sent). */
   filterUniqueEvents?: boolean;
+  /** When true, emits a curated column list similar to dataviews.io instead of all schema fields. */
+  compactSelect?: boolean;
 }
 
 const SUBSCRIBERS_TABLE = '_Subscribers';
@@ -1163,6 +1166,7 @@ function collectDuplicateSelectFieldNames(
 function buildSelectFields(
   userSelectedTableNames: string[],
   tables: DataViewTable[],
+  options: SqlGenerationOptions = {},
 ): SqlSelectField[] {
   const fields: SqlSelectField[] = [];
   const duplicateFieldNames = collectDuplicateSelectFieldNames(userSelectedTableNames, tables);
@@ -1174,6 +1178,9 @@ function buildSelectFields(
     }
     const alias = tableToAlias(tableName);
     for (const field of table.fields) {
+      if (options.compactSelect && !isCompactSelectFieldAllowed(tableName, field.name)) {
+        continue;
+      }
       if (isDocumentationPlaceholderField(field.name)) {
         continue;
       }
@@ -1418,7 +1425,7 @@ export function generateSfmcSql(
   const bridgingSet = new Set(bridgingTables);
   const userSelectedSet = new Set(userSelected);
   const edges = collectJoinEdges(joinTables, tables);
-  const selectFields = buildSelectFields(userSelected, tables);
+  const selectFields = buildSelectFields(userSelected, tables, options);
   const selectClause = buildSelectClause(selectFields);
   const { rootTable, steps, disconnected: disconnectedFromJoin } = buildJoinSteps(
     joinTables,

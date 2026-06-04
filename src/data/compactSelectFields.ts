@@ -1,0 +1,213 @@
+/**
+ * Curated SELECT columns aligned with dataviews.io output for common Pathfinder combos.
+ * Used when "Compact SELECT" is enabled in the SQL sandbox.
+ */
+
+/** Shared email tracking event columns (_Sent, _Open, _Click, etc.). */
+export const ENGAGEMENT_EVENT_COMPACT_FIELDS = [
+  'AccountID',
+  'OYBAccountID',
+  'JobID',
+  'ListID',
+  'BatchID',
+  'SubscriberID',
+  'SubscriberKey',
+  'EventDate',
+  'Domain',
+  'TriggererSendDefinitionObjectID',
+  'TriggeredSendCustomerKey',
+] as const;
+
+const ENGAGEMENT_SET = new Set<string>(ENGAGEMENT_EVENT_COMPACT_FIELDS);
+
+export const COMPACT_SELECT_FIELDS_BY_TABLE: Record<string, readonly string[]> = {
+  _Sent: ENGAGEMENT_EVENT_COMPACT_FIELDS,
+  _Open: ENGAGEMENT_EVENT_COMPACT_FIELDS,
+  _Click: [
+    ...ENGAGEMENT_EVENT_COMPACT_FIELDS,
+    'URL',
+    'LinkName',
+    'LinkContent',
+  ],
+  _Bounce: [
+    ...ENGAGEMENT_EVENT_COMPACT_FIELDS,
+    'BounceCategoryID',
+    'BounceCategory',
+    'BounceSubcategoryID',
+    'BounceSubcategory',
+    'BounceTypeID',
+    'BounceType',
+    'SMTPBounceReason',
+    'SMTPMessage',
+    'SMTPCode',
+  ],
+  _Complaint: ENGAGEMENT_EVENT_COMPACT_FIELDS,
+  _Unsubscribe: ENGAGEMENT_EVENT_COMPACT_FIELDS,
+  _Job: [
+    'JobID',
+    'EmailID',
+    'AccountUserID',
+    'FromName',
+    'FromEmail',
+    'SchedTime',
+    'PickupTime',
+    'DeliveredTime',
+    'EventID',
+    'IsMultipart',
+    'JobType',
+    'JobStatus',
+    'ModifiedBy',
+    'ModifiedDate',
+    'EmailName',
+    'EmailSubject',
+    'IsWrapped',
+    'TestEmailAddr',
+    'Category',
+    'BccEmail',
+    'OriginalSchedTime',
+    'CreatedDate',
+    'CharacterSet',
+    'IPAddress',
+    'SalesForceTotalSubscriberCount',
+    'SalesForceErrorSubscriberCount',
+    'SendType',
+    'DynamicEmailSubject',
+    'SuppressTracking',
+    'SendClassificationType',
+    'SendClassification',
+    'ResolveLinksWithCurrentData',
+    'EmailSendDefinition',
+    'DeduplicateByEmail',
+  ],
+  _Subscribers: [
+    'SubscriberID',
+    'DateUndeliverable',
+    'DateJoined',
+    'DateUnsubscribed',
+    'Domain',
+    'EmailAddress',
+    'BounceCount',
+    'SubscriberKey',
+    'SubscriberType',
+    'Status',
+    'Locale',
+  ],
+  _ListSubscribers: [
+    'AddedBy',
+    'AddMethod',
+    'CreatedDate',
+    'DateUnsubscribed',
+    'EmailAddress',
+    'ListID',
+    'ListName',
+    'ListType',
+    'Status',
+    'SubscriberType',
+  ],
+  _Journey: [
+    'VersionID',
+    'JourneyID',
+    'JourneyName',
+    'VersionNumber',
+    'CreatedDate',
+    'LastPublishedDate',
+    'ModifiedDate',
+    'JourneyStatus',
+  ],
+  _JourneyActivity: [
+    'VersionID',
+    'ActivityID',
+    'ActivityName',
+    'ActivityExternalKey',
+    'JourneyActivityObjectID',
+    'ActivityType',
+  ],
+  _SMSMessageTracking: [
+    'Mobile',
+    'SubscriberKey',
+    'SubscriberID',
+    'MobileMessageTrackingID',
+    'EID',
+    'MID',
+    'MessageID',
+    'KeywordID',
+    'CodeID',
+    'ConversationID',
+    'CampaignID',
+    'Sent',
+    'Delivered',
+    'Undelivered',
+    'Outbound',
+    'Inbound',
+    'CreateDateTime',
+    'ModifiedDateTime',
+    'ActionDateTime',
+    'MessageText',
+    'IsTest',
+    'MobileMessageRecurrenceID',
+    'ResponseToMobileMessageTrackingID',
+    'IsValid',
+    'InvalidationCode',
+    'SendID',
+    'SendSplitID',
+    'SendSegmentID',
+    'SendJobID',
+    'SendGroupID',
+    'SendPersonID',
+    'SMSStandardStatusCodeId',
+    'Description',
+    'Name',
+    'ShortCode',
+    'SharedKeyword',
+    'Ordinal',
+    'FromName',
+    'JBActivityID',
+    'JBDefinitionID',
+    'SMSJobID',
+    'SMSBatchID',
+  ],
+  _SMSSubscriptionLog: [
+    'MobileNumber',
+    'LogDate',
+    'MobileSubscriptionID',
+    'SubscriptionDefinitionID',
+    'OptOutStatusID',
+    'OptOutMethodID',
+    'OptOutDate',
+    'OptInStatusID',
+    'OptInMethodID',
+    'OptInDate',
+    'Source',
+    'CreatedDate',
+    'ModifiedDate',
+  ],
+  _UndeliverableSMS: ['Undeliverable', 'BounceCount', 'FirstBounceDate', 'HoldDate'],
+};
+
+const COMPACT_ALLOWED = new Map<string, Set<string>>(
+  Object.entries(COMPACT_SELECT_FIELDS_BY_TABLE).map(([table, fields]) => [
+    table,
+    new Set(fields),
+  ]),
+);
+
+const BEHAVIORAL_TRACKING_FOR_COMPACT = new Set([
+  '_Sent',
+  '_Open',
+  '_Click',
+  '_Bounce',
+  '_Complaint',
+  '_Unsubscribe',
+]);
+
+/** Returns true when a field should appear in compact SELECT mode. */
+export function isCompactSelectFieldAllowed(tableName: string, fieldName: string): boolean {
+  const allowed = COMPACT_ALLOWED.get(tableName);
+  if (allowed) {
+    return allowed.has(fieldName);
+  }
+  if (BEHAVIORAL_TRACKING_FOR_COMPACT.has(tableName)) {
+    return ENGAGEMENT_SET.has(fieldName);
+  }
+  return true;
+}

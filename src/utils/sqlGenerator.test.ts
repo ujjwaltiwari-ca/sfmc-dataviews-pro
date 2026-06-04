@@ -71,6 +71,21 @@ describe('generateSfmcSql join rules', () => {
     expect(sql).toContain('c.EventDate AS ClickEventDate');
   });
 
+  it('compact SELECT omits non-curated columns', () => {
+    const full = generateSfmcSql(['_Sent', '_Click'], undefined, {
+      compactSelect: false,
+      filterUniqueEvents: false,
+    });
+    const compact = generateSfmcSql(['_Sent', '_Click'], undefined, {
+      compactSelect: true,
+      filterUniqueEvents: false,
+    });
+    expect(full.sql).toContain('c.IsUnique');
+    expect(compact.sql).not.toContain('c.IsUnique');
+    expect(compact.sql).toContain('c.URL');
+    expect(compact.sql).toContain('s.EventDate AS SentEventDate');
+  });
+
   it('joins SMS views on mobile number, not keyword GUID', () => {
     const { sql } = generateSfmcSql([
       '_SMSMessageTracking',

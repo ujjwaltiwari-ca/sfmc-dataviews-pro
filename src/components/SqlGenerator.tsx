@@ -21,6 +21,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Columns2,
   Copy,
   Database,
   FileText,
@@ -65,6 +66,9 @@ import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
+
+const PATHFINDER_JOIN_STYLE_NOTE =
+  'Join keys follow dataviews.io-style Pathfinder output (composite tracking grain, JobID-only _Job links).';
 const COPIED_FEEDBACK_MS = 2200;
 const SANDBOX_MIN_HEIGHT_PX = 150;
 const SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO = 0.4;
@@ -495,6 +499,7 @@ export function SqlGenerator({
   const resizeStartHeightRef = useRef(getDefaultSandboxHeight());
   const prevSelectionCountRef = useRef(selectedTableNames.length);
   const {
+    compactSelect,
     limitPast30Days,
     filterUniqueEvents,
     excludeTestSends,
@@ -538,8 +543,9 @@ export function SqlGenerator({
       generateSfmcSql(selectedTableNames, schemaTables, {
         requireSubscribersJoin: filterActiveSubscribersOnly,
         filterUniqueEvents,
+        compactSelect,
       }),
-    [selectedTableNames, schemaTables, filterActiveSubscribersOnly, filterUniqueEvents],
+    [selectedTableNames, schemaTables, filterActiveSubscribersOnly, filterUniqueEvents, compactSelect],
   );
 
   const {
@@ -1107,7 +1113,22 @@ export function SqlGenerator({
                   </section>
 
                   <section className="space-y-3">
-                    <p className="micro-label">Performance &amp; Formatting</p>
+                    <p className="micro-label">SELECT output</p>
+                    <div className="space-y-2">
+                      <UtilityToggle
+                        id="compact-select"
+                        label="Compact SELECT (dataviews.io-style)"
+                        description="Curated columns for copy-paste; turn off for every field on selected cards."
+                        checked={compactSelect}
+                        onChange={(value) => {
+                          setManualSqlLocked(false);
+                          onSandboxPreferencesChange({ compactSelect: value });
+                        }}
+                        icon={Columns2}
+                      />
+                    </div>
+
+                    <p className="micro-label pt-1">Performance &amp; Formatting</p>
                     <div className="space-y-2">
                       <UtilityToggle
                         id="limit-30-days"
@@ -1232,6 +1253,14 @@ export function SqlGenerator({
                             />
                           </div>
                           <QueryStudioTipIcon tip={QUERY_STUDIO_TIP} />
+                          {editorTab === 'live' && selectedTableNames.length > 0 && (
+                            <span
+                              className="hidden max-w-[14rem] truncate text-[10px] leading-snug text-slate-500 sm:inline xl:max-w-xs"
+                              title={PATHFINDER_JOIN_STYLE_NOTE}
+                            >
+                              {PATHFINDER_JOIN_STYLE_NOTE}
+                            </span>
+                          )}
                           {activeTemplateId && (
                             <button
                               type="button"
@@ -1257,6 +1286,11 @@ export function SqlGenerator({
                                 Sync with Pathfinder
                               </button>
                             </div>
+                          )}
+                          {editorTab === 'live' && !compactSelect && (
+                            <span className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-200">
+                              full columns
+                            </span>
                           )}
                           {editorTab === 'live' &&
                             (limitPast30Days ||

@@ -18,6 +18,7 @@ export const WORKSPACE_URL_KEYS = {
   keywordCase: 'kc',
   limitPast30Days: 'd30',
   filterUniqueEvents: 'uq',
+  compactSelect: 'cmp',
   excludeTestSends: 'xts',
   filterActiveSubscribers: 'act',
   filterByJobId: 'job',
@@ -39,6 +40,8 @@ const TEMPLATE_IDS = new Set(sfmcQueryTemplates.map((template) => template.id));
 
 export type SandboxPreferences = {
   keywordCase: SqlKeywordCase;
+  /** Curated SELECT columns (dataviews.io-style) vs all fields from selected cards. */
+  compactSelect: boolean;
   limitPast30Days: boolean;
   filterUniqueEvents: boolean;
   excludeTestSends: boolean;
@@ -73,6 +76,7 @@ export function isWorkspaceUrlEmpty(
 
 export const DEFAULT_SANDBOX_PREFERENCES: SandboxPreferences = {
   keywordCase: 'upper',
+  compactSelect: true,
   limitPast30Days: false,
   filterUniqueEvents: true,
   excludeTestSends: false,
@@ -291,6 +295,9 @@ function mergeSandboxPreferences(
   const uniqueEventsFromUrl = params.has(WORKSPACE_URL_KEYS.filterUniqueEvents)
     ? parseFlag(params.get(WORKSPACE_URL_KEYS.filterUniqueEvents))
     : null;
+  const compactSelectFromUrl = params.has(WORKSPACE_URL_KEYS.compactSelect)
+    ? parseFlag(params.get(WORKSPACE_URL_KEYS.compactSelect))
+    : null;
   const excludeTestFromUrl = params.has(WORKSPACE_URL_KEYS.excludeTestSends)
     ? parseFlag(params.get(WORKSPACE_URL_KEYS.excludeTestSends))
     : null;
@@ -320,6 +327,10 @@ function mergeSandboxPreferences(
       keywordFromStorage ??
       storedPrefs.keywordCase ??
       DEFAULT_SANDBOX_PREFERENCES.keywordCase,
+    compactSelect:
+      compactSelectFromUrl ??
+      storedPrefs.compactSelect ??
+      DEFAULT_SANDBOX_PREFERENCES.compactSelect,
     limitPast30Days:
       limitFromUrl ??
       storedPrefs.limitPast30Days ??
@@ -463,6 +474,10 @@ export function buildWorkspaceSearchParams(snapshot: WorkspaceSnapshot): URLSear
 
   if (prefs.limitPast30Days) {
     params.set(WORKSPACE_URL_KEYS.limitPast30Days, '1');
+  }
+
+  if (!prefs.compactSelect) {
+    params.set(WORKSPACE_URL_KEYS.compactSelect, '0');
   }
 
   if (!prefs.filterUniqueEvents) {
