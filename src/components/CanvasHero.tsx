@@ -32,8 +32,8 @@ export function CanvasHero() {
             Explore SFMC Data Views. Build SQL in minutes.
           </h2>
           <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:text-sm">
-            Trace relationships across the schema canvas and copy production-ready SQL straight into
-            Automation Studio or Query Studio.
+            Trace relationships on the schema canvas, build SQL quickly, then paste into Query
+            Studio or Automation Studio to test and analyze.
           </p>
         </div>
 
