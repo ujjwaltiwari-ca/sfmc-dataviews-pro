@@ -21,11 +21,22 @@ export function fieldMatchesSearch(fieldName: string, normalizedQuery: string): 
   return fieldName.toLowerCase().includes(normalizedQuery);
 }
 
-export function tableHasMatchingField(table: DataViewTable, normalizedQuery: string): boolean {
+export function tableNameMatchesSearch(tableName: string, normalizedQuery: string): boolean {
   if (normalizedQuery.length === 0) {
     return true;
   }
-  return table.fields.some((field) => fieldMatchesSearch(field.name, normalizedQuery));
+  return tableName.toLowerCase().includes(normalizedQuery);
+}
+
+/** True when the query matches the data view name and/or any field on that table. */
+export function tableMatchesSearch(table: DataViewTable, normalizedQuery: string): boolean {
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+  return (
+    tableNameMatchesSearch(table.name, normalizedQuery) ||
+    table.fields.some((field) => fieldMatchesSearch(field.name, normalizedQuery))
+  );
 }
 
 export function buildHoveredRelation(tableName: string, field: DataViewField): HoveredRelation | null {

@@ -5,6 +5,7 @@ import {
 } from '../constants/siteChromeEvents';
 
 const CREATOR_URL = 'https://ujjwaltiwari.com';
+const LINKEDIN_URL = 'https://www.linkedin.com/in/ujjwaltiwari/';
 const COMMUNITY_GUIDES_URL =
   'https://help.salesforce.com/s/articleView?id=sf.mc_as_data_view.htm&type=5';
 
@@ -55,6 +56,20 @@ export function SiteFooter() {
             Community Guides
           </a>
         </nav>
+
+        <p className="max-w-md text-center text-[13px] leading-relaxed text-slate-500/90 dark:text-slate-400">
+          DataViews.pro is new and still under active development. If you notice a schema issue, bug,
+          or idea, please contact me on{' '}
+          <a
+            href={LINKEDIN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={nameLinkClassName}
+          >
+            LinkedIn
+          </a>
+          .
+        </p>
 
         <p className="text-center text-[13px] leading-relaxed text-slate-500/90 dark:text-slate-400">
           © 2026 DataViews.pro. Crafted by{' '}

@@ -83,9 +83,9 @@ export function CommandToolbar({
               type="search"
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search fields across the canvas…"
+              placeholder="Search fields or tables (_Job, JobID)…"
               className="w-full rounded-xl border border-slate-200/60 bg-white/90 py-2 pl-10 pr-14 text-sm text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out placeholder:text-slate-400 hover:border-slate-300/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] focus:border-cyan-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700/60 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:border-cyan-500"
-              aria-label="Search fields by name"
+              aria-label="Search data view tables and fields by name"
             />
             <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-500 sm:inline">
               /

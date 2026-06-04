@@ -6,7 +6,8 @@ import {
   fieldMatchesSearch,
   isFieldRelationHighlighted,
   isSameFieldRef,
-  tableHasMatchingField,
+  tableMatchesSearch,
+  tableNameMatchesSearch,
 } from '../utils/schemaExplorer';
 import { getFieldTypeSyntaxClass } from '../utils/typeSyntax';
 
@@ -217,7 +218,8 @@ export function DataViewCard({
 }: DataViewCardProps) {
   const theme = categoryThemes[table.category];
   const isSearchActive = normalizedSearchQuery.length > 0;
-  const tableMatches = tableHasMatchingField(table, normalizedSearchQuery);
+  const tableNameMatches = tableNameMatchesSearch(table.name, normalizedSearchQuery);
+  const tableMatches = tableMatchesSearch(table, normalizedSearchQuery);
   const isCardDimmed = isSearchActive && !tableMatches;
   return (
     <article
@@ -290,6 +292,7 @@ export function DataViewCard({
                 normalizedSearchQuery={normalizedSearchQuery}
                 isSearchActive={isSearchActive}
                 tableMatches={tableMatches}
+                tableNameMatches={tableNameMatches}
                 hoveredRelation={hoveredRelation}
                 onFieldRelationHover={onFieldRelationHover}
                 onFieldRelationLeave={onFieldRelationLeave}
@@ -311,6 +314,7 @@ interface FieldRowProps {
   normalizedSearchQuery: string;
   isSearchActive: boolean;
   tableMatches: boolean;
+  tableNameMatches: boolean;
   hoveredRelation: HoveredRelation | null;
   onFieldRelationHover: (tableName: string, field: DataViewField) => void;
   onFieldRelationLeave: () => void;
@@ -325,6 +329,7 @@ function FieldRow({
   normalizedSearchQuery,
   isSearchActive,
   tableMatches,
+  tableNameMatches,
   hoveredRelation,
   onFieldRelationHover,
   onFieldRelationLeave,
@@ -332,7 +337,8 @@ function FieldRow({
   schemaTables,
 }: FieldRowProps) {
   const fieldMatches = fieldMatchesSearch(field.name, normalizedSearchQuery);
-  const isFieldDimmed = isSearchActive && tableMatches && !fieldMatches;
+  const isFieldDimmed =
+    isSearchActive && tableMatches && !fieldMatches && !tableNameMatches;
   const isRelationHighlighted = isFieldRelationHighlighted(
     hoveredRelation,
     tableName,
