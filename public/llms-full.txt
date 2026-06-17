@@ -1,12 +1,12 @@
-# DataViews.pro — SFMC Schema Architect (Full Reference)
+# DataViews.pro — SFMC Data View Reference & SQL Workspace (Full Reference)
 
-> An advanced optimizer and sandbox for visualizing and generating SQL against Salesforce Marketing Cloud (SFMC) Data Views.
+> An interactive reference and SQL workspace for visualizing and generating SQL against Salesforce Marketing Cloud (SFMC) Data Views.
 
 ---
 
 ## Purpose
 
-DataViews.pro (branded as **SFMC Schema Architect**) is a client-side web application that helps Salesforce Marketing Cloud practitioners:
+**DataViews.pro** is a client-side web application that helps Salesforce Marketing Cloud practitioners:
 
 - **Visualize** the complete SFMC Data View schema as an interactive card-based canvas
 - **Search** across all tables and fields to locate columns instantly
@@ -104,25 +104,36 @@ The platform indexes **29 SFMC system Data Views** across subscribers, sending, 
 Engineered with the assistance of **Gemini** and **Cursor AI**. System prompts and schemas are closely grounded on:
 
 1. **Official Salesforce Documentation** — SFMC Data View field definitions and behavior
-2. **Mateusz Dąbrowski's technical blog** (https://mateuszdabrowski.pl/) — Pioneering SFMC ecosystem research and Data View deep-dives
-3. **Established SFMC practitioner query patterns** — Join grains and column conventions used in production Query Studio workflows
+2. **dataviews.io** (https://dataviews.io) — Schema-browsing workflow reference
+3. **Mateusz Dąbrowski's technical blog** (https://mateuszdabrowski.pl/) — Pioneering SFMC ecosystem research and Data View deep-dives
+4. **Established SFMC practitioner query patterns** — Join grains and column conventions used in production Query Studio workflows
 
 ---
 
 ## Release Status
 
-**Public Beta Release** — Features and schema coverage are actively evolving. Feedback welcome via LinkedIn or the architect's website.
+**Version 1.0 (General Availability)** — Schema reference pages at `/views/` are publicly available. Feedback welcome via LinkedIn or the architect's website.
+
+---
+
+## Legal
+
+- Privacy Policy: https://dataviews.pro/privacy/
+- Terms of Use: https://dataviews.pro/terms/
 
 ---
 
 ## SEO Keywords
 
-SFMC Data Views, Salesforce Marketing Cloud SQL Generator, SFMC Schema Architect, Data Views SQL, Query Studio helper, Automation Studio SQL, Ujjwal Tiwari, DataViews.pro
+SFMC Data Views, Salesforce Marketing Cloud SQL Generator, Data Views SQL, Query Studio helper, Automation Studio SQL, Ujjwal Tiwari, DataViews.pro
 
 ---
 
 ## Canonical URLs
 
 - Application: https://dataviews.pro/
+- Data view reference index: https://dataviews.pro/views/
+- Privacy Policy: https://dataviews.pro/privacy/
+- Terms of Use: https://dataviews.pro/terms/
 - Brief AI summary: https://dataviews.pro/llms.txt
 - Full AI reference: https://dataviews.pro/llms-full.txt

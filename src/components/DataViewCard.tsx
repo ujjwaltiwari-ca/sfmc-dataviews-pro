@@ -204,6 +204,7 @@ interface DataViewCardProps {
   onFieldRelationLeave: () => void;
   showDetails: boolean;
   schemaTables: DataViewTable[];
+  compact?: boolean;
 }
 
 export function DataViewCard({
@@ -216,6 +217,7 @@ export function DataViewCard({
   onFieldRelationLeave,
   showDetails,
   schemaTables,
+  compact = false,
 }: DataViewCardProps) {
   const theme = categoryThemes[table.category];
   const isSearchActive = normalizedSearchQuery.length > 0;
@@ -224,9 +226,11 @@ export function DataViewCard({
   const isCardDimmed = isSearchActive && !tableMatches;
   return (
     <article
-      className={`group/card flex h-[450px] max-h-[500px] flex-col overflow-hidden transition-all duration-300 ease-out ${CARD_BASE_CLASS} ${
-        isSelected ? 'card-selected' : ''
-      } ${isCardDimmed ? 'card-search-dimmed' : 'opacity-100'}`}
+      className={`group/card flex flex-col overflow-hidden transition-all duration-300 ease-out ${CARD_BASE_CLASS} ${
+        compact ? 'h-[360px] max-h-[400px]' : 'h-[450px] max-h-[500px]'
+      } ${isSelected ? 'card-selected' : ''} ${
+        isCardDimmed ? 'card-search-dimmed' : 'opacity-100'
+      }`}
     >
       <div
         className={`h-0.5 w-full shrink-0 transition-opacity duration-300 ease-out ${theme.accentLine} ${
@@ -236,7 +240,7 @@ export function DataViewCard({
       />
 
       <header
-        className={`${CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800/80`}
+        className={`${compact ? 'h-[4.75rem]' : CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800/80`}
       >
         <div className="flex min-h-[1.5rem] items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">

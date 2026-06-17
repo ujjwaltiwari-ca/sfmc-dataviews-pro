@@ -1,7 +1,10 @@
 import { SchemaArchitectMark } from './SchemaArchitectMark';
+import { BRAND_NAME } from '../constants/brand';
+import { SCHEMA_LAST_REVIEWED } from '../constants/schemaMeta';
 import {
   OPEN_DOCUMENTATION_EVENT,
   OPEN_PLATFORM_INFO_EVENT,
+  OPEN_WHATS_NEW_EVENT,
 } from '../constants/siteChromeEvents';
 
 const CREATOR_URL = 'https://ujjwaltiwari.com';
@@ -24,6 +27,10 @@ export function SiteFooter() {
     window.dispatchEvent(new CustomEvent(OPEN_PLATFORM_INFO_EVENT));
   };
 
+  const openWhatsNew = () => {
+    window.dispatchEvent(new CustomEvent(OPEN_WHATS_NEW_EVENT));
+  };
+
   return (
     <footer className="mt-8 border-t border-slate-200/60 pt-8 dark:border-slate-800/60">
       <div className="flex flex-col items-center gap-6 sm:gap-5">
@@ -41,8 +48,14 @@ export function SiteFooter() {
           <a href="/views/" className={footerLinkClassName}>
             Data View Reference
           </a>
+          <a href="/guides/" className={footerLinkClassName}>
+            SQL Guides
+          </a>
           <button type="button" onClick={openDocumentation} className={footerLinkClassName}>
             Documentation
+          </button>
+          <button type="button" onClick={openWhatsNew} className={footerLinkClassName}>
+            What&apos;s New
           </button>
           <button type="button" onClick={openPlatformInfo} className={footerLinkClassName}>
             Platform Info
@@ -55,11 +68,18 @@ export function SiteFooter() {
           >
             Community Guides
           </a>
+          <a href="/privacy/" className={footerLinkClassName}>
+            Privacy
+          </a>
+          <a href="/terms/" className={footerLinkClassName}>
+            Terms
+          </a>
         </nav>
 
-        <p className="max-w-md text-center text-[13px] leading-relaxed text-slate-500/90 dark:text-slate-400">
-          DataViews.pro is new and still under active development. If you notice a schema issue, bug,
-          or idea, please contact me on{' '}
+        <p className="max-w-lg text-center text-[13px] leading-relaxed text-slate-500/90 dark:text-slate-400">
+          Schema reference last reviewed {SCHEMA_LAST_REVIEWED}. Material is curated from official
+          Salesforce documentation and established practitioner patterns. Always validate in your
+          business unit before production use. Feedback welcome on{' '}
           <a
             href={LINKEDIN_URL}
             target="_blank"
@@ -72,7 +92,7 @@ export function SiteFooter() {
         </p>
 
         <p className="text-center text-[13px] leading-relaxed text-slate-500/90 dark:text-slate-400">
-          © 2026 DataViews.pro. Crafted by{' '}
+          © 2026 {BRAND_NAME}. Crafted by{' '}
           <a
             href={CREATOR_URL}
             target="_blank"

@@ -14,10 +14,11 @@ import {
   Terminal,
   X,
   Zap,
-  ZoomOut,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { BRAND_NAME, BRAND_TAGLINE } from '../constants/brand';
 import { AccountProfileDropdown } from './AccountProfileDropdown';
 import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
@@ -61,9 +62,9 @@ const GUIDE_WORKFLOW = [
 
 const PRO_TIPS = [
   {
-    icon: ZoomOut,
-    title: 'Card zoom / scale',
-    body: 'Pro-tip: Press Ctrl + minus (-) to zoom out your browser layout and see more data views on your screen simultaneously. On Mac, use ⌘ + minus.',
+    icon: LayoutGrid,
+    title: 'Compact canvas layout',
+    body: 'Use the Comfortable / Compact toggle in the command toolbar to fit more data view cards on screen without changing your browser zoom.',
   },
   {
     icon: Lightbulb,
@@ -148,10 +149,10 @@ export function Header({
               <SchemaArchitectMark className="h-8 w-8 shrink-0 rounded-xl shadow-lg shadow-cyan-500/25 ring-1 ring-slate-900/5 transition-transform duration-200 ease-in-out group-hover:scale-[1.02] sm:h-10 sm:w-10 dark:ring-white/15" />
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-sm font-bold tracking-wider text-slate-900 dark:text-white md:text-base">
-                  DataViews.pro
+                  {BRAND_NAME}
                 </h1>
                 <p className="hidden truncate text-xs text-slate-500 sm:inline-block dark:text-slate-400">
-                  SFMC Schema Architect
+                  {BRAND_TAGLINE}
                 </p>
               </div>
             </a>
@@ -165,6 +166,7 @@ export function Header({
                 onClick={onToggleCopilot}
                 aria-pressed={isCopilotOpen}
                 aria-expanded={isCopilotOpen}
+                title="AI Copilot for query help — sign in required; schema browser and SQL sandbox are free"
                 className={`btn-nav btn-nav-violet ${
                   isCopilotOpen ? 'btn-nav-violet-active' : ''
                 }`}
@@ -179,6 +181,14 @@ export function Header({
 
               {!isAuthLoading && user ? (
                 <AccountProfileDropdown onSignedOut={onSignInRequired} />
+              ) : !isAuthLoading ? (
+                <button
+                  type="button"
+                  onClick={onSignInRequired}
+                  className="btn-nav border-slate-200/80 text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                >
+                  Sign In
+                </button>
               ) : null}
 
               <button
@@ -238,7 +248,7 @@ export function Header({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
-                    SFMC Schema Architect
+                    {BRAND_NAME}
                   </p>
                   <h2 id={docsTitleId} className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
                     Documentation &amp; User Guide
@@ -284,10 +294,12 @@ export function Header({
                 </h3>
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                   <li>
-                    <strong className="font-medium text-slate-800 dark:text-slate-200">Pro-tip:</strong>{' '}
-                    Press <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-800">Ctrl</kbd>{' '}
-                    + <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-800">minus (-)</kbd>{' '}
-                    to zoom out your browser layout and see more data views on your screen simultaneously.
+                    Use the <strong className="font-medium text-slate-800 dark:text-slate-200">Comfortable / Compact</strong>{' '}
+                    toggle in the command toolbar to fit more cards on screen.
+                  </li>
+                  <li>
+                    <strong className="font-medium text-slate-800 dark:text-slate-200">Copy link</strong>{' '}
+                    shares your current table selections and sandbox settings with colleagues via the URL.
                   </li>
                 </ul>
               </section>

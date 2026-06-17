@@ -1,73 +1,94 @@
-# React + TypeScript + Vite
+# DataViews.pro
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**SFMC Data View Reference & SQL Workspace** — an interactive schema browser and SQL generator for Salesforce Marketing Cloud practitioners.
 
-Currently, two official plugins are available:
+Live at [dataviews.pro](https://dataviews.pro).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What it does
 
-## React Compiler
+- Browse **29+ system Data Views** with field types, descriptions, and join metadata
+- **Search** across tables and fields; hover relations to cross-highlight FK paths
+- **Select cards** on the canvas and generate SQL with **BFS auto-join** pathfinding
+- **SQL Sandbox** with utilities (date filters, subscriber status, unique events, target DE scaffolding)
+- **SQL Templates** for common practitioner queries (bounces, ghost subscribers, automation failures)
+- **Shareable workspace URLs** — copy link to preserve selections and sandbox settings
+- **AI Copilot** (sign-in required) for query design assistance
+- Static **SEO reference pages** at `/views/{table}/` for every data view
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech stack
 
-## Expanding the ESLint configuration
+| Layer | Choice |
+|-------|--------|
+| UI | Vite + React 19 + TypeScript |
+| Styling | Tailwind CSS |
+| SQL editor | CodeMirror 6 (`@uiw/react-codemirror`) |
+| Auth | Supabase |
+| AI | OpenAI via Vercel serverless (`/api/chat`) |
+| Hosting | Vercel |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Local development
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.example .env.local
+# Fill VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY for Copilot auth (optional for schema/SQL)
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Environment variables
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+See `.env.example`. Summary:
+
+| Variable | Scope | Purpose |
+|----------|-------|---------|
+| `VITE_SUPABASE_URL` | Client | Auth for AI Copilot |
+| `VITE_SUPABASE_ANON_KEY` | Client | Auth for AI Copilot |
+| `VITE_GA_MEASUREMENT_ID` | Client | Google Analytics (production) |
+| `OPENAI_API_KEY` | Server | AI Copilot responses |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Usage quota tracking |
+| `STAGING_PASSWORD` | Server / build | Optional pre-launch gate — **omit for public launch** |
+
+Local API routes (`/api/chat`, `/api/usage`, `/api/staging`) are proxied in dev via `vite.config.ts`.
+
+## Scripts
+
+```bash
+npm run dev      # Start dev server
+npm run build    # Typecheck + production build (regenerates SEO/legal static pages)
+npm run preview  # Preview production build
+npm test         # Vitest unit tests
+npm run lint     # ESLint
 ```
+
+## Project structure
+
+```
+src/
+  components/     # UI (Header, DataViewCard, SqlGenerator, AiCopilot, …)
+  constants/      # Brand, canvas density, sandbox layout
+  data/schemas/   # SFMC Data View field definitions (source of truth)
+  build/          # SEO + legal static page generators
+  utils/          # SQL generator, workspace URL persistence, schema explorer
+api/              # Vercel serverless handlers (chat, usage, staging)
+public/views/     # Generated static reference HTML (do not hand-edit)
+```
+
+## Workspace URL sharing
+
+Selections and sandbox preferences sync to the query string (`?seg=core&t=_Sent,_Open&sb=1`, …). Use **Copy link** in the command toolbar to share with colleagues.
+
+## SEO static pages
+
+`npm run build` regenerates:
+
+- `/views/` — index of all data views
+- `/views/{slug}/` — per-table reference with example SQL
+- `/guides/` — practitioner SQL articles (joins, journeys, performance)
+- `/privacy/`, `/terms/`
+- `public/sitemap.xml`
+
+## License
+
+Proprietary — © Ujjwal Tiwari. All rights reserved.

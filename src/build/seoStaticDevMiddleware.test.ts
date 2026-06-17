@@ -1,22 +1,32 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolveSeoStaticHtmlPath } from './seoStaticDevMiddleware';
+import { resolveStaticHtmlPath } from './seoStaticDevMiddleware';
 
-describe('resolveSeoStaticHtmlPath', () => {
-  const viewsDir = path.join(process.cwd(), 'public', 'views');
+describe('resolveStaticHtmlPath', () => {
+  const publicDir = path.join(process.cwd(), 'public');
 
   it('resolves trailing-slash view URLs to index.html', () => {
-    const resolved = resolveSeoStaticHtmlPath('/views/sent/', viewsDir);
+    const resolved = resolveStaticHtmlPath('/views/sent/', publicDir);
     expect(resolved?.replace(/\\/g, '/')).toMatch(/public\/views\/sent\/index\.html$/);
   });
 
   it('resolves the views index', () => {
-    const resolved = resolveSeoStaticHtmlPath('/views/', viewsDir);
+    const resolved = resolveStaticHtmlPath('/views/', publicDir);
     expect(resolved?.replace(/\\/g, '/')).toMatch(/public\/views\/index\.html$/);
   });
 
+  it('resolves the guides index', () => {
+    const resolved = resolveStaticHtmlPath('/guides/', publicDir);
+    expect(resolved?.replace(/\\/g, '/')).toMatch(/public\/guides\/index\.html$/);
+  });
+
+  it('resolves a guide article path', () => {
+    const resolved = resolveStaticHtmlPath('/guides/join-sent-to-open/', publicDir);
+    expect(resolved?.replace(/\\/g, '/')).toMatch(/public\/guides\/join-sent-to-open\/index\.html$/);
+  });
+
   it('blocks path traversal outside public/views', () => {
-    expect(resolveSeoStaticHtmlPath('/views/../../../package.json', viewsDir)).toBeNull();
-    expect(resolveSeoStaticHtmlPath('/views/sent/../../index.html', viewsDir)).toBeNull();
+    expect(resolveStaticHtmlPath('/views/../../../package.json', publicDir)).toBeNull();
+    expect(resolveStaticHtmlPath('/views/sent/../../index.html', publicDir)).toBeNull();
   });
 });

@@ -1,6 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { ListTree, RotateCcw, Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, LayoutGrid, Link2, ListTree, RotateCcw, Search } from 'lucide-react';
+import { type CanvasDensity } from '../constants/canvasDensity';
 import { VIEW_SEGMENTS, type ViewSegmentId } from '../data/viewSegments';
+import { FOCUS_CANVAS_SEARCH_EVENT } from '../constants/siteChromeEvents';
+
+const COPIED_FEEDBACK_MS = 2200;
 
 type CommandToolbarProps = {
   activeSegment: ViewSegmentId;
@@ -9,8 +13,11 @@ type CommandToolbarProps = {
   onSearchChange: (value: string) => void;
   showDetails: boolean;
   onShowDetailsChange: (value: boolean) => void;
+  canvasDensity: CanvasDensity;
+  onCanvasDensityChange: (density: CanvasDensity) => void;
   canClearWorkspace: boolean;
   onClearWorkspace: () => void;
+  onCopyWorkspaceLink: () => Promise<boolean>;
 };
 
 export function CommandToolbar({
@@ -20,10 +27,14 @@ export function CommandToolbar({
   onSearchChange,
   showDetails,
   onShowDetailsChange,
+  canvasDensity,
+  onCanvasDensityChange,
   canClearWorkspace,
   onClearWorkspace,
+  onCopyWorkspaceLink,
 }: CommandToolbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     const handleGlobalShortcut = (event: KeyboardEvent) => {
@@ -43,9 +54,33 @@ export function CommandToolbar({
     return () => window.removeEventListener('keydown', handleGlobalShortcut);
   }, []);
 
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener(FOCUS_CANVAS_SEARCH_EVENT, handleFocusSearch);
+    return () => window.removeEventListener(FOCUS_CANVAS_SEARCH_EVENT, handleFocusSearch);
+  }, []);
+
+  const handleCopyLink = async () => {
+    const copied = await onCopyWorkspaceLink();
+    if (!copied) {
+      return;
+    }
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), COPIED_FEEDBACK_MS);
+  };
+
+  const densityToggleClass = (active: boolean) =>
+    `rounded-md px-2 py-1 text-[11px] font-semibold transition-colors sm:text-xs ${
+      active
+        ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100'
+        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+    }`;
+
   return (
     <div className="border-b border-slate-200/80 bg-white/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-950/80 dark:shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[90rem] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 lg:px-8">
         <div
           className="flex shrink-0 flex-nowrap gap-1 overflow-x-auto rounded-xl border border-slate-200/60 bg-slate-100/50 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] dark:border-slate-700/50 dark:bg-slate-800/40"
           role="tablist"
@@ -92,6 +127,45 @@ export function CommandToolbar({
               /
             </kbd>
           </div>
+
+          <div
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200/80 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            role="group"
+            aria-label="Canvas density"
+          >
+            <LayoutGrid className="ml-1.5 hidden h-3.5 w-3.5 text-slate-400 sm:inline" aria-hidden />
+            <button
+              type="button"
+              className={densityToggleClass(canvasDensity === 'comfortable')}
+              aria-pressed={canvasDensity === 'comfortable'}
+              onClick={() => onCanvasDensityChange('comfortable')}
+            >
+              Comfortable
+            </button>
+            <button
+              type="button"
+              className={densityToggleClass(canvasDensity === 'compact')}
+              aria-pressed={canvasDensity === 'compact'}
+              onClick={() => onCanvasDensityChange('compact')}
+            >
+              Compact
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleCopyLink()}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-cyan-200/80 bg-cyan-50/80 px-3 py-2 text-xs font-semibold text-cyan-900 shadow-sm transition-all duration-200 ease-in-out hover:border-cyan-300 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-100 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/60 sm:text-sm"
+            title="Copy a shareable link with your current table selections and sandbox settings"
+          >
+            {linkCopied ? (
+              <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            ) : (
+              <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+            )}
+            <span className="hidden sm:inline">{linkCopied ? 'Link copied' : 'Copy link'}</span>
+            <span className="sm:hidden">{linkCopied ? 'Copied' : 'Share'}</span>
+          </button>
 
           <button
             type="button"

@@ -11,9 +11,28 @@ import {
 import { Lock } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
+import { BRAND_NAME } from './constants/brand';
+import {
+  canvasGridGapClassName,
+  canvasGridItemClassName,
+  canvasMainMaxWidthClassName,
+  CANVAS_DENSITY_STORAGE_KEY,
+  readCanvasDensityPreference,
+  type CanvasDensity,
+} from './constants/canvasDensity';
+import {
+  getDefaultSandboxHeight,
+  SANDBOX_COLLAPSED_CHROME_HEIGHT_PX,
+  SANDBOX_RESIZE_GUTTER_HEIGHT_PX,
+} from './constants/sandboxLayout';
+import { FOCUS_CANVAS_SEARCH_EVENT, OPEN_WHATS_NEW_EVENT } from './constants/siteChromeEvents';
+import { hasSeenWhatsNew } from './content/changelog';
 
 const AiCopilot = lazy(() =>
   import('./components/AiCopilot').then((module) => ({ default: module.AiCopilot })),
+);
+const SqlGenerator = lazy(() =>
+  import('./components/SqlGenerator').then((module) => ({ default: module.SqlGenerator })),
 );
 import { CanvasHero } from './components/CanvasHero';
 import { CommandToolbar } from './components/CommandToolbar';
@@ -21,16 +40,15 @@ import { DataViewCard } from './components/DataViewCard';
 import { Header } from './components/Header';
 import { SchemaArchitectMark } from './components/SchemaArchitectMark';
 import { SiteFooter } from './components/SiteFooter';
-import {
-  getDefaultSandboxHeight,
-  SANDBOX_COLLAPSED_CHROME_HEIGHT_PX,
-  SANDBOX_RESIZE_GUTTER_HEIGHT_PX,
-  SqlGenerator,
-} from './components/SqlGenerator';
+import { WhatsNewModal } from './components/WhatsNewModal';
 import type { DataViewField } from './data/sfmcSchema';
 import { dedupeTablesByName, getTablesForSegment, type ViewSegmentId } from './data/viewSegments';
 import { useWorkspaceState } from './hooks/useWorkspaceState';
-import { workspaceHasCustomState } from './utils/workspacePersistence';
+import {
+  buildWorkspaceShareUrl,
+  workspaceHasCustomState,
+  type WorkspaceSnapshot,
+} from './utils/workspacePersistence';
 import type { HoveredRelation } from './utils/schemaExplorer';
 import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExplorer';
 
@@ -161,10 +179,10 @@ function StagingGateScreen({ onUnlock }: { onUnlock: () => void }) {
 
         <h1 className="mt-6 flex items-center justify-center gap-2 text-lg font-semibold tracking-tight sm:text-xl">
           <Lock className="h-5 w-5 shrink-0 text-cyan-400" aria-hidden />
-          SFMC Schema Architect — Pre-launch Verification
+          {BRAND_NAME} — Private Preview
         </h1>
         <p className="mt-2 text-sm text-slate-400">
-          Enter the staging password to continue.
+          Enter the preview password to access the workspace.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-3 text-left">
@@ -224,7 +242,9 @@ function AppMain() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredRelation, setHoveredRelation] = useState<HoveredRelation | null>(null);
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
+  const [canvasDensity, setCanvasDensity] = useState<CanvasDensity>(readCanvasDensityPreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [sandboxSql, setSandboxSql] = useState(() => initialTemplateSql ?? '');
   const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
@@ -264,12 +284,30 @@ function AppMain() {
   );
 
   useEffect(() => {
+    if (!hasSeenWhatsNew()) {
+      setIsWhatsNewOpen(true);
+    }
+
+    const handleOpenWhatsNew = () => setIsWhatsNewOpen(true);
+    window.addEventListener(OPEN_WHATS_NEW_EVENT, handleOpenWhatsNew);
+    return () => window.removeEventListener(OPEN_WHATS_NEW_EVENT, handleOpenWhatsNew);
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem(SHOW_DETAILS_STORAGE_KEY, String(showDetails));
     } catch {
       /* ignore */
     }
   }, [showDetails]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CANVAS_DENSITY_STORAGE_KEY, canvasDensity);
+    } catch {
+      /* ignore */
+    }
+  }, [canvasDensity]);
 
   const normalizedSearchQuery = useMemo(
     () => normalizeSearchQuery(searchQuery),
@@ -280,6 +318,71 @@ function AppMain() {
     () => activeTables.map((table) => table.name).filter((name) => selectedTables.has(name)),
     [activeTables, selectedTables],
   );
+
+  const workspaceSnapshot = useMemo<WorkspaceSnapshot>(
+    () => ({
+      segment: activeSegment,
+      selectedTableNames,
+      showSandbox,
+      activeTemplateId,
+      sandboxPreferences,
+    }),
+    [
+      activeSegment,
+      selectedTableNames,
+      showSandbox,
+      activeTemplateId,
+      sandboxPreferences,
+    ],
+  );
+
+  const handleCopyWorkspaceLink = useCallback(async (): Promise<boolean> => {
+    const url = buildWorkspaceShareUrl(workspaceSnapshot);
+    try {
+      await navigator.clipboard.writeText(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [workspaceSnapshot]);
+
+  const handleStartWithSent = useCallback(() => {
+    const scrollToSent = () => {
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>('[data-table-card="_Sent"]')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    };
+
+    if (activeSegment !== 'core') {
+      handleSegmentChange('core');
+      window.requestAnimationFrame(() => {
+        toggleTableSelection('_Sent');
+        scrollToSent();
+      });
+      return;
+    }
+
+    if (!selectedTables.has('_Sent')) {
+      toggleTableSelection('_Sent');
+    } else {
+      setShowSandbox(true);
+      setIsSandboxExpanded(true);
+    }
+    scrollToSent();
+  }, [
+    activeSegment,
+    handleSegmentChange,
+    selectedTables,
+    setIsSandboxExpanded,
+    setShowSandbox,
+    toggleTableSelection,
+  ]);
+
+  const handleFocusSearch = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(FOCUS_CANVAS_SEARCH_EVENT));
+  }, []);
 
   if (selectedTableNames.length !== prevSelectedTablesLength) {
     setPrevSelectedTablesLength(selectedTableNames.length);
@@ -373,8 +476,11 @@ function AppMain() {
           onSearchChange={setSearchQuery}
           showDetails={showDetails}
           onShowDetailsChange={setShowDetails}
+          canvasDensity={canvasDensity}
+          onCanvasDensityChange={setCanvasDensity}
           canClearWorkspace={canClearWorkspace}
           onClearWorkspace={handleClearWorkspace}
+          onCopyWorkspaceLink={handleCopyWorkspaceLink}
         />
       </div>
 
@@ -383,16 +489,20 @@ function AppMain() {
         className="surface-canvas min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
         style={canvasBottomPaddingPx > 0 ? { paddingBottom: canvasBottomPaddingPx } : undefined}
       >
-        <main className="mx-auto w-full max-w-7xl p-6 sm:p-8">
-          <CanvasHero />
+        <main className={`mx-auto w-full ${canvasMainMaxWidthClassName(canvasDensity)} p-6 sm:p-8`}>
+          <CanvasHero
+            onStartWithSent={handleStartWithSent}
+            onFocusSearch={handleFocusSearch}
+          />
           <div
             key={activeSegment}
-            className="flex flex-wrap justify-center gap-5"
+            className={`flex flex-wrap justify-center ${canvasGridGapClassName(canvasDensity)}`}
           >
             {activeTables.map((table, index) => (
               <div
                 key={table.name}
-                className="animate-fade-up w-full min-w-0 md:w-[calc((100%-1.25rem)/2)] md:max-w-[calc((100%-1.25rem)/2)] xl:w-[calc((100%-2.5rem)/3)] xl:max-w-[calc((100%-2.5rem)/3)]"
+                data-table-card={table.name}
+                className={canvasGridItemClassName(canvasDensity)}
                 style={{ ['--stagger-delay' as string]: `${index * 20}ms` }}
               >
                 <DataViewCard
@@ -405,6 +515,7 @@ function AppMain() {
                   onFieldRelationLeave={handleFieldRelationLeave}
                   showDetails={showDetails}
                   schemaTables={activeTables}
+                  compact={canvasDensity === 'compact'}
                 />
               </div>
             ))}
@@ -413,24 +524,26 @@ function AppMain() {
         </main>
       </div>
 
-      <SqlGenerator
-        selectedTableNames={selectedTableNames}
-        schemaTables={activeTables}
-        sql={sandboxSql}
-        onSqlChange={setSandboxSql}
-        isVisible={sandboxOpen}
-        isExpanded={isSandboxExpanded}
-        onExpandedChange={handleSandboxExpandedChange}
-        sandboxPreferences={sandboxPreferences}
-        onSandboxPreferencesChange={updateSandboxPreferences}
-        activeTemplateId={activeTemplateId}
-        onActiveTemplateIdChange={setActiveTemplateId}
-        preserveSql={copilotSqlActive}
-        editorTab={sandboxEditorTab}
-        onEditorTabChange={setSandboxEditorTab}
-        templatesShortcutNonce={templatesShortcutNonce}
-        onSandboxHeightChange={setSandboxDrawerHeight}
-      />
+      <Suspense fallback={null}>
+        <SqlGenerator
+          selectedTableNames={selectedTableNames}
+          schemaTables={activeTables}
+          sql={sandboxSql}
+          onSqlChange={setSandboxSql}
+          isVisible={sandboxOpen}
+          isExpanded={isSandboxExpanded}
+          onExpandedChange={handleSandboxExpandedChange}
+          sandboxPreferences={sandboxPreferences}
+          onSandboxPreferencesChange={updateSandboxPreferences}
+          activeTemplateId={activeTemplateId}
+          onActiveTemplateIdChange={setActiveTemplateId}
+          preserveSql={copilotSqlActive}
+          editorTab={sandboxEditorTab}
+          onEditorTabChange={setSandboxEditorTab}
+          templatesShortcutNonce={templatesShortcutNonce}
+          onSandboxHeightChange={setSandboxDrawerHeight}
+        />
+      </Suspense>
 
       {isCopilotOpen ? (
         <Suspense fallback={null}>
@@ -443,6 +556,11 @@ function AppMain() {
           />
         </Suspense>
       ) : null}
+
+      <WhatsNewModal
+        isOpen={isWhatsNewOpen}
+        onClose={() => setIsWhatsNewOpen(false)}
+      />
 
       </div>
     </AuthProvider>

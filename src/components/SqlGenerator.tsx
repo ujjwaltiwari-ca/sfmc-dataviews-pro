@@ -62,40 +62,20 @@ import { TemplateParametersPanel } from './TemplateParametersPanel';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 import { SandboxSqlCodeMirror } from './SandboxSqlCodeMirror';
 import { sanitizeNumericSqlLiteral } from '../utils/sqlSanitize';
+import {
+  clampSandboxHeight,
+  getDefaultSandboxHeight,
+  getMaxSandboxHeight,
+  SANDBOX_COLLAPSED_CHROME_HEIGHT_PX,
+  SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO,
+  SANDBOX_MIN_HEIGHT_PX,
+} from '../constants/sandboxLayout';
 
 const QUERY_STUDIO_TIP =
   'Quick tip: Copy the SQL below, adjust Job IDs and filters for your business unit, then run it in Query Studio or as a Query Activity in Automation Studio.';
 
 const COPIED_FEEDBACK_MS = 2200;
-const SANDBOX_MIN_HEIGHT_PX = 150;
-const SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO = 0.4;
-const SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO = 0.8;
-/** Collapsed header chrome — keep in sync with App canvas padding when minimized. */
-export const SANDBOX_COLLAPSED_CHROME_HEIGHT_PX = 72;
-/** Draggable resize gutter (`h-1.5`) above the expanded drawer. */
-export const SANDBOX_RESIZE_GUTTER_HEIGHT_PX = 6;
 
-export function clampSandboxHeight(height: number): number {
-  if (typeof window === 'undefined') {
-    return Math.max(height, SANDBOX_MIN_HEIGHT_PX);
-  }
-  const maxHeight = Math.floor(window.innerHeight * SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO);
-  return Math.min(Math.max(height, SANDBOX_MIN_HEIGHT_PX), maxHeight);
-}
-
-export function getDefaultSandboxHeight(): number {
-  if (typeof window === 'undefined') {
-    return 400;
-  }
-  return clampSandboxHeight(Math.round(window.innerHeight * SANDBOX_DEFAULT_HEIGHT_VIEWPORT_RATIO));
-}
-
-export function getMaxSandboxHeight(): number {
-  if (typeof window === 'undefined') {
-    return 640;
-  }
-  return clampSandboxHeight(Math.floor(window.innerHeight * SANDBOX_MAX_HEIGHT_VIEWPORT_RATIO));
-}
 const SANDBOX_SHELL_CLASS =
   'pointer-events-auto flex flex-col bg-white border border-slate-200/60 shadow-[0_-4px_24px_rgba(15,23,42,0.06),0_-12px_40px_rgba(15,23,42,0.04)] dark:bg-slate-950 dark:border-slate-800/60 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]';
 

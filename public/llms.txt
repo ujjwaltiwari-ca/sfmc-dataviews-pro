@@ -1,15 +1,16 @@
-# DataViews.pro — SFMC Schema Architect
+# DataViews.pro — SFMC Data View Reference & SQL Workspace
 
-> An advanced optimizer and sandbox for visualizing and generating SQL against Salesforce Marketing Cloud (SFMC) Data Views.
+> An interactive reference and SQL workspace for Salesforce Marketing Cloud (SFMC) system Data Views.
 
 ## Summary
 
-- **Product**: DataViews.pro (SFMC Schema Architect)
+- **Product**: DataViews.pro
+- **Tagline**: SFMC Data View Reference & SQL Workspace
 - **Purpose**: Interactive schema registry, relationship explorer, and SQL generator for SFMC system Data Views
 - **Architect**: Ujjwal Tiwari — Senior Salesforce Platform Architect, Waterloo, Ontario, Canada
 - **Website**: https://ujjwaltiwari.com
-- **Scope**: 29 core SFMC marketing data views including _Subscribers, _Job, _Sent, _Open, _Click, _Bounce, _Journey, and Mobile Push views
-- **Status**: Public Beta Release
+- **Scope**: 29+ core SFMC marketing data views including _Subscribers, _Job, _Sent, _Open, _Click, _Bounce, _Journey, and Mobile Push views
+- **Status**: Version 1.0 (General Availability)
 
 ## Full documentation
 
@@ -23,6 +24,16 @@ https://dataviews.pro/llms-full.txt
 - SQL Sandbox with auto-generated JOINs, bridge tables, and copy-to-clipboard output
 - AI Copilot assistance for query design and schema exploration
 
+## Legal
+
+- Privacy Policy: https://dataviews.pro/privacy/
+- Terms of Use: https://dataviews.pro/terms/
+
+## SQL Guides
+
+Practitioner articles with copy-ready SQL:
+https://dataviews.pro/guides/
+
 ## Attribution
 
-Engineered with Gemini and Cursor AI. Schemas grounded on official Salesforce Documentation, Mateusz Dąbrowski's SFMC technical blog, and established SFMC practitioner query patterns.
+Engineered with Gemini and Cursor AI. Schemas grounded on official Salesforce Documentation, Mateusz Dąbrowski's SFMC technical blog, dataviews.io, and established SFMC practitioner query patterns.

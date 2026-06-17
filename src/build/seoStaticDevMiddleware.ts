@@ -2,20 +2,48 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+const ROOT_STATIC_SLUGS = new Set(['privacy', 'terms']);
+
 /**
  * Vite dev does not map `/views/sent/` → `public/views/sent/index.html` (SPA wins).
- * This middleware serves generated SEO HTML before the React fallback.
+ * This middleware serves generated SEO, guide, and legal HTML before the React fallback.
  */
-export function resolveSeoStaticHtmlPath(
+export function resolveStaticHtmlPath(
   pathname: string,
-  publicViewsDir: string,
+  publicDir: string,
 ): string | null {
-  if (!pathname.startsWith('/views')) {
+  if (pathname.startsWith('/views')) {
+    const publicViewsDir = path.join(publicDir, 'views');
+    return resolveNestedIndexHtml(pathname, publicViewsDir, '/views');
+  }
+
+  if (pathname.startsWith('/guides')) {
+    const publicGuidesDir = path.join(publicDir, 'guides');
+    return resolveNestedIndexHtml(pathname, publicGuidesDir, '/guides');
+  }
+
+  const slugMatch = pathname.match(/^\/([^/]+)\/?$/);
+  if (slugMatch && ROOT_STATIC_SLUGS.has(slugMatch[1])) {
+    const filePath = path.join(publicDir, slugMatch[1], 'index.html');
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      return filePath;
+    }
+  }
+
+  return null;
+}
+
+function resolveNestedIndexHtml(
+  pathname: string,
+  baseDir: string,
+  mountPrefix: string,
+): string | null {
+  if (!pathname.startsWith(mountPrefix)) {
     return null;
   }
 
-  const base = path.resolve(publicViewsDir);
-  let relative = pathname.slice('/views'.length) || '/';
+  const base = path.resolve(baseDir);
+  let relative = pathname.slice(mountPrefix.length) || '/';
 
   if (relative.endsWith('/')) {
     relative = `${relative}index.html`;
@@ -36,12 +64,21 @@ export function resolveSeoStaticHtmlPath(
   return null;
 }
 
-export function createSeoStaticDevMiddleware(publicViewsDir: string) {
+/** @deprecated Use resolveStaticHtmlPath */
+export function resolveSeoStaticHtmlPath(pathname: string, publicViewsDir: string): string | null {
+  const publicDir = path.resolve(publicViewsDir, '..');
+  if (pathname.startsWith('/views')) {
+    return resolveNestedIndexHtml(pathname, publicViewsDir, '/views');
+  }
+  return resolveStaticHtmlPath(pathname, publicDir);
+}
+
+export function createSeoStaticDevMiddleware(publicDir: string) {
   return (req: IncomingMessage, res: ServerResponse, next: () => void): void => {
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-    const filePath = resolveSeoStaticHtmlPath(pathname, publicViewsDir);
+    const filePath = resolveStaticHtmlPath(pathname, publicDir);
 
-    if (!filePath || req.method !== 'GET' && req.method !== 'HEAD') {
+    if (!filePath || (req.method !== 'GET' && req.method !== 'HEAD')) {
       next();
       return;
     }

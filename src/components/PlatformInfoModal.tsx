@@ -1,5 +1,12 @@
 import { useEffect, useId } from 'react';
 import { Info, Sparkles, X } from 'lucide-react';
+import { SCHEMA_LAST_REVIEWED } from '../constants/schemaMeta';
+import {
+  BRAND_DESCRIPTION,
+  BRAND_NAME,
+  BRAND_RELEASE_LABEL,
+  BRAND_TAGLINE,
+} from '../constants/brand';
 
 type PlatformInfoModalProps = {
   isOpen: boolean;
@@ -53,7 +60,7 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">
-                DataViews.pro
+                {BRAND_NAME}
               </p>
               <h2 id={titleId} className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
                 Platform Info &amp; Credits
@@ -71,14 +78,16 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
         </div>
 
         <div className="space-y-5 px-6 py-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-amber-50/70 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/70 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Public Beta Release
+            {BRAND_RELEASE_LABEL}
           </div>
 
           <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            SFMC Schema Architect is an interactive workspace for exploring Salesforce Marketing Cloud
-            Data Views, visualizing relationships, and generating production-ready SQL.
+            {BRAND_DESCRIPTION}
+          </p>
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {BRAND_TAGLINE}
           </p>
 
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/50">
@@ -108,6 +117,10 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
               , and established SFMC practitioner query patterns.
             </p>
           </div>
+
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Schema reference last reviewed {SCHEMA_LAST_REVIEWED}.
+          </p>
 
           <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             <Info

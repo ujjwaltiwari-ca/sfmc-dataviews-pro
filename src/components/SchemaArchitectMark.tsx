@@ -1,12 +1,14 @@
+import { BRAND_NAME } from '../constants/brand';
+
 type SchemaArchitectMarkProps = {
   className?: string;
   title?: string;
 };
 
-/** Layered schema tables + network node — brand mark for SFMC Schema Architect */
+/** Layered schema tables + network node — brand mark for DataViews.pro */
 export function SchemaArchitectMark({
   className = 'h-10 w-10',
-  title = 'SFMC Schema Architect',
+  title = BRAND_NAME,
 }: SchemaArchitectMarkProps) {
   return (
     <svg

@@ -67,7 +67,11 @@ export function AuthForm() {
             Sign in to use AI Copilot
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            Sign in for AI Copilot—schema browser and SQL sandbox are free.
+            Sign in for AI Copilot — schema browser and SQL sandbox are free. See our{' '}
+            <a href="/privacy/" className="font-medium text-violet-600 underline-offset-2 hover:underline dark:text-violet-400">
+              Privacy Policy
+            </a>
+            .
           </p>
         </div>
 

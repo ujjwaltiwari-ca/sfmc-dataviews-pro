@@ -6,6 +6,7 @@ import {
   type ViewSegmentId,
 } from '../data/viewSegments';
 import type { SqlKeywordCase } from './sqlGenerator';
+import { SITE_ORIGIN } from './seoStatic.js';
 import { sanitizeNumericSqlLiteral } from './sqlSanitize';
 
 export type SandboxEditorTab = 'live' | 'templates';
@@ -533,6 +534,15 @@ export function buildWorkspaceSearchParams(snapshot: WorkspaceSnapshot): URLSear
   }
 
   return params;
+}
+
+/** Absolute URL for the current workspace snapshot (for sharing with colleagues). */
+export function buildWorkspaceShareUrl(snapshot: WorkspaceSnapshot): string {
+  const params = buildWorkspaceSearchParams(snapshot);
+  const query = params.toString();
+  const origin = typeof window !== 'undefined' ? window.location.origin : SITE_ORIGIN;
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+  return query ? `${origin}${pathname}?${query}` : `${origin}${pathname}`;
 }
 
 export function persistWorkspaceState(snapshot: WorkspaceSnapshot): void {

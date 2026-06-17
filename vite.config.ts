@@ -6,11 +6,12 @@ import react from '@vitejs/plugin-react';
 import { handleChatRequest, resetSupabaseServerClient } from './api/chat';
 import { handleStagingRequest } from './api/staging';
 import { handleUsageRequest } from './api/usage';
+import { generateLegalStaticAssets } from './src/build/generateLegalStatic';
 import { generateSeoStaticAssets } from './src/build/generateSeoStatic';
 import { createSeoStaticDevMiddleware } from './src/build/seoStaticDevMiddleware';
 
 const PROJECT_ROOT = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC_VIEWS_DIR = path.join(PROJECT_ROOT, 'public', 'views');
+const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
 
 function readAuthorizationHeader(req: IncomingMessage): string | undefined {
   const raw = req.headers.authorization;
@@ -171,7 +172,10 @@ function seoStaticPagesPlugin(): Plugin {
     name: 'vite-plugin-seo-static-pages',
     buildStart() {
       const { tableCount, pageCount } = generateSeoStaticAssets();
-      console.log(`[seo] Generated ${pageCount} static pages for ${tableCount} schema tables.`);
+      const legalCount = generateLegalStaticAssets();
+      console.log(
+        `[seo] Generated ${pageCount} view pages, guides, and sitemap for ${tableCount} tables; ${legalCount} legal pages.`,
+      );
     },
   };
 }
@@ -182,7 +186,7 @@ function seoStaticDevServePlugin(): Plugin {
     name: 'vite-plugin-seo-static-dev-serve',
     apply: 'serve',
     configureServer(server) {
-      const middleware = createSeoStaticDevMiddleware(PUBLIC_VIEWS_DIR);
+      const middleware = createSeoStaticDevMiddleware(PUBLIC_DIR);
       server.middlewares.use(middleware);
     },
   };
@@ -197,6 +201,25 @@ export default defineConfig(({ mode }) => {
     plugins: [seoStaticPagesPlugin(), seoStaticDevServePlugin(), react(), localApiPlugin()],
     define: {
       __STAGING_GATE_ENABLED__: JSON.stringify(stagingGateEnabled),
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('@codemirror') || id.includes('codemirror')) {
+                return 'codemirror';
+              }
+              if (id.includes('@supabase')) {
+                return 'supabase';
+              }
+              if (id.includes('lucide-react')) {
+                return 'icons';
+              }
+            }
+          },
+        },
+      },
     },
   };
 });
