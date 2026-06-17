@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       setDailyUsageCount(null);
     }
-  }, [user?.id]);
+  }, [user]);
 
   const applyKnownUsageCount = useCallback((count: number) => {
     setDailyUsageCount((previous) => {
@@ -93,8 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refreshUsage();
-  }, [refreshUsage]);
+    if (user?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void refreshUsage();
+    }
+  }, [user?.id, refreshUsage]);
+
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

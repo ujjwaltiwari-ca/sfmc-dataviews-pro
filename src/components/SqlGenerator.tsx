@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   useCallback,
   useEffect,
@@ -526,10 +527,37 @@ export function SqlGenerator({
     editorTab: preferenceEditorTab,
   } = sandboxPreferences;
   const editorTab = editorTabProp ?? preferenceEditorTab;
-  const [templateBaseSql, setTemplateBaseSql] = useState<string | null>(null);
-  const [templateParamValues, setTemplateParamValues] = useState<Record<string, string>>({});
+  const [templateParamValues, setTemplateParamValues] = useState<Record<string, string>>(() => {
+    if (activeTemplateId) {
+      const template = sfmcQueryTemplates.find((item) => item.id === activeTemplateId);
+      if (template) {
+        return buildDefaultParameterValues(parseTemplatePlaceholders(template.sql));
+      }
+    }
+    return {};
+  });
+
+  const [prevTemplateId, setPrevTemplateId] = useState(activeTemplateId);
+  if (activeTemplateId !== prevTemplateId) {
+    setPrevTemplateId(activeTemplateId);
+    if (activeTemplateId) {
+      const template = sfmcQueryTemplates.find((item) => item.id === activeTemplateId);
+      setTemplateParamValues(
+        template ? buildDefaultParameterValues(parseTemplatePlaceholders(template.sql)) : {},
+      );
+    } else {
+      setTemplateParamValues({});
+    }
+  }
+
   /** When true, Pathfinder stops overwriting sandbox SQL so manual edits (e.g. EventDate) persist. */
   const [manualSqlLocked, setManualSqlLocked] = useState(false);
+
+  const [prevSelectedCount, setPrevSelectedCount] = useState(selectedTableNames.length);
+  if (selectedTableNames.length !== prevSelectedCount) {
+    setPrevSelectedCount(selectedTableNames.length);
+    setManualSqlLocked(false);
+  }
 
   const activeTemplate = useMemo(
     () => sfmcQueryTemplates.find((item) => item.id === activeTemplateId) ?? null,
@@ -537,8 +565,8 @@ export function SqlGenerator({
   );
 
   const templatePlaceholders = useMemo(
-    () => (templateBaseSql ? parseTemplatePlaceholders(templateBaseSql) : []),
-    [templateBaseSql],
+    () => (activeTemplate ? parseTemplatePlaceholders(activeTemplate.sql) : []),
+    [activeTemplate],
   );
 
   const templateParameterDefinitions = useMemo(
@@ -650,39 +678,18 @@ export function SqlGenerator({
     applySqlKeywordCase(expression, keywordCase);
 
   useEffect(() => {
-    if (!activeTemplateId) {
-      setTemplateBaseSql(null);
-      setTemplateParamValues({});
+    if (!activeTemplate) {
       return;
     }
 
-    const template = sfmcQueryTemplates.find((item) => item.id === activeTemplateId);
-    if (!template) {
-      return;
-    }
-
-    setTemplateBaseSql(template.sql);
-    const placeholders = parseTemplatePlaceholders(template.sql);
-    setTemplateParamValues(buildDefaultParameterValues(placeholders));
-  }, [activeTemplateId]);
-
-  useEffect(() => {
-    if (!templateBaseSql) {
-      return;
-    }
-
-    const placeholders = parseTemplatePlaceholders(templateBaseSql);
+    const placeholders = parseTemplatePlaceholders(activeTemplate.sql);
     if (placeholders.length === 0) {
-      onSqlChange(templateBaseSql);
+      onSqlChange(activeTemplate.sql);
       return;
     }
 
-    onSqlChange(interpolateTemplateSql(templateBaseSql, templateParamValues));
-  }, [templateBaseSql, templateParamValues, onSqlChange]);
-
-  useEffect(() => {
-    setManualSqlLocked(false);
-  }, [selectedTableNames]);
+    onSqlChange(interpolateTemplateSql(activeTemplate.sql, templateParamValues));
+  }, [activeTemplate, templateParamValues, onSqlChange]);
 
   useEffect(() => {
     if (preserveSql || manualSqlLocked || selectedTableNames.length === 0 || editorTab !== 'live') {
@@ -763,7 +770,7 @@ export function SqlGenerator({
       groups.set(field.table, existing);
     }
     return groups;
-  }, [architecture.selectFields]);
+  }, [architecture]);
 
   useEffect(() => {
     if (!copied) {
@@ -781,15 +788,11 @@ export function SqlGenerator({
 
   useEffect(() => {
     const previousCount = prevSelectionCountRef.current;
+    prevSelectionCountRef.current = selectedTableNames.length;
     if (selectedTableNames.length > 0 && previousCount === 0 && !isExpanded) {
       setShowExpandHint(true);
       const timer = window.setTimeout(() => setShowExpandHint(false), 5000);
-      prevSelectionCountRef.current = selectedTableNames.length;
       return () => window.clearTimeout(timer);
-    }
-    prevSelectionCountRef.current = selectedTableNames.length;
-    if (isExpanded) {
-      setShowExpandHint(false);
     }
   }, [selectedTableNames.length, isExpanded]);
 

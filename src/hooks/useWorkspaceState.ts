@@ -41,7 +41,7 @@ export function useWorkspaceState(): WorkspaceStateApi {
   );
   const isFirstPersistRef = useRef(true);
 
-  const [segment, setSegment] = useState<ViewSegmentId>(hydrated.segment);
+  const [segment, setSegmentState] = useState<ViewSegmentId>(hydrated.segment);
   const [selectedTableNames, setSelectedTableNamesState] = useState<string[]>(
     hydrated.selectedTableNames,
   );
@@ -57,6 +57,20 @@ export function useWorkspaceState(): WorkspaceStateApi {
     () => new Set(selectedTableNames),
     [selectedTableNames],
   );
+
+  const setSegment = useCallback((nextSegment: ViewSegmentId) => {
+    setSegmentState(nextSegment);
+    setSelectedTableNamesState((previous) => {
+      const filtered = filterTableNamesForSegment(previous, nextSegment);
+      if (
+        filtered.length === previous.length &&
+        filtered.every((name, index) => name === previous[index])
+      ) {
+        return previous;
+      }
+      return filtered;
+    });
+  }, []);
 
   const setSelectedTableNames = useCallback((names: string[]) => {
     const filtered = filterTableNamesForSegment(names, segment);
@@ -110,7 +124,7 @@ export function useWorkspaceState(): WorkspaceStateApi {
   );
 
   const resetWorkspace = useCallback(() => {
-    setSegment(DEFAULT_WORKSPACE_SNAPSHOT.segment);
+    setSegmentState(DEFAULT_WORKSPACE_SNAPSHOT.segment);
     setSelectedTableNamesState([]);
     setShowSandbox(false);
     setActiveTemplateId(null);
@@ -118,18 +132,6 @@ export function useWorkspaceState(): WorkspaceStateApi {
     persistWorkspaceState(DEFAULT_WORKSPACE_SNAPSHOT);
   }, []);
 
-  useEffect(() => {
-    setSelectedTableNamesState((previous) => {
-      const filtered = filterTableNamesForSegment(previous, segment);
-      if (
-        filtered.length === previous.length &&
-        filtered.every((name, index) => name === previous[index])
-      ) {
-        return previous;
-      }
-      return filtered;
-    });
-  }, [segment]);
 
   const snapshot: WorkspaceSnapshot = useMemo(
     () => ({

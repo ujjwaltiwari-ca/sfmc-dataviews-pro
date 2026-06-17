@@ -229,13 +229,16 @@ export function AiCopilot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
+  const [prevUserId, setPrevUserId] = useState<string | undefined>(user?.id);
+  if (user?.id !== prevUserId) {
+    setPrevUserId(user?.id);
     if (!user) {
       setMessages([]);
       setError(null);
       setInput('');
     }
-  }, [user]);
+  }
+
 
   useEffect(() => {
     if (!isOpen) {

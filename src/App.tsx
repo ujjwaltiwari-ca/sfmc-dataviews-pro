@@ -28,7 +28,7 @@ import {
   SqlGenerator,
 } from './components/SqlGenerator';
 import type { DataViewField } from './data/sfmcSchema';
-import { dedupeTablesByName, getTablesForSegment } from './data/viewSegments';
+import { dedupeTablesByName, getTablesForSegment, type ViewSegmentId } from './data/viewSegments';
 import { useWorkspaceState } from './hooks/useWorkspaceState';
 import { workspaceHasCustomState } from './utils/workspacePersistence';
 import type { HoveredRelation } from './utils/schemaExplorer';
@@ -229,6 +229,7 @@ function AppMain() {
   const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
   const [copilotSqlActive, setCopilotSqlActive] = useState(false);
+  const [prevSelectedTablesLength, setPrevSelectedTablesLength] = useState(0);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggleCopilot = useCallback(() => {
@@ -249,6 +250,14 @@ function AppMain() {
     setTemplatesShortcutNonce((nonce) => nonce + 1);
   }, [setIsSandboxExpanded, setSandboxEditorTab, setShowSandbox]);
 
+  const handleSegmentChange = useCallback(
+    (nextSegment: ViewSegmentId) => {
+      setActiveSegment(nextSegment);
+      setHoveredRelation(null);
+    },
+    [setActiveSegment],
+  );
+
   const activeTables = useMemo(
     () => dedupeTablesByName(getTablesForSegment(activeSegment)),
     [activeSegment],
@@ -262,10 +271,6 @@ function AppMain() {
     }
   }, [showDetails]);
 
-  useEffect(() => {
-    setHoveredRelation(null);
-  }, [activeSegment]);
-
   const normalizedSearchQuery = useMemo(
     () => normalizeSearchQuery(searchQuery),
     [searchQuery],
@@ -276,6 +281,11 @@ function AppMain() {
     [activeTables, selectedTables],
   );
 
+  if (selectedTableNames.length !== prevSelectedTablesLength) {
+    setPrevSelectedTablesLength(selectedTableNames.length);
+    setCopilotSqlActive(false);
+  }
+
   const sandboxOpen = selectedTableNames.length > 0 || showSandbox;
 
   const canvasBottomPaddingPx = sandboxOpen
@@ -283,10 +293,6 @@ function AppMain() {
       ? sandboxDrawerHeight + SANDBOX_RESIZE_GUTTER_HEIGHT_PX
       : SANDBOX_COLLAPSED_CHROME_HEIGHT_PX
     : 0;
-
-  useEffect(() => {
-    setCopilotSqlActive(false);
-  }, [selectedTableNames]);
 
   const handleSandboxExpandedChange = useCallback(
     (expanded: boolean) => {
@@ -362,7 +368,7 @@ function AppMain() {
         />
         <CommandToolbar
           activeSegment={activeSegment}
-          onSegmentChange={setActiveSegment}
+          onSegmentChange={handleSegmentChange}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           showDetails={showDetails}
@@ -371,6 +377,7 @@ function AppMain() {
           onClearWorkspace={handleClearWorkspace}
         />
       </div>
+
 
       <div
         className="surface-canvas min-h-0 flex-1 overflow-y-auto overflow-x-hidden"

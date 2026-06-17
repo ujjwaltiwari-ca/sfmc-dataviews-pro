@@ -1,8 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -38,19 +38,23 @@ function resolveInitialTheme(): Theme {
   if (stored) {
     return stored;
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'light';
 }
 
 function applyThemeClass(theme: Theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof document !== 'undefined') {
-      return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    }
-    return 'light';
+    const initial = resolveInitialTheme();
+    applyThemeClass(initial);
+    return initial;
   });
 
   const setTheme = useCallback((next: Theme) => {
@@ -66,11 +70,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   }, [setTheme, theme]);
-
-  useEffect(() => {
-    const initial = resolveInitialTheme();
-    setTheme(initial);
-  }, [setTheme]);
 
   const value = useMemo(
     () => ({
@@ -92,3 +91,4 @@ export function useTheme() {
   }
   return context;
 }
+
