@@ -13,11 +13,15 @@ function getStagingPassword(): string | null {
 }
 
 function getCookieSigningSecret(): string {
-  return (
-    process.env.STAGING_COOKIE_SECRET?.trim() ||
-    process.env.STAGING_PASSWORD?.trim() ||
-    'sfmc-staging-fallback-secret'
-  );
+  const cookieSecret = process.env.STAGING_COOKIE_SECRET?.trim();
+  const stagingPassword = process.env.STAGING_PASSWORD?.trim();
+  if (cookieSecret) {
+    return cookieSecret;
+  }
+  if (stagingPassword) {
+    return stagingPassword;
+  }
+  throw new Error('STAGING_COOKIE_SECRET or STAGING_PASSWORD must be set when staging gate is enabled.');
 }
 
 function signUnlockPayload(): string {
