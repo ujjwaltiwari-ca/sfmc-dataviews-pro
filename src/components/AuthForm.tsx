@@ -35,7 +35,13 @@ export function AuthForm() {
           setError(signInError.message);
         }
       } else {
-        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
+        });
         if (signUpError) {
           setError(signUpError.message);
         } else {
