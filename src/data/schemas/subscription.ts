@@ -26,7 +26,7 @@ export const subscriptionDataViews: DataViewTable[] = [
   {
     name: '_Unsubscribe',
     description:
-      'Unsubscribe events tied to sends (preference center, complaints, list-unsubscribe header). For current status see _Subscribers or _ListSubscribers.',
+      'Unsubscribe events tied to sends (preference center, complaints, list-unsubscribe header). Six-month retention. For current status see _Subscribers or _ListSubscribers.',
     category: 'Subscription',
     fields: [
       ...engagementEventFields('EventDate', 'Timestamp when the unsubscribe occurred.'),

@@ -13,7 +13,7 @@ export const trackingDataViews: DataViewTable[] = [
   {
     name: '_Open',
     description:
-      'Email open events (image pixel). Seven-day retention in SFMC; six months in standard documentation. IsUnique flags first open per job.',
+      'Email open events (image pixel). Six-month retention. IsUnique flags first open per job.',
     category: 'Tracking',
     fields: [
       ...engagementEventFields('EventDate', 'Timestamp when the open was recorded.'),
@@ -24,7 +24,7 @@ export const trackingDataViews: DataViewTable[] = [
   },
   {
     name: '_Click',
-    description: 'Email link click events with URL, link name, and resolved link content.',
+    description: 'Email link click events with URL, link name, and resolved link content. Six-month retention.',
     category: 'Tracking',
     fields: [
       ...engagementEventFields('EventDate', 'Timestamp when the click occurred.'),
@@ -37,7 +37,7 @@ export const trackingDataViews: DataViewTable[] = [
   {
     name: '_Bounce',
     description:
-      'Hard and soft bounce events with SMTP diagnostics. Monitor with _Complaint for deliverability health.',
+      'Hard and soft bounce events with SMTP diagnostics. Six-month retention. Monitor with _Complaint for deliverability health.',
     category: 'Tracking',
     fields: [
       ...engagementEventFields('EventDate', 'Timestamp when the bounce occurred.'),
@@ -59,7 +59,7 @@ export const trackingDataViews: DataViewTable[] = [
   {
     name: '_Complaint',
     description:
-      'ISP feedback loop spam complaint events. Results in unsubscribe; pairs with _Unsubscribe for consent analysis.',
+      'ISP feedback loop spam complaint events. Six-month retention. Results in unsubscribe; pairs with _Unsubscribe for consent analysis.',
     category: 'Tracking',
     fields: [
       ...engagementEventFields('EventDate', 'Timestamp when the complaint was recorded.'),

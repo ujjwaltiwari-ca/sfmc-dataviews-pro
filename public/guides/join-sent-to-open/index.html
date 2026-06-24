@@ -161,7 +161,7 @@ ORDER BY s.EventDate DESC</code></pre>
 <section>
   <h2>Practitioner tips</h2>
   
-  <ul><li>Filter EventDate on both tables early — _Open has aggressive retention and large scans time out.</li><li>Use IsUnique = 1 on _Open when you need first-open metrics per job.</li><li>Parent BU queries see child sends; child BU scope may require Ent._Subscribers for profile attributes.</li></ul>
+  <ul><li>Filter EventDate on both tables early — _Open is high-volume and unbounded scans time out.</li><li>Use IsUnique = 1 on _Open when you need first-open metrics per job.</li><li>Parent BU queries see child sends; child BU scope may require Ent._Subscribers for profile attributes.</li></ul>
   
 </section>
       <div class="actions">

@@ -38,7 +38,7 @@ export const socialDataViews: DataViewTable[] = [
   },
   {
     name: '_SocialNetworkTracking',
-    description: 'Social Forward tracking events with subscriber-level engagement keys.',
+    description: 'Social Forward tracking events with subscriber-level engagement keys. Six-month retention.',
     category: 'Social',
     fields: [
       field('SubscriberID', 'Number', 'Subscriber record ID.', {

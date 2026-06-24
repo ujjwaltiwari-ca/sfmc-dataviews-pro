@@ -70,7 +70,7 @@ ORDER BY s.EventDate DESC`,
       {
         heading: 'Practitioner tips',
         bullets: [
-          'Filter EventDate on both tables early — _Open has aggressive retention and large scans time out.',
+          'Filter EventDate on both tables early — _Open is high-volume and unbounded scans time out.',
           'Use IsUnique = 1 on _Open when you need first-open metrics per job.',
           'Parent BU queries see child sends; child BU scope may require Ent._Subscribers for profile attributes.',
         ],
@@ -142,7 +142,7 @@ ORDER BY Sends DESC`,
         heading: 'Why tracking views are expensive',
         paragraphs: [
           '_Open and _Click are among the highest-row-count Data Views in most accounts. Query Studio and Automation Studio Query Activities have execution limits; unbounded scans on EventDate are the most common timeout cause.',
-          '_Open retention in SFMC is shorter than legacy documentation suggests for some stacks — still treat it as a hot table.',
+          '_Open retains six months of data but is among the highest-row-count Data Views — still treat it as a hot table for query performance.',
         ],
       },
       {
