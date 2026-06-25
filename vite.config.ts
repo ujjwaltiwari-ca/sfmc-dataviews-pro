@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
+import { handleApplyMigrationRequest } from './api/apply-migration';
 import { handleChatRequest, resetSupabaseServerClient } from './api/chat';
 import { handleStagingRequest } from './api/staging';
 import { handleUsageRequest } from './api/usage';
@@ -118,7 +119,12 @@ async function handleLocalApiRoutes(
   server: ViteDevServer,
 ): Promise<void> {
   const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-  if (pathname !== '/api/chat' && pathname !== '/api/usage' && pathname !== '/api/staging') {
+  if (
+    pathname !== '/api/chat' &&
+    pathname !== '/api/usage' &&
+    pathname !== '/api/staging' &&
+    pathname !== '/api/apply-migration'
+  ) {
     next();
     return;
   }
@@ -137,6 +143,11 @@ async function handleLocalApiRoutes(
 
       if (pathname === '/api/staging') {
         await handleStagingRequest(req, res);
+        return;
+      }
+
+      if (pathname === '/api/apply-migration') {
+        await handleApplyMigrationRequest(req, res);
         return;
       }
 
@@ -193,15 +204,9 @@ function seoStaticDevServePlugin(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  const stagingGateEnabled = Boolean(env.STAGING_PASSWORD?.trim());
-
+export default defineConfig(() => {
   return {
     plugins: [seoStaticPagesPlugin(), seoStaticDevServePlugin(), react(), localApiPlugin()],
-    define: {
-      __STAGING_GATE_ENABLED__: JSON.stringify(stagingGateEnabled),
-    },
     build: {
       rollupOptions: {
         output: {

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { assertStagingUnlocked } from './lib/stagingCookieNode.js';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
 
@@ -99,6 +100,11 @@ export async function handleUsageRequest(
     return;
   }
 
+  if (!assertStagingUnlocked(req.headers.cookie)) {
+    sendJsonError(res, 'Staging gate locked', 401);
+    return;
+  }
+
   const supabase = getSupabaseServerClient();
   if (!supabase) {
     sendJsonError(res, 'Supabase is not configured on the server', 500);
@@ -152,7 +158,7 @@ export async function handleUsageRequest(
     const message =
       usageError instanceof Error ? usageError.message : 'Failed to load usage count';
     console.error('[api/usage] Usage lookup failed for user', user.id, message);
-    sendJsonError(res, `Usage verification failed: ${message}`, 503);
+    sendJsonError(res, 'Usage verification failed. Please try again later.', 503);
   }
 }
 

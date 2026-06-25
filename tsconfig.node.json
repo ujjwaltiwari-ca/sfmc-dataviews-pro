@@ -20,5 +20,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "api/chat.ts", "api/usage.ts", "api/staging.ts"]
+  "include": [
+    "vite.config.ts",
+    "middleware.ts",
+    "api/**/*.ts"
+  ]
 }

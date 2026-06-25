@@ -1,80 +1,17 @@
-import { createHmac, timingSafeEqual, createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-
-const STAGING_COOKIE_NAME = 'sfmc_staging_unlock';
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 12;
-const COOKIE_VERSION = 'v1';
+import { getClientIp } from './lib/clientIp.js';
+import { checkRateLimit, STAGING_POST_LIMIT } from './lib/rateLimit.js';
+import {
+  COOKIE_MAX_AGE_SECONDS,
+  getCookieSigningSecret,
+  getStagingPassword,
+  isUnlockCookieValid,
+  signUnlockPayload,
+  STAGING_COOKIE_NAME,
+} from './lib/stagingCookieNode.js';
 
 type NodeApiRequest = IncomingMessage & { body?: unknown };
-
-function getStagingPassword(): string | null {
-  const password = process.env.STAGING_PASSWORD?.trim();
-  return password || null;
-}
-
-function getCookieSigningSecret(): string {
-  const cookieSecret = process.env.STAGING_COOKIE_SECRET?.trim();
-  const stagingPassword = process.env.STAGING_PASSWORD?.trim();
-  if (cookieSecret) {
-    return cookieSecret;
-  }
-  if (stagingPassword) {
-    return stagingPassword;
-  }
-  throw new Error('STAGING_COOKIE_SECRET or STAGING_PASSWORD must be set when staging gate is enabled.');
-}
-
-function signUnlockPayload(): string {
-  const issuedAt = String(Date.now());
-  const hmac = createHmac('sha256', getCookieSigningSecret())
-    .update(`${COOKIE_VERSION}:${issuedAt}`)
-    .digest('base64url');
-  return `${COOKIE_VERSION}.${issuedAt}.${hmac}`;
-}
-
-function isUnlockCookieValid(cookieValue: string | undefined): boolean {
-  if (!cookieValue) {
-    return false;
-  }
-
-  const parts = cookieValue.split('.');
-  if (parts.length !== 3 || parts[0] !== COOKIE_VERSION) {
-    return false;
-  }
-
-  const [, issuedAt, signature] = parts;
-  if (!issuedAt || !signature) {
-    return false;
-  }
-
-  const expected = createHmac('sha256', getCookieSigningSecret())
-    .update(`${COOKIE_VERSION}:${issuedAt}`)
-    .digest('base64url');
-
-  const received = Buffer.from(signature);
-  const expectedBuf = Buffer.from(expected);
-  if (received.length !== expectedBuf.length) {
-    return false;
-  }
-
-  return timingSafeEqual(received, expectedBuf);
-}
-
-function parseCookies(header: string | undefined): Record<string, string> {
-  if (!header) {
-    return {};
-  }
-
-  const cookies: Record<string, string> = {};
-  for (const part of header.split(';')) {
-    const [rawName, ...rest] = part.trim().split('=');
-    if (!rawName || rest.length === 0) {
-      continue;
-    }
-    cookies[rawName] = decodeURIComponent(rest.join('='));
-  }
-  return cookies;
-}
 
 function passwordsMatch(attempt: string, expected: string): boolean {
   const attemptHash = createHash('sha256').update(attempt).digest();
@@ -95,6 +32,22 @@ function setUnlockCookie(res: ServerResponse): void {
     'Set-Cookie',
     `${STAGING_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${COOKIE_MAX_AGE_SECONDS}${secure}`,
   );
+}
+
+function parseCookies(header: string | undefined): Record<string, string> {
+  if (!header) {
+    return {};
+  }
+
+  const cookies: Record<string, string> = {};
+  for (const part of header.split(';')) {
+    const [rawName, ...rest] = part.trim().split('=');
+    if (!rawName || rest.length === 0) {
+      continue;
+    }
+    cookies[rawName] = decodeURIComponent(rest.join('='));
+  }
+  return cookies;
 }
 
 async function readJsonBody(req: NodeApiRequest): Promise<{ password?: unknown }> {
@@ -126,6 +79,16 @@ export async function handleStagingRequest(
     return;
   }
 
+  // Validate signing secret is configured before accepting gate traffic.
+  try {
+    getCookieSigningSecret();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Staging gate misconfigured';
+    console.error('[api/staging]', message);
+    sendJson(res, 503, { error: 'Staging gate is misconfigured on the server' });
+    return;
+  }
+
   if (req.method === 'GET') {
     const cookies = parseCookies(req.headers.cookie);
     const unlocked = isUnlockCookieValid(cookies[STAGING_COOKIE_NAME]);
@@ -134,6 +97,18 @@ export async function handleStagingRequest(
   }
 
   if (req.method === 'POST') {
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(
+      `staging-post:${clientIp}`,
+      STAGING_POST_LIMIT.max,
+      STAGING_POST_LIMIT.windowMs,
+    );
+    if (!rateLimit.ok) {
+      res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds ?? 60));
+      sendJson(res, 429, { error: 'Too many password attempts. Please try again later.' });
+      return;
+    }
+
     let body: { password?: unknown };
     try {
       body = await readJsonBody(req);

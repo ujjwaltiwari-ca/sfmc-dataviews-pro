@@ -2,6 +2,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { getClientIp } from './lib/clientIp.js';
+import { CHAT_POST_LIMIT, checkRateLimit } from './lib/rateLimit.js';
+import { assertStagingUnlocked } from './lib/stagingCookieNode.js';
 import { buildDynamicCopilotSchemaContext } from '../src/utils/compressSchemaForCopilot.js';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
@@ -254,7 +257,14 @@ type UsageReservation =
   | { ok: true; usageRowId: string | number }
   | { ok: false; reason: 'limit' };
 
-async function reserveCopilotUsageSlot(userId: string): Promise<UsageReservation> {
+function isRpcNotFoundError(error: { message?: string; code?: string }): boolean {
+  return (
+    error.code === 'PGRST202' ||
+    Boolean(error.message?.includes('reserve_copilot_slot'))
+  );
+}
+
+async function reserveCopilotUsageSlotLegacy(userId: string): Promise<UsageReservation> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
     throw new Error('Supabase is not configured on the server');
@@ -287,6 +297,32 @@ async function reserveCopilotUsageSlot(userId: string): Promise<UsageReservation
   }
 
   return { ok: true, usageRowId };
+}
+
+async function reserveCopilotUsageSlot(userId: string): Promise<UsageReservation> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    throw new Error('Supabase is not configured on the server');
+  }
+
+  const { data, error } = await supabase.rpc('reserve_copilot_slot', {
+    p_user_id: userId,
+    p_limit: DAILY_QUERY_LIMIT,
+  });
+
+  if (error) {
+    if (isRpcNotFoundError(error)) {
+      console.warn('[api/chat] reserve_copilot_slot RPC missing — using legacy quota path');
+      return reserveCopilotUsageSlotLegacy(userId);
+    }
+    throw new Error(`Failed to reserve usage slot: ${error.message}`);
+  }
+
+  if (data === null || data === undefined) {
+    return { ok: false, reason: 'limit' };
+  }
+
+  return { ok: true, usageRowId: data as string | number };
 }
 
 async function releaseCopilotUsageSlot(usageRowId: string | number): Promise<void> {
@@ -446,6 +482,11 @@ export async function handleChatRequest(
     return;
   }
 
+  if (!assertStagingUnlocked(req.headers.cookie)) {
+    sendJsonError(res, 'Staging gate locked', 401);
+    return;
+  }
+
   const supabase = getSupabaseServerClient();
   if (!supabase) {
     sendJsonError(res, 'Supabase is not configured on the server', 500);
@@ -465,6 +506,18 @@ export async function handleChatRequest(
   }
 
   const { user } = authResult;
+
+  const clientIp = getClientIp(req);
+  const rateLimit = checkRateLimit(
+    `chat-post:${clientIp}:${user.id}`,
+    CHAT_POST_LIMIT.max,
+    CHAT_POST_LIMIT.windowMs,
+  );
+  if (!rateLimit.ok) {
+    res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds ?? 60));
+    sendJsonError(res, 'Too many requests. Please slow down and try again.', 429);
+    return;
+  }
 
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
@@ -510,7 +563,7 @@ export async function handleChatRequest(
     const message =
       usageError instanceof Error ? usageError.message : 'Failed to check daily usage limit';
     console.error('[api/chat] Rejected request: usage reservation failed', message);
-    sendJsonError(res, `Usage verification failed: ${message}`, 503);
+    sendJsonError(res, 'Usage verification failed. Please try again later.', 503);
     return;
   }
 

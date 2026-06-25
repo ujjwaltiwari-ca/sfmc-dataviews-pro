@@ -11,11 +11,12 @@ import {
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { DAILY_COPILOT_QUERY_LIMIT } from '../constants/copilotQuota';
 import { fetchTodayCopilotUsageCount, purgeSupabaseAuthStorage } from '../utils/copilotUsage';
-import { supabase } from '../utils/supabaseClient';
+import { getSupabase, isSupabaseConfigured } from '../utils/supabaseClient';
 
 type AuthContextValue = {
   user: SupabaseUser | null;
   isAuthLoading: boolean;
+  isAuthAvailable: boolean;
   dailyUsageCount: number | null;
   dailyLimit: number;
   refreshUsage: () => Promise<void>;
@@ -26,16 +27,18 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const isAuthAvailable = isSupabaseConfigured();
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(isAuthAvailable);
   const [dailyUsageCount, setDailyUsageCount] = useState<number | null>(null);
 
   const refreshUsage = useCallback(async () => {
-    if (!user?.id) {
+    if (!isAuthAvailable || !user?.id) {
       setDailyUsageCount(null);
       return;
     }
 
+    const supabase = getSupabase();
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       console.error('[AuthContext] Failed to read session before usage refresh:', {
@@ -59,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       setDailyUsageCount(null);
     }
-  }, [user]);
+  }, [isAuthAvailable, user]);
 
   const applyKnownUsageCount = useCallback((count: number) => {
     setDailyUsageCount((previous) => {
@@ -71,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!isAuthAvailable) {
+      return;
+    }
+
+    const supabase = getSupabase();
     let isMounted = true;
 
     void supabase.auth.getSession().then(({ data }) => {
@@ -91,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [isAuthAvailable]);
 
   useEffect(() => {
     if (user?.id) {
@@ -100,25 +108,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id, refreshUsage]);
 
-
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (!isAuthAvailable) {
+      return;
+    }
+
+    await getSupabase().auth.signOut();
     purgeSupabaseAuthStorage();
     setUser(null);
     setDailyUsageCount(null);
-  }, []);
+  }, [isAuthAvailable]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       isAuthLoading,
+      isAuthAvailable,
       dailyUsageCount,
       dailyLimit: DAILY_COPILOT_QUERY_LIMIT,
       refreshUsage,
       applyKnownUsageCount,
       signOut,
     }),
-    [user, isAuthLoading, dailyUsageCount, refreshUsage, applyKnownUsageCount, signOut],
+    [
+      user,
+      isAuthLoading,
+      isAuthAvailable,
+      dailyUsageCount,
+      refreshUsage,
+      applyKnownUsageCount,
+      signOut,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

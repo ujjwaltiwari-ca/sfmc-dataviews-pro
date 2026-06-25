@@ -24,7 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { logCopilotApiError } from '../utils/copilotFallback';
 import { lacksTrackingViewDateLookback } from '../utils/sqlGenerator';
-import { supabase } from '../utils/supabaseClient';
+import { getSupabase } from '../utils/supabaseClient';
 import { AuthForm } from './AuthForm';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 
@@ -229,16 +229,13 @@ export function AiCopilot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [prevUserId, setPrevUserId] = useState<string | undefined>(user?.id);
-  if (user?.id !== prevUserId) {
-    setPrevUserId(user?.id);
+  useEffect(() => {
     if (!user) {
       setMessages([]);
       setError(null);
       setInput('');
     }
-  }
-
+  }, [user?.id, user]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -304,7 +301,7 @@ export function AiCopilot({
 
     setMessages((previous) => [...previous, userMessage, assistantPlaceholder]);
 
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } = await getSupabase().auth.getSession();
     if (sessionError) {
       setMessages((previous) => previous.filter((message) => message.id !== assistantId));
       setError('Unable to read your session. Please sign in again.');

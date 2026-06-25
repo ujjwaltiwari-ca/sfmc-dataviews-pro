@@ -49,8 +49,13 @@ See `.env.example`. Summary:
 | `OPENAI_API_KEY` | Server | AI Copilot responses |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server | Usage quota tracking |
 | `STAGING_PASSWORD` | Server / build | Optional pre-launch gate — **omit for public launch** |
+| `STAGING_COOKIE_SECRET` | Server | **Required in production** when `STAGING_PASSWORD` is set |
 
 Local API routes (`/api/chat`, `/api/usage`, `/api/staging`) are proxied in dev via `vite.config.ts`.
+
+### Supabase migration (AI quota)
+
+Apply `supabase/migrations/20260624000000_reserve_copilot_slot.sql` in the Supabase SQL editor so daily Copilot limits are enforced atomically. The API falls back to the legacy path until this migration is applied.
 
 ## Scripts
 

@@ -54,39 +54,7 @@ import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExpl
 
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
-const STAGING_STATUS_CACHE_KEY = 'sfmc-staging-status';
-
 const RELATION_LEAVE_DELAY_MS = 40;
-
-function readCachedStagingStatus(): StagingGateStatus | null {
-  try {
-    const cached = sessionStorage.getItem(STAGING_STATUS_CACHE_KEY);
-    if (cached === 'disabled' || cached === 'unlocked' || cached === 'locked') {
-      return cached;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-function cacheStagingStatus(status: StagingGateStatus): void {
-  if (status === 'loading') {
-    return;
-  }
-  try {
-    sessionStorage.setItem(STAGING_STATUS_CACHE_KEY, status);
-  } catch {
-    /* ignore */
-  }
-}
-
-function resolveInitialStagingStatus(): StagingGateStatus {
-  if (!__STAGING_GATE_ENABLED__) {
-    return 'disabled';
-  }
-  return readCachedStagingStatus() ?? 'loading';
-}
 
 function StagingBootScreen() {
   return (
@@ -126,7 +94,7 @@ async function fetchStagingGateStatus(): Promise<StagingGateStatus> {
   }
 }
 
-async function submitStagingPassword(password: string): Promise<boolean> {
+async function submitStagingPassword(password: string): Promise<'ok' | 'invalid' | 'rate_limited'> {
   try {
     const response = await fetch('/api/staging', {
       method: 'POST',
@@ -134,13 +102,16 @@ async function submitStagingPassword(password: string): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });
+    if (response.status === 429) {
+      return 'rate_limited';
+    }
     if (!response.ok) {
-      return false;
+      return 'invalid';
     }
     const payload = (await response.json()) as { unlocked?: boolean };
-    return payload.unlocked === true;
+    return payload.unlocked === true ? 'ok' : 'invalid';
   } catch {
-    return false;
+    return 'invalid';
   }
 }
 
@@ -155,12 +126,16 @@ function StagingGateScreen({ onUnlock }: { onUnlock: () => void }) {
     setIsSubmitting(true);
 
     try {
-      const accepted = await submitStagingPassword(passwordInput);
-      if (accepted) {
+      const result = await submitStagingPassword(passwordInput);
+      if (result === 'ok') {
         onUnlock();
         return;
       }
-      setError('Incorrect password. Please try again.');
+      if (result === 'rate_limited') {
+        setError('Too many attempts. Please wait and try again.');
+      } else {
+        setError('Incorrect password. Please try again.');
+      }
       setPasswordInput('');
     } finally {
       setIsSubmitting(false);
@@ -249,7 +224,6 @@ function AppMain() {
   const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
   const [copilotSqlActive, setCopilotSqlActive] = useState(false);
-  const [prevSelectedTablesLength, setPrevSelectedTablesLength] = useState(0);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleToggleCopilot = useCallback(() => {
@@ -319,6 +293,10 @@ function AppMain() {
     [activeTables, selectedTables],
   );
 
+  useEffect(() => {
+    setCopilotSqlActive(false);
+  }, [selectedTableNames.length]);
+
   const workspaceSnapshot = useMemo<WorkspaceSnapshot>(
     () => ({
       segment: activeSegment,
@@ -383,11 +361,6 @@ function AppMain() {
   const handleFocusSearch = useCallback(() => {
     window.dispatchEvent(new CustomEvent(FOCUS_CANVAS_SEARCH_EVENT));
   }, []);
-
-  if (selectedTableNames.length !== prevSelectedTablesLength) {
-    setPrevSelectedTablesLength(selectedTableNames.length);
-    setCopilotSqlActive(false);
-  }
 
   const sandboxOpen = selectedTableNames.length > 0 || showSandbox;
 
@@ -568,20 +541,14 @@ function AppMain() {
 }
 
 function App() {
-  const [stagingStatus, setStagingStatus] = useState<StagingGateStatus>(resolveInitialStagingStatus);
+  const [stagingStatus, setStagingStatus] = useState<StagingGateStatus>('loading');
 
   useEffect(() => {
-    if (!__STAGING_GATE_ENABLED__) {
-      return;
-    }
-
     let isMounted = true;
     void fetchStagingGateStatus().then((status) => {
-      if (!isMounted) {
-        return;
+      if (isMounted) {
+        setStagingStatus(status);
       }
-      cacheStagingStatus(status);
-      setStagingStatus(status);
     });
     return () => {
       isMounted = false;
@@ -595,12 +562,7 @@ function App() {
   if (stagingStatus === 'locked') {
     return (
       <>
-        <StagingGateScreen
-          onUnlock={() => {
-            cacheStagingStatus('unlocked');
-            setStagingStatus('unlocked');
-          }}
-        />
+        <StagingGateScreen onUnlock={() => setStagingStatus('unlocked')} />
         <Analytics />
       </>
     );

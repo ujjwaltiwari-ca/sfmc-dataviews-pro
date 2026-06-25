@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { isDisposableEmail } from '../utils/disposableEmail';
-import { supabase } from '../utils/supabaseClient';
+import { getSupabase, isSupabaseConfigured } from '../utils/supabaseClient';
 
 const DISPOSABLE_EMAIL_ERROR =
   'Please use a permanent professional email address to register.';
@@ -21,6 +21,11 @@ export function AuthForm() {
     setError(null);
     setSuccessMessage(null);
 
+    if (!isSupabaseConfigured()) {
+      setError('AI Copilot sign-in is temporarily unavailable. The schema browser and SQL sandbox still work.');
+      return;
+    }
+
     if (mode === 'signUp' && isDisposableEmail(email)) {
       setError(DISPOSABLE_EMAIL_ERROR);
       return;
@@ -29,6 +34,7 @@ export function AuthForm() {
     setIsSubmitting(true);
 
     try {
+      const supabase = getSupabase();
       if (mode === 'signIn') {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
@@ -65,6 +71,13 @@ export function AuthForm() {
   return (
     <div className="flex flex-1 flex-col justify-center px-4 py-6 sm:px-5">
       <div className="mx-auto w-full max-w-sm">
+        {!isSupabaseConfigured() ? (
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-center text-xs leading-relaxed text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+            AI Copilot sign-in is unavailable right now. The schema browser and SQL sandbox are
+            still fully usable.
+          </div>
+        ) : (
+          <>
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-600 text-white shadow-lg shadow-violet-500/20">
             <Lock className="h-5 w-5" aria-hidden />
@@ -187,6 +200,8 @@ export function AuthForm() {
             )}
           </button>
         </form>
+          </>
+        )}
       </div>
     </div>
   );
