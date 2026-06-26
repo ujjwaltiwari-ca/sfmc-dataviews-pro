@@ -166,7 +166,7 @@ export function Header({
                 onClick={onToggleCopilot}
                 aria-pressed={isCopilotOpen}
                 aria-expanded={isCopilotOpen}
-                title="AI Copilot for query help — sign in required; schema browser and SQL sandbox are free"
+                title="AI Copilot — uses your canvas and sandbox context; sign in required"
                 className={`btn-nav btn-nav-violet ${
                   isCopilotOpen ? 'btn-nav-violet-active' : ''
                 }`}

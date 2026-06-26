@@ -26,7 +26,7 @@ import {
   SANDBOX_RESIZE_GUTTER_HEIGHT_PX,
 } from './constants/sandboxLayout';
 import { FOCUS_CANVAS_SEARCH_EVENT, OPEN_WHATS_NEW_EVENT } from './constants/siteChromeEvents';
-import { hasSeenWhatsNew } from './content/changelog';
+import { hasSeenWhatsNew, recordAppVisit, shouldAutoOpenWhatsNew } from './content/changelog';
 
 const AiCopilot = lazy(() =>
   import('./components/AiCopilot').then((module) => ({ default: module.AiCopilot })),
@@ -188,6 +188,16 @@ function StagingGateScreen({ onUnlock }: { onUnlock: () => void }) {
             {isSubmitting ? 'Verifying…' : 'Unlock'}
           </button>
         </form>
+
+        <footer className="absolute inset-x-0 bottom-6 text-center text-xs text-slate-500">
+          <a href="/privacy/" className="transition-colors hover:text-slate-300">
+            Privacy Policy
+          </a>
+          <span aria-hidden> · </span>
+          <a href="/terms/" className="transition-colors hover:text-slate-300">
+            Terms of Use
+          </a>
+        </footer>
       </div>
     </div>
   );
@@ -221,6 +231,7 @@ function AppMain() {
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [authShellActive, setAuthShellActive] = useState(() => hasPersistedSupabaseSession());
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
+  const [whatsNewUnseen, setWhatsNewUnseen] = useState(() => !hasSeenWhatsNew());
   const [sandboxSql, setSandboxSql] = useState(() => initialTemplateSql ?? '');
   const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
@@ -264,7 +275,8 @@ function AppMain() {
   );
 
   useEffect(() => {
-    if (!hasSeenWhatsNew()) {
+    recordAppVisit();
+    if (shouldAutoOpenWhatsNew()) {
       setIsWhatsNewOpen(true);
     }
 
@@ -500,7 +512,7 @@ function AppMain() {
               </div>
             ))}
           </div>
-          <SiteFooter />
+          <SiteFooter showWhatsNewBadge={whatsNewUnseen} />
         </main>
       </div>
 
@@ -539,7 +551,10 @@ function AppMain() {
 
       <WhatsNewModal
         isOpen={isWhatsNewOpen}
-        onClose={() => setIsWhatsNewOpen(false)}
+        onClose={() => {
+          setIsWhatsNewOpen(false);
+          setWhatsNewUnseen(!hasSeenWhatsNew());
+        }}
       />
 
       </div>

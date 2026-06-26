@@ -23,7 +23,7 @@ export function AuthForm() {
     setSuccessMessage(null);
 
     if (!isSupabaseConfigured()) {
-      setError('AI Copilot sign-in is temporarily unavailable. The schema browser and SQL sandbox still work.');
+      setError('Copilot sign-in is offline. The reference and sandbox still work.');
       return;
     }
 
@@ -74,8 +74,8 @@ export function AuthForm() {
       <div className="mx-auto w-full max-w-sm">
         {!isSupabaseConfigured() ? (
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-center text-xs leading-relaxed text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-            AI Copilot sign-in is unavailable right now. The schema browser and SQL sandbox are
-            still fully usable.
+            Copilot sign-in is offline. Browse schemas and build SQL in the sandbox without an
+            account.
           </div>
         ) : (
           <>
@@ -84,10 +84,11 @@ export function AuthForm() {
             <Lock className="h-5 w-5" aria-hidden />
           </div>
           <h3 className="text-base font-semibold tracking-tight text-slate-800 dark:text-white">
-            Sign in to use AI Copilot
+            Sign in for AI Copilot
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            Sign in for AI Copilot — schema browser and SQL sandbox are free. See our{' '}
+            Copilot uses your canvas selection and sandbox SQL as context. The reference and sandbox
+            stay free — see our{' '}
             <a href="/privacy/" className="font-medium text-violet-600 underline-offset-2 hover:underline dark:text-violet-400">
               Privacy Policy
             </a>

@@ -48,6 +48,27 @@
       }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
       .error { color: #fb7185; font-size: 0.75rem; min-height: 1rem; margin-top: 0.5rem; }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      footer {
+        margin-top: 2rem;
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+      footer a {
+        color: #94a3b8;
+        text-decoration: none;
+      }
+      footer a:hover { color: #e2e8f0; text-decoration: underline; }
     </style>
   </head>
   <body>
@@ -60,6 +81,11 @@
         <button type="submit" id="submit">Unlock</button>
         <p class="error" id="error" role="alert"></p>
       </form>
+      <footer>
+        <a href="/privacy/">Privacy Policy</a>
+        ·
+        <a href="/terms/">Terms of Use</a>
+      </footer>
     </div>
     <script>
       const form = document.getElementById('gate-form');

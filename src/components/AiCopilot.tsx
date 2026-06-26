@@ -26,7 +26,9 @@ import { logCopilotApiError } from '../utils/copilotFallback';
 import { lacksTrackingViewDateLookback } from '../utils/sqlGenerator';
 import { getSupabase } from '../utils/supabaseClient';
 import { AuthForm } from './AuthForm';
+import { CopilotMessageContent } from './CopilotMessageContent';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -228,6 +230,9 @@ export function AiCopilot({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(panelRef, isOpen);
 
   useEffect(() => {
     if (!user) {
@@ -447,10 +452,12 @@ export function AiCopilot({
         className={`fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-sm transition-all duration-300 ease-out dark:bg-slate-950/40 ${
           isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         }`}
-        tabIndex={isOpen ? 0 : -1}
+        tabIndex={-1}
       />
 
       <aside
+        ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="AI Copilot"
@@ -558,7 +565,11 @@ export function AiCopilot({
                           }`}
                         >
                           {message.content ? (
-                            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                            isUser ? (
+                              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                            ) : (
+                              <CopilotMessageContent content={message.content} />
+                            )
                           ) : message.isStreaming ? (
                             <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />

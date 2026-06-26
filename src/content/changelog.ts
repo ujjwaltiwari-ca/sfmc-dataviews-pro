@@ -23,6 +23,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 
 export const WHATS_NEW_STORAGE_KEY = 'sfmc-whats-new-seen';
 export const WHATS_NEW_VERSION = '1.0';
+export const VISIT_COUNT_STORAGE_KEY = 'sfmc-visit-count';
 
 export function hasSeenWhatsNew(): boolean {
   try {
@@ -37,5 +38,30 @@ export function markWhatsNewSeen(): void {
     localStorage.setItem(WHATS_NEW_STORAGE_KEY, WHATS_NEW_VERSION);
   } catch {
     /* ignore */
+  }
+}
+
+/** Increments the persisted visit counter once per app load. */
+export function recordAppVisit(): number {
+  try {
+    const next = Number.parseInt(localStorage.getItem(VISIT_COUNT_STORAGE_KEY) ?? '0', 10) + 1;
+    localStorage.setItem(VISIT_COUNT_STORAGE_KEY, String(next));
+    return next;
+  } catch {
+    return 1;
+  }
+}
+
+/** Auto-open What's New only from the second visit onward. */
+export function shouldAutoOpenWhatsNew(): boolean {
+  if (hasSeenWhatsNew()) {
+    return false;
+  }
+
+  try {
+    const visits = Number.parseInt(localStorage.getItem(VISIT_COUNT_STORAGE_KEY) ?? '0', 10);
+    return visits >= 2;
+  } catch {
+    return false;
   }
 }

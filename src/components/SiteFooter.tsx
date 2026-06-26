@@ -18,7 +18,11 @@ const footerLinkClassName =
 const nameLinkClassName =
   'font-medium text-slate-700 transition-colors hover:text-cyan-600 hover:underline dark:text-slate-300 dark:hover:text-cyan-400';
 
-export function SiteFooter() {
+type SiteFooterProps = {
+  showWhatsNewBadge?: boolean;
+};
+
+export function SiteFooter({ showWhatsNewBadge = false }: SiteFooterProps) {
   const openDocumentation = () => {
     window.dispatchEvent(new CustomEvent(OPEN_DOCUMENTATION_EVENT));
   };
@@ -54,8 +58,14 @@ export function SiteFooter() {
           <button type="button" onClick={openDocumentation} className={footerLinkClassName}>
             Documentation
           </button>
-          <button type="button" onClick={openWhatsNew} className={footerLinkClassName}>
+          <button type="button" onClick={openWhatsNew} className={`${footerLinkClassName} relative`}>
             What&apos;s New
+            {showWhatsNewBadge ? (
+              <span
+                className="absolute -right-2 -top-1 h-2 w-2 rounded-full bg-cyan-500 ring-2 ring-white dark:ring-slate-950"
+                aria-label="Unread release notes"
+              />
+            ) : null}
           </button>
           <button type="button" onClick={openPlatformInfo} className={footerLinkClassName}>
             Platform Info
