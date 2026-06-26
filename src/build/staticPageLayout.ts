@@ -1,8 +1,43 @@
 import { BRAND_LAUNCH_CTA, BRAND_NAME } from '../constants/brand.js';
 import { SCHEMA_DISCLAIMER, SCHEMA_LAST_REVIEWED } from '../constants/schemaMeta.js';
+import { SELF_HOSTED_FONT_FACE_CSS } from './selfHostedFonts.js';
 import { escapeHtml, SITE_ORIGIN } from '../utils/seoStatic.js';
 
+export type BreadcrumbItem = { name: string; url: string };
+
+const DEFAULT_OG_IMAGE_ALT =
+  'DataViews.pro — SFMC schema canvas with SQL workspace, BFS join paths, and interactive Data View cards';
+
+export function mergePageJsonLd(
+  pageLd: Record<string, unknown>,
+  breadcrumbs?: BreadcrumbItem[],
+): Record<string, unknown> {
+  if (!breadcrumbs?.length) {
+    return pageLd;
+  }
+
+  const breadcrumbLd = {
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbs.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+
+  const context = pageLd['@context'] ?? 'https://schema.org';
+  const pageNode = { ...pageLd };
+  delete pageNode['@context'];
+
+  return {
+    '@context': context,
+    '@graph': [pageNode, breadcrumbLd],
+  };
+}
+
 export const STATIC_PAGE_STYLES = `
+  ${SELF_HOSTED_FONT_FACE_CSS}
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
   body {
@@ -126,13 +161,19 @@ export function renderStaticPageLayout(options: {
   breadcrumbHtml: string;
   body: string;
   jsonLd?: Record<string, unknown>;
+  breadcrumbs?: BreadcrumbItem[];
   includeSchemaDisclaimer?: boolean;
+  ogImageAlt?: string;
 }): string {
-  const jsonLdBlock = options.jsonLd
-    ? `<script type="application/ld+json">${serializeJsonLd(options.jsonLd)}</script>`
+  const mergedJsonLd = options.jsonLd
+    ? mergePageJsonLd(options.jsonLd, options.breadcrumbs)
+    : undefined;
+  const jsonLdBlock = mergedJsonLd
+    ? `<script type="application/ld+json">${serializeJsonLd(mergedJsonLd)}</script>`
     : '';
   const disclaimer =
     options.includeSchemaDisclaimer !== false ? renderSchemaDisclaimer() : '';
+  const ogImageAlt = options.ogImageAlt ?? DEFAULT_OG_IMAGE_ALT;
 
   return `<!doctype html>
 <html lang="en">
@@ -142,11 +183,19 @@ export function renderStaticPageLayout(options: {
   <title>${escapeHtml(options.title)}</title>
   <meta name="description" content="${escapeHtml(options.description)}" />
   <link rel="canonical" href="${escapeHtml(options.canonical)}" />
+  <link rel="stylesheet" href="/fonts/plus-jakarta-sans.css" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="${escapeHtml(options.canonical)}" />
   <meta property="og:title" content="${escapeHtml(options.title)}" />
   <meta property="og:description" content="${escapeHtml(options.description)}" />
   <meta property="og:image" content="${SITE_ORIGIN}/og-preview.png" />
+  <meta property="og:image:alt" content="${escapeHtml(ogImageAlt)}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="${escapeHtml(options.canonical)}" />
+  <meta name="twitter:title" content="${escapeHtml(options.title)}" />
+  <meta name="twitter:description" content="${escapeHtml(options.description)}" />
+  <meta name="twitter:image" content="${SITE_ORIGIN}/og-preview.png" />
+  <meta name="twitter:image:alt" content="${escapeHtml(ogImageAlt)}" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>${STATIC_PAGE_STYLES}</style>
   ${jsonLdBlock}

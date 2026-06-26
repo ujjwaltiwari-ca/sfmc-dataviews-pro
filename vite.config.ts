@@ -9,6 +9,7 @@ import { handleStagingRequest } from './api/staging';
 import { handleUsageRequest } from './api/usage';
 import { generateLegalStaticAssets } from './src/build/generateLegalStatic';
 import { generateSeoStaticAssets } from './src/build/generateSeoStatic';
+import { copySelfHostedFontsToPublic } from './src/build/selfHostedFonts';
 import { createSeoStaticDevMiddleware } from './src/build/seoStaticDevMiddleware';
 
 const PROJECT_ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -182,6 +183,7 @@ function seoStaticPagesPlugin(): Plugin {
   return {
     name: 'vite-plugin-seo-static-pages',
     buildStart() {
+      copySelfHostedFontsToPublic();
       const { tableCount, pageCount } = generateSeoStaticAssets();
       const legalCount = generateLegalStaticAssets();
       console.log(
@@ -217,6 +219,9 @@ export default defineConfig(() => {
               }
               if (id.includes('@supabase')) {
                 return 'supabase';
+              }
+              if (id.includes('/context/AuthContext')) {
+                return 'auth';
               }
               if (id.includes('lucide-react')) {
                 return 'icons';

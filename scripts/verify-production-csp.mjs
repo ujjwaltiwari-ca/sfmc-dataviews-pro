@@ -19,7 +19,7 @@ async function main() {
   const requiredFragments = [
     "default-src 'self'",
     'googletagmanager.com',
-    'fonts.googleapis.com',
+    "font-src 'self'",
     'supabase.co',
     'google-analytics.com',
     'vitals.vercel-insights.com',
@@ -31,7 +31,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('[ok] CSP includes Supabase, GA, Vercel Analytics, and fonts');
+  console.log('[ok] CSP includes Supabase, GA, Vercel Analytics, and self-hosted fonts');
 
   if (!hsts) {
     console.warn('[warn] Strict-Transport-Security header is missing (may appear after deploy).');

@@ -2,11 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let client: SupabaseClient | null = null;
 
-export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    import.meta.env.VITE_SUPABASE_URL?.trim() && import.meta.env.VITE_SUPABASE_ANON_KEY?.trim(),
-  );
-}
+export { isSupabaseConfigured } from './supabaseEnv';
 
 function createBrowserClient(): SupabaseClient {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();

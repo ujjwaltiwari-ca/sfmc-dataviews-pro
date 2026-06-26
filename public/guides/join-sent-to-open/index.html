@@ -6,13 +6,49 @@
   <title>How to Join _Sent to _Open in SFMC SQL | DataViews.pro</title>
   <meta name="description" content="Learn the correct join grain between _Sent and _Open in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID." />
   <link rel="canonical" href="https://dataviews.pro/guides/join-sent-to-open/" />
+  <link rel="stylesheet" href="/fonts/plus-jakarta-sans.css" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://dataviews.pro/guides/join-sent-to-open/" />
   <meta property="og:title" content="How to Join _Sent to _Open in SFMC SQL | DataViews.pro" />
   <meta property="og:description" content="Learn the correct join grain between _Sent and _Open in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID." />
   <meta property="og:image" content="https://dataviews.pro/og-preview.png" />
+  <meta property="og:image:alt" content="DataViews.pro — SFMC schema canvas with SQL workspace, BFS join paths, and interactive Data View cards" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://dataviews.pro/guides/join-sent-to-open/" />
+  <meta name="twitter:title" content="How to Join _Sent to _Open in SFMC SQL | DataViews.pro" />
+  <meta name="twitter:description" content="Learn the correct join grain between _Sent and _Open in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID." />
+  <meta name="twitter:image" content="https://dataviews.pro/og-preview.png" />
+  <meta name="twitter:image:alt" content="DataViews.pro — SFMC schema canvas with SQL workspace, BFS join paths, and interactive Data View cards" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <style>:root { color-scheme: light dark; }
+  <style>@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('/fonts/plus-jakarta-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('/fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('/fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('/fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2');
+}
+  :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -116,7 +152,7 @@
   ul.index-list { columns: 2; gap: 2rem; padding-left: 1.1rem; margin: 0; }
   @media (max-width: 640px) { ul.index-list { columns: 1; } }
   ul.index-list li { margin-bottom: 0.35rem; break-inside: avoid; }</style>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"How to Join _Sent to _Open in SFMC SQL","description":"Learn the correct join grain between _Sent and _Open in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID.","url":"https://dataviews.pro/guides/join-sent-to-open/","author":{"@type":"Person","name":"Ujjwal Tiwari"},"publisher":{"@type":"Organization","name":"DataViews.pro"},"isPartOf":{"@type":"WebSite","name":"DataViews.pro","url":"https://dataviews.pro"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","headline":"How to Join _Sent to _Open in SFMC SQL","description":"Learn the correct join grain between _Sent and _Open in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID.","url":"https://dataviews.pro/guides/join-sent-to-open/","author":{"@type":"Person","name":"Ujjwal Tiwari"},"publisher":{"@type":"Organization","name":"DataViews.pro"},"isPartOf":{"@type":"WebSite","name":"DataViews.pro","url":"https://dataviews.pro"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"DataViews.pro","item":"https://dataviews.pro/"},{"@type":"ListItem","position":2,"name":"SQL Guides","item":"https://dataviews.pro/guides/"},{"@type":"ListItem","position":3,"name":"How to Join _Sent to _Open in SFMC SQL","item":"https://dataviews.pro/guides/join-sent-to-open/"}]}]}</script>
 </head>
 <body>
   <div class="wrap">

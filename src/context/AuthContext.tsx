@@ -1,8 +1,5 @@
-/* eslint-disable react-refresh/only-export-components */
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -11,20 +8,9 @@ import {
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { DAILY_COPILOT_QUERY_LIMIT } from '../constants/copilotQuota';
 import { fetchTodayCopilotUsageCount, purgeSupabaseAuthStorage } from '../utils/copilotUsage';
-import { getSupabase, isSupabaseConfigured } from '../utils/supabaseClient';
-
-type AuthContextValue = {
-  user: SupabaseUser | null;
-  isAuthLoading: boolean;
-  isAuthAvailable: boolean;
-  dailyUsageCount: number | null;
-  dailyLimit: number;
-  refreshUsage: () => Promise<void>;
-  applyKnownUsageCount: (count: number) => void;
-  signOut: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { getSupabase } from '../utils/supabaseClient';
+import { isSupabaseConfigured } from '../utils/supabaseEnv';
+import { AuthContext, type AuthContextValue } from './authContext.shared';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthAvailable = isSupabaseConfigured();
@@ -142,12 +128,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

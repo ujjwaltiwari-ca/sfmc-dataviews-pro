@@ -131,6 +131,11 @@ function renderViewPage(table: DataViewTable, tablesByName: Map<string, DataView
     description: buildMetaDescription(table),
     canonical,
     breadcrumbHtml: viewsBreadcrumb(`<code>${escapeHtml(table.name)}</code>`),
+    breadcrumbs: [
+      { name: BRAND_NAME, url: `${SITE_ORIGIN}/` },
+      { name: 'Data View Reference', url: `${SITE_ORIGIN}/views/` },
+      { name: table.name, url: canonical },
+    ],
     body,
     includeSchemaDisclaimer: true,
     jsonLd,
@@ -181,6 +186,10 @@ function renderIndexPage(tables: DataViewTable[]): string {
       `Browse every Salesforce Marketing Cloud system data view with field definitions, primary keys, foreign keys, and SQL examples. Open any table in the interactive ${BRAND_NAME} workspace.`,
     canonical: `${SITE_ORIGIN}/views/`,
     breadcrumbHtml: viewsBreadcrumb(),
+    breadcrumbs: [
+      { name: BRAND_NAME, url: `${SITE_ORIGIN}/` },
+      { name: 'Data View Reference', url: `${SITE_ORIGIN}/views/` },
+    ],
     body,
     includeSchemaDisclaimer: true,
     jsonLd: {

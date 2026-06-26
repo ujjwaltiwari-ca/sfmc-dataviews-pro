@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 import { ChevronDown, LogOut } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.shared';
 
 type AccountProfileDropdownProps = {
   onSignedOut?: () => void;

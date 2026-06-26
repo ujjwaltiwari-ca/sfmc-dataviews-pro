@@ -16,7 +16,7 @@ import {
   Zap,
   LayoutGrid,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.shared';
 import { useTheme } from '../context/ThemeContext';
 import { BRAND_NAME, BRAND_TAGLINE } from '../constants/brand';
 import { AccountProfileDropdown } from './AccountProfileDropdown';

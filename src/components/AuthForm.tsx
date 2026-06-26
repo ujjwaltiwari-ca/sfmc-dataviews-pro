@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { isDisposableEmail } from '../utils/disposableEmail';
-import { getSupabase, isSupabaseConfigured } from '../utils/supabaseClient';
+import { getSupabase } from '../utils/supabaseClient';
+import { isSupabaseConfigured } from '../utils/supabaseEnv';
 
 const DISPOSABLE_EMAIL_ERROR =
   'Please use a permanent professional email address to register.';

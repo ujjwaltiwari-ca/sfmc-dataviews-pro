@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { Lock } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
-import { AuthProvider } from './context/AuthContext';
+import { DeferredAuthProvider } from './context/DeferredAuthProvider';
 import { BRAND_NAME } from './constants/brand';
 import {
   canvasGridGapClassName,
@@ -49,8 +49,8 @@ import {
   workspaceHasCustomState,
   type WorkspaceSnapshot,
 } from './utils/workspacePersistence';
-import type { HoveredRelation } from './utils/schemaExplorer';
-import { buildRelationHighlight, normalizeSearchQuery } from './utils/schemaExplorer';
+import { hasPersistedSupabaseSession } from './utils/supabaseSessionStorage';
+import { buildRelationHighlight, normalizeSearchQuery, type HoveredRelation } from './utils/schemaExplorer';
 
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
@@ -219,6 +219,7 @@ function AppMain() {
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const [canvasDensity, setCanvasDensity] = useState<CanvasDensity>(readCanvasDensityPreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [authShellActive, setAuthShellActive] = useState(() => hasPersistedSupabaseSession());
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [sandboxSql, setSandboxSql] = useState(() => initialTemplateSql ?? '');
   const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
@@ -226,9 +227,14 @@ function AppMain() {
   const [copilotSqlActive, setCopilotSqlActive] = useState(false);
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleToggleCopilot = useCallback(() => {
-    setIsCopilotOpen((open) => !open);
+  const activateAuthShell = useCallback(() => {
+    setAuthShellActive(true);
   }, []);
+
+  const handleToggleCopilot = useCallback(() => {
+    activateAuthShell();
+    setIsCopilotOpen((open) => !open);
+  }, [activateAuthShell]);
 
   const handleApplyToSandbox = useCallback((sql: string) => {
     setSandboxSql(sql.trim());
@@ -429,11 +435,12 @@ function AppMain() {
   };
 
   const handleSignInRequired = useCallback(() => {
+    activateAuthShell();
     setIsCopilotOpen(true);
-  }, []);
+  }, [activateAuthShell]);
 
   return (
-    <AuthProvider>
+    <DeferredAuthProvider active={authShellActive}>
       <div className="canvas-gradient flex h-screen w-screen flex-col overflow-hidden text-slate-900 transition-colors duration-300 ease-in-out dark:text-slate-100">
       <div className="sticky top-0 z-50 shrink-0">
         <Header
@@ -536,7 +543,7 @@ function AppMain() {
       />
 
       </div>
-    </AuthProvider>
+    </DeferredAuthProvider>
   );
 }
 

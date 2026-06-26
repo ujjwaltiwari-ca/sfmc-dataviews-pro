@@ -62,6 +62,11 @@ function renderGuidePage(guide: SeoGuide): string {
     description: guide.metaDescription,
     canonical,
     breadcrumbHtml: guidesBreadcrumb(escapeHtml(guide.title)),
+    breadcrumbs: [
+      { name: BRAND_NAME, url: `${SITE_ORIGIN}/` },
+      { name: 'SQL Guides', url: `${SITE_ORIGIN}/guides/` },
+      { name: guide.title, url: canonical },
+    ],
     body,
     includeSchemaDisclaimer: true,
     jsonLd: {
@@ -105,6 +110,10 @@ function renderGuidesIndex(): string {
       'Practitioner SQL guides for Salesforce Marketing Cloud Data Views — joins, journeys, tracking timeouts, and subscriber patterns.',
     canonical: `${SITE_ORIGIN}/guides/`,
     breadcrumbHtml: guidesBreadcrumb(),
+    breadcrumbs: [
+      { name: BRAND_NAME, url: `${SITE_ORIGIN}/` },
+      { name: 'SQL Guides', url: `${SITE_ORIGIN}/guides/` },
+    ],
     body,
     includeSchemaDisclaimer: true,
     jsonLd: {

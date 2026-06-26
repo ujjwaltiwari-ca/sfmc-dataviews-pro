@@ -3,6 +3,7 @@
   <head>
     <script>
       (function () {
+        document.documentElement.classList.add('js');
         try {
           var stored = localStorage.getItem('sfmc-theme');
           var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -12,28 +13,58 @@
       })();
     </script>
     <meta charset="UTF-8" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-      rel="stylesheet"
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-        rel="stylesheet"
-      />
-    </noscript>
+    <link rel="preload" href="/fonts/plus-jakarta-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/plus-jakarta-sans.css" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      #static-fallback {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 3rem;
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        color: #0f172a;
+      }
+      #static-fallback h1 {
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.75rem;
+      }
+      #static-fallback p {
+        margin: 0 0 1rem;
+        color: #475569;
+      }
+      #static-fallback nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+      }
+      #static-fallback a {
+        color: #0891b2;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      #static-fallback a:hover {
+        text-decoration: underline;
+      }
+      html.js #static-fallback {
+        display: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        #static-fallback {
+          color: #e2e8f0;
+        }
+        #static-fallback p {
+          color: #94a3b8;
+        }
+        #static-fallback a {
+          color: #22d3ee;
+        }
+      }
+    </style>
 
     <!-- Primary Meta Tags -->
     <title>SFMC Data Views Reference &amp; SQL Workspace | DataViews.pro</title>
@@ -101,6 +132,29 @@
     <link rel="alternate" type="text/plain" title="LLMs full reference" href="/llms-full.txt" />
   </head>
   <body>
+    <main id="static-fallback" aria-label="DataViews.pro overview">
+      <h1>SFMC Data Views Reference &amp; SQL Workspace</h1>
+      <p>
+        DataViews.pro is an interactive Salesforce Marketing Cloud reference with field-level schemas,
+        BFS join pathfinding, and a SQL sandbox for Query Studio and Automation Studio. Browse every
+        system data view, inspect keys and relationships, and copy production-ready SQL.
+      </p>
+      <p>
+        The schema browser and SQL workspace are free. AI Copilot requires a free account after you
+        open the interactive app.
+      </p>
+      <nav aria-label="Primary">
+        <a href="/views/">Browse all Data Views</a>
+        <a href="/guides/">Read SQL Guides</a>
+        <a href="/">Open Interactive Workspace</a>
+      </nav>
+    </main>
+    <noscript>
+      <p style="max-width:48rem;margin:1rem auto;padding:0 1.25rem;font-family:system-ui,sans-serif;color:#475569">
+        JavaScript is required for the interactive workspace. You can still browse the static
+        <a href="/views/">Data Views reference</a> and <a href="/guides/">SQL guides</a>.
+      </p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

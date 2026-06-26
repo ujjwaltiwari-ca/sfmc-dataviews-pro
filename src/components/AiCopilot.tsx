@@ -20,7 +20,7 @@ import {
   DAILY_COPILOT_QUERY_LIMIT,
   isDailyCopilotLimitMessage,
 } from '../constants/copilotQuota';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.shared';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { logCopilotApiError } from '../utils/copilotFallback';
 import { lacksTrackingViewDateLookback } from '../utils/sqlGenerator';
