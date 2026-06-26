@@ -21,7 +21,39 @@ function migrationSql() {
   return readFileSync(MIGRATION_PATH, 'utf8');
 }
 
+async function rpcExistsInDatabase() {
+  const candidates = resolveDatabaseCandidates();
+  for (const databaseUrl of candidates) {
+    const client = new pg.Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+    try {
+      await client.connect();
+      const result = await client.query(
+        `SELECT EXISTS (
+          SELECT 1 FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = 'public' AND p.proname = 'reserve_copilot_slot'
+        ) AS exists`,
+      );
+      await client.end();
+      if (result.rows[0]?.exists === true) {
+        return true;
+      }
+    } catch {
+      try {
+        await client.end();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return false;
+}
+
 async function rpcExists() {
+  if (await rpcExistsInDatabase()) {
+    return true;
+  }
+
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error('Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   }
@@ -117,21 +149,42 @@ function resolveDatabaseCandidates() {
     return [];
   }
 
-  const regions = [
-    'us-east-1',
-    'us-west-1',
-    'eu-west-1',
-    'eu-central-1',
-    'ap-southeast-1',
-    'ap-northeast-1',
-    'ap-south-1',
-    'sa-east-1',
+  const encodedPassword = encodeURIComponent(password);
+  const candidates = [
+    `postgresql://postgres:${encodedPassword}@db.${projectRef}.supabase.co:5432/postgres`,
   ];
 
-  return regions.map(
-    (region) =>
-      `postgresql://postgres.${projectRef}:${encodeURIComponent(password)}@aws-0-${region}.pooler.supabase.com:6543/postgres`,
-  );
+  const regions = [
+    'us-east-1',
+    'us-east-2',
+    'us-west-1',
+    'us-west-2',
+    'eu-west-1',
+    'eu-west-2',
+    'eu-central-1',
+    'eu-central-2',
+    'eu-north-1',
+    'ap-southeast-1',
+    'ap-southeast-2',
+    'ap-northeast-1',
+    'ap-northeast-2',
+    'ap-south-1',
+    'sa-east-1',
+    'ca-central-1',
+  ];
+
+  for (const region of regions) {
+    for (const prefix of ['aws-0', 'aws-1']) {
+      candidates.push(
+        `postgresql://postgres.${projectRef}:${encodedPassword}@${prefix}-${region}.pooler.supabase.com:6543/postgres`,
+      );
+      candidates.push(
+        `postgresql://postgres.${projectRef}:${encodedPassword}@${prefix}-${region}.pooler.supabase.com:5432/postgres`,
+      );
+    }
+  }
+
+  return candidates;
 }
 
 async function applyViaPostgres() {
@@ -140,6 +193,8 @@ async function applyViaPostgres() {
     return false;
   }
 
+  let lastError = 'unknown connection error';
+
   for (const databaseUrl of candidates) {
     const client = new pg.Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
     try {
@@ -147,7 +202,8 @@ async function applyViaPostgres() {
       await client.query(migrationSql());
       await client.end();
       return true;
-    } catch {
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
       try {
         await client.end();
       } catch {
@@ -156,6 +212,7 @@ async function applyViaPostgres() {
     }
   }
 
+  console.warn(`[db] Postgres connection failed after ${candidates.length} attempts: ${lastError}`);
   return false;
 }
 
@@ -169,9 +226,9 @@ async function main() {
 
   const sql = migrationSql();
   const applied =
+    (await applyViaPostgres()) ||
     (await applyViaManagementApi(sql)) ||
-    (await applyViaProjectDatabaseApi(sql)) ||
-    (await applyViaPostgres());
+    (await applyViaProjectDatabaseApi(sql));
   if (!applied) {
     throw new Error(
       'Cannot apply migration automatically. Add SUPABASE_DB_URL or SUPABASE_DB_PASSWORD (from Supabase → Project Settings → Database) to .env.local, then re-run npm run db:migrate.',
