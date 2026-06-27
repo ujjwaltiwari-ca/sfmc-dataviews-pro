@@ -1,12 +1,13 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Info, Sparkles, X } from 'lucide-react';
-import { SCHEMA_LAST_REVIEWED } from '../constants/schemaMeta';
+import { SCHEMA_DISCLAIMER, SCHEMA_LAST_REVIEWED } from '../constants/schemaMeta';
 import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
   BRAND_RELEASE_LABEL,
   BRAND_TAGLINE,
 } from '../constants/brand';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 type PlatformInfoModalProps = {
   isOpen: boolean;
@@ -15,6 +16,9 @@ type PlatformInfoModalProps = {
 
 export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(dialogRef, isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -51,6 +55,8 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
       />
 
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -119,6 +125,10 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
           </div>
 
           <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            {SCHEMA_DISCLAIMER}
+          </p>
+
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             Schema reference last reviewed {SCHEMA_LAST_REVIEWED}.
           </p>
 
@@ -138,6 +148,16 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
             </a>
             , Senior Salesforce Platform Architect — Waterloo, Ontario, Canada.
           </p>
+        </div>
+
+        <div className="border-t border-slate-200 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

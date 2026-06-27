@@ -9,9 +9,11 @@ import {
 import {
   AlertTriangle,
   Bot,
+  Check,
   Loader2,
   SendHorizontal,
   Sparkles,
+  Square,
   Terminal,
   User,
   X,
@@ -49,6 +51,7 @@ export type CopilotChatRequestPayload = {
   messages: ApiChatMessage[];
   activeTables: string[];
   currentQueryText: string;
+  enterpriseBuMode?: boolean;
 };
 
 export type AiCopilotProps = {
@@ -59,7 +62,16 @@ export type AiCopilotProps = {
   activeTables?: string[];
   /** SQL currently loaded in the CodeMirror sandbox editor. */
   currentQueryText?: string;
+  /** When true, copilot uses Ent. prefix guidance for enterprise BU queries. */
+  enterpriseBuMode?: boolean;
 };
+
+const STARTER_PROMPTS = [
+  'How do I join _Sent to _Open correctly?',
+  'Why do I need all 4 keys for tracking view joins?',
+  'Write a query to find subscribers with no opens in 90 days',
+  "What's the difference between SubscriberKey and SubscriberID in _Sent?",
+] as const;
 
 function createMessageId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -91,9 +103,14 @@ function extractSqlFromMessage(content: string): string | null {
 
 function toApiHistory(messages: ChatMessage[]): ApiChatMessage[] {
   return messages
-    .filter((message) => message.role === 'user' && !message.isStreaming && message.content.trim())
+    .filter(
+      (message) =>
+        (message.role === 'user' || message.role === 'assistant') &&
+        !message.isStreaming &&
+        message.content.trim(),
+    )
     .map((message) => ({
-      role: 'user' as const,
+      role: message.role,
       content: message.content,
     }));
 }
@@ -155,7 +172,12 @@ async function streamChatFromProxy(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${bearerToken}`,
     },
-    body: JSON.stringify({ messages, activeTables, currentQueryText }),
+    body: JSON.stringify({
+      messages,
+      activeTables,
+      currentQueryText,
+      enterpriseBuMode: payload.enterpriseBuMode === true,
+    }),
     signal,
   });
 
@@ -218,12 +240,15 @@ export function AiCopilot({
   onApplyToSandbox,
   activeTables = [],
   currentQueryText = '',
+  enterpriseBuMode = false,
 }: AiCopilotProps) {
-  const { user, refreshUsage, applyKnownUsageCount, signOut } = useAuth();
+  const { user, refreshUsage, applyKnownUsageCount, signOut, dailyUsageCount, dailyLimit } =
+    useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appliedBannerVisible, setAppliedBannerVisible] = useState(false);
   const [appliedMessageId, setAppliedMessageId] = useState<string | null>(null);
   const [applyWarningOpen, setApplyWarningOpen] = useState(false);
   const [pendingApply, setPendingApply] = useState<{ messageId: string; sql: string } | null>(
@@ -235,6 +260,8 @@ export function AiCopilot({
   const panelRef = useRef<HTMLElement>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
   const appliedMessageTimerRef = useRef<number | null>(null);
+  const appliedBannerTimerRef = useRef<number | null>(null);
+  const streamingAssistantIdRef = useRef<string | null>(null);
 
   useFocusTrap(panelRef, isOpen);
 
@@ -244,6 +271,9 @@ export function AiCopilot({
       chatAbortRef.current = null;
       if (appliedMessageTimerRef.current !== null) {
         window.clearTimeout(appliedMessageTimerRef.current);
+      }
+      if (appliedBannerTimerRef.current !== null) {
+        window.clearTimeout(appliedBannerTimerRef.current);
       }
     };
   }, []);
@@ -283,10 +313,11 @@ export function AiCopilot({
 
   useEffect(() => {
     if (isOpen && user) {
+      void refreshUsage();
       const timer = window.setTimeout(() => textareaRef.current?.focus(), 280);
       return () => window.clearTimeout(timer);
     }
-  }, [isOpen, user]);
+  }, [isOpen, user, refreshUsage]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
@@ -308,6 +339,7 @@ export function AiCopilot({
     };
 
     const assistantId = createMessageId();
+    streamingAssistantIdRef.current = assistantId;
     const assistantPlaceholder: ChatMessage = {
       id: assistantId,
       role: 'assistant',
@@ -365,12 +397,18 @@ export function AiCopilot({
           messages: apiMessages,
           activeTables,
           currentQueryText: currentQueryText.trim(),
+          enterpriseBuMode,
         },
         accessToken,
         appendAssistantDelta,
         abortController.signal,
       );
       if (abortController.signal.aborted) {
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.id === assistantId ? { ...message, isStreaming: false } : message,
+          ),
+        );
         return;
       }
       finalizeAssistant(accumulated || 'No response received.');
@@ -380,9 +418,19 @@ export function AiCopilot({
       void refreshUsage();
     } catch (sendError) {
       if (abortController.signal.aborted) {
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.id === assistantId ? { ...message, isStreaming: false } : message,
+          ),
+        );
         return;
       }
       if (sendError instanceof DOMException && sendError.name === 'AbortError') {
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.id === assistantId ? { ...message, isStreaming: false } : message,
+          ),
+        );
         return;
       }
       logCopilotApiError(sendError);
@@ -400,9 +448,10 @@ export function AiCopilot({
 
       const message =
         sendError instanceof Error ? sendError.message : 'Chat request failed. Please try again.';
+      setMessages((previous) => previous.filter((entry) => entry.id !== assistantId));
       setError(message);
-      finalizeAssistant(message);
     } finally {
+      streamingAssistantIdRef.current = null;
       if (chatAbortRef.current === abortController) {
         chatAbortRef.current = null;
       }
@@ -414,6 +463,7 @@ export function AiCopilot({
     messages,
     activeTables,
     currentQueryText,
+    enterpriseBuMode,
     refreshUsage,
     applyKnownUsageCount,
     signOut,
@@ -431,20 +481,41 @@ export function AiCopilot({
     }
   };
 
+  const handleStopGenerating = () => {
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    setIsSending(false);
+    const assistantId = streamingAssistantIdRef.current;
+    if (assistantId) {
+      setMessages((previous) =>
+        previous.map((message) =>
+          message.id === assistantId ? { ...message, isStreaming: false } : message,
+        ),
+      );
+    }
+  };
+
   const commitApplyToSandbox = useCallback(
     (messageId: string, sql: string) => {
       onApplyToSandbox(sql);
-      onClose();
       setAppliedMessageId(messageId);
+      setAppliedBannerVisible(true);
       if (appliedMessageTimerRef.current !== null) {
         window.clearTimeout(appliedMessageTimerRef.current);
+      }
+      if (appliedBannerTimerRef.current !== null) {
+        window.clearTimeout(appliedBannerTimerRef.current);
       }
       appliedMessageTimerRef.current = window.setTimeout(() => {
         setAppliedMessageId(null);
         appliedMessageTimerRef.current = null;
       }, 2200);
+      appliedBannerTimerRef.current = window.setTimeout(() => {
+        setAppliedBannerVisible(false);
+        appliedBannerTimerRef.current = null;
+      }, 2000);
     },
-    [onApplyToSandbox, onClose],
+    [onApplyToSandbox],
   );
 
   const handleApplyToSandbox = (messageId: string, content: string) => {
@@ -472,6 +543,12 @@ export function AiCopilot({
     setApplyWarningOpen(false);
     setPendingApply(null);
   };
+
+  const usageCount = dailyUsageCount ?? 0;
+  const remainingQueries =
+    dailyUsageCount === null ? null : Math.max(0, dailyLimit - usageCount);
+  const isAtDailyLimit = remainingQueries === 0;
+  const isLowQueries = remainingQueries === 1;
 
   return (
     <>
@@ -532,6 +609,28 @@ export function AiCopilot({
             </button>
           </div>
 
+          {user ? (
+            <div className="mt-3">
+              {remainingQueries === null ? (
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">Loading usage…</p>
+              ) : isAtDailyLimit ? (
+                <p className="text-[10px] font-medium text-red-600 dark:text-red-400">
+                  Daily limit reached ({dailyLimit} queries). Resets at midnight UTC.
+                </p>
+              ) : (
+                <p
+                  className={`text-[10px] font-medium ${
+                    isLowQueries
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {remainingQueries} of {dailyLimit} queries remaining today
+                </p>
+              )}
+            </div>
+          ) : null}
+
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Canvas Context:
@@ -556,6 +655,13 @@ export function AiCopilot({
             <AuthForm />
           ) : (
             <>
+              {appliedBannerVisible ? (
+                <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-emerald-200/60 bg-emerald-50/90 px-3 py-2 text-xs font-medium text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200 sm:mx-5">
+                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Applied to sandbox
+                </div>
+              ) : null}
+
               <div className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50/50 via-transparent to-blue-50/20 px-4 py-4 sm:px-5 dark:from-slate-950/50 dark:to-slate-900/30">
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center px-2 py-10 text-center">
@@ -569,6 +675,18 @@ export function AiCopilot({
                       I know every SFMC data view in this workspace — primary keys, relationships, and
                       query patterns included.
                     </p>
+                    <div className="mt-5 flex w-full max-w-[18rem] flex-col gap-2">
+                      {STARTER_PROMPTS.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => setInput(prompt)}
+                          className="rounded-xl border border-slate-200/60 bg-white/90 px-3 py-2 text-left text-xs leading-snug text-slate-700 transition-colors hover:border-violet-300/60 hover:bg-violet-50/50 dark:border-slate-700/60 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-950/30"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -594,7 +712,7 @@ export function AiCopilot({
                           {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                         </span>
                         <div
-                          className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed transition-all duration-300 ease-out ${
+                          className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed transition-all duration-300 ease-out ${
                             isUser
                               ? 'rounded-tr-md bg-slate-800 text-slate-50 shadow-[0_4px_12px_rgba(0,0,0,0.12)] dark:bg-slate-100 dark:text-slate-900'
                               : 'rounded-tl-md border border-slate-200/60 bg-white/90 text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.02)] backdrop-blur-md dark:border-slate-700/40 dark:bg-slate-900/80 dark:text-slate-100'
@@ -668,13 +786,14 @@ export function AiCopilot({
                     aria-label="Message to AI copilot"
                   />
                   <button
-                    type="submit"
-                    disabled={isSending || !input.trim()}
+                    type={isSending ? 'button' : 'submit'}
+                    onClick={isSending ? handleStopGenerating : undefined}
+                    disabled={!isSending && !input.trim()}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-600 text-white shadow-[0_4px_12px_rgba(139,92,246,0.25)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:from-violet-600 hover:to-cyan-700 hover:shadow-[0_8px_20px_rgba(139,92,246,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-                    aria-label="Send message"
+                    aria-label={isSending ? 'Stop generating' : 'Send message'}
                   >
                     {isSending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      <Square className="h-3.5 w-3.5 fill-current" aria-hidden />
                     ) : (
                       <SendHorizontal className="h-4 w-4" aria-hidden />
                     )}

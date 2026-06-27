@@ -1,6 +1,7 @@
-import { Link2 } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { AlertTriangle, Link2 } from 'lucide-react';
 import type { DataViewField, DataViewTable } from '../data/sfmcSchema';
-import { TruncatedText } from './TruncatedText';
+import { getKnownLimitations, getTableRetention } from '../data/tableMetadata';import { TruncatedText } from './TruncatedText';
 import type { HoveredRelation } from '../utils/schemaExplorer';
 import {
   buildRelationHighlight,
@@ -81,13 +82,13 @@ const categoryThemes: Record<DataViewCategory, CategoryTheme> = {
   },
   Automation: {
     categoryBadge:
-      'bg-violet-50/90 text-violet-800 ring-1 ring-inset ring-violet-200/80 dark:bg-violet-950/50 dark:text-violet-200 dark:ring-violet-800/60',
-    accentLine: 'bg-violet-500',
-    pathRowRing: 'ring-1 ring-inset ring-violet-200/60 dark:ring-violet-800/40',
-    pathRowBg: 'bg-violet-50/80 dark:bg-violet-950/30',
-    pathText: 'text-violet-950 dark:text-violet-50',
-    pathIcon: 'text-violet-600 dark:text-violet-400',
-    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-violet-600 dark:group-hover/row:text-violet-400',
+      'bg-indigo-50/90 text-indigo-800 ring-1 ring-inset ring-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-200 dark:ring-indigo-800/60',
+    accentLine: 'bg-indigo-500',
+    pathRowRing: 'ring-1 ring-inset ring-indigo-200/60 dark:ring-indigo-800/40',
+    pathRowBg: 'bg-indigo-50/80 dark:bg-indigo-950/30',
+    pathText: 'text-indigo-950 dark:text-indigo-50',
+    pathIcon: 'text-indigo-600 dark:text-indigo-400',
+    linkHover: 'group-hover/row:opacity-100 group-hover/row:text-indigo-600 dark:group-hover/row:text-indigo-400',
   },
   Mobile: {
     categoryBadge:
@@ -170,8 +171,11 @@ const PK_PILL_CLASS =
 const FK_PILL_CLASS =
   'inline-flex bg-indigo-50 text-indigo-600 border border-indigo-200 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md shadow-sm uppercase tracking-wider dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/50';
 
+const IDX_PILL_CLASS =
+  'inline-flex bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md shadow-sm uppercase tracking-wider dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-600/50';
+
 const LINK_ICON_IDLE =
-  'text-indigo-400/70 opacity-80 transition-all duration-100 dark:text-indigo-400/60';
+  'text-indigo-400 opacity-20 transition-all duration-100 dark:text-indigo-400/80';
 
 /** Positions link icon in row padding without shifting field name text. */
 const FIELD_LINK_ICON_CLASS = 'absolute left-0 top-1 z-[1] h-3.5 w-3.5 -translate-x-[calc(100%+0.25rem)]';
@@ -220,15 +224,49 @@ export function DataViewCard({
   compact = false,
 }: DataViewCardProps) {
   const theme = categoryThemes[table.category];
+  const retentionPeriod = getTableRetention(table.name);
+  const knownLimitations = getKnownLimitations(table.name);
+  const limitationsPopoverId = useId();
+  const [limitationsOpen, setLimitationsOpen] = useState(false);
+  const [isFieldsExpanded, setIsFieldsExpanded] = useState(false);
+  const [hiddenFieldCount, setHiddenFieldCount] = useState(0);
+  const fieldsScrollRef = useRef<HTMLDivElement>(null);
   const isSearchActive = normalizedSearchQuery.length > 0;
   const tableNameMatches = tableNameMatchesSearch(table.name, normalizedSearchQuery);
   const tableMatches = tableMatchesSearch(table, normalizedSearchQuery);
   const isCardDimmed = isSearchActive && !tableMatches;
+
+  useEffect(() => {
+    if (isFieldsExpanded) {
+      setHiddenFieldCount(0);
+      return;
+    }
+
+    const container = fieldsScrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    const measureOverflow = () => {
+      const overflow = container.scrollHeight - container.clientHeight;
+      setHiddenFieldCount(overflow > 4 ? Math.ceil(overflow / 36) : 0);
+    };
+
+    measureOverflow();
+    const observer = new ResizeObserver(measureOverflow);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [isFieldsExpanded, table.fields.length, showDetails, compact]);
+
+  const cardHeightClass = isFieldsExpanded
+    ? 'h-auto max-h-none'
+    : compact
+      ? 'h-[360px] max-h-[400px]'
+      : 'h-[450px] max-h-[500px]';
+
   return (
     <article
-      className={`group/card flex flex-col overflow-hidden transition-all duration-300 ease-out ${CARD_BASE_CLASS} ${
-        compact ? 'h-[360px] max-h-[400px]' : 'h-[450px] max-h-[500px]'
-      } ${isSelected ? 'card-selected' : ''} ${
+      className={`group/card flex flex-col overflow-hidden transition-all duration-300 ease-out ${CARD_BASE_CLASS} ${cardHeightClass} ${isSelected ? 'card-selected' : ''} ${
         isCardDimmed ? 'card-search-dimmed' : 'opacity-100'
       }`}
     >
@@ -243,25 +281,79 @@ export function DataViewCard({
         className={`${compact ? 'h-[4.75rem]' : CARD_HEADER_HEIGHT} flex shrink-0 flex-col justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800/80`}
       >
         <div className="flex min-h-[1.5rem] items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => onToggleSelect(table.name)}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+            aria-pressed={isSelected}
+            aria-label={`Include ${table.name} in SQL query`}
+          >
             <input
               type="checkbox"
               checked={isSelected}
-              onChange={() => onToggleSelect(table.name)}
-              className="card-select-checkbox h-3.5 w-3.5 shrink-0 cursor-pointer"
-              aria-label={`Include ${table.name} in SQL query`}
+              readOnly
+              tabIndex={-1}
+              className="card-select-checkbox pointer-events-none h-3.5 w-3.5 shrink-0"
+              aria-hidden
             />
             <TruncatedText
-              as="h2"
+              as="span"
               text={table.name}
               className="min-w-0 flex-1 truncate font-mono text-sm font-semibold leading-none tracking-tight text-slate-900 dark:text-white"
             />
+          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {retentionPeriod ? (
+              <span
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold ${
+                  retentionPeriod === 'Indefinite'
+                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/60'
+                    : 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700/60'
+                }`}
+                title="Data retention period"
+              >
+                ⏱ {retentionPeriod}
+              </span>
+            ) : null}
+            {knownLimitations.length > 0 ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setLimitationsOpen((open) => !open)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 transition-colors hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                  aria-expanded={limitationsOpen}
+                  aria-controls={limitationsPopoverId}
+                  aria-label={`Known limitations for ${table.name}`}
+                  title="Known limitations"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                {limitationsOpen ? (
+                  <div
+                    id={limitationsPopoverId}
+                    className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-amber-200/80 bg-amber-50/95 p-3 shadow-lg dark:border-amber-900/50 dark:bg-amber-950/95"
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                      Known limitations
+                    </p>
+                    <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-amber-900 dark:text-amber-100">
+                      {knownLimitations.map((note) => (
+                        <li key={note} className="flex gap-1.5">
+                          <span aria-hidden>•</span>
+                          <span>{note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <span
+              className={`inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] shadow-sm ${theme.categoryBadge}`}
+            >
+              {table.category}
+            </span>
           </div>
-          <span
-            className={`inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] shadow-sm ${theme.categoryBadge}`}
-          >
-            {table.category}
-          </span>
         </div>
         <TruncatedText
           as="p"
@@ -288,30 +380,48 @@ export function DataViewCard({
           </span>
         </div>
 
-        <div
-          className="scrollbar-card-fields flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4"
-          role="table"
-          aria-label={`${table.name} fields`}
-        >
-          <div className="shrink-0 py-1" role="rowgroup">
-            {table.fields.map((field, fieldIndex) => (
-              <FieldRow
-                key={`${table.name}-${field.name}-${fieldIndex}`}
-                tableName={table.name}
-                field={field}
-                categoryTheme={theme}
-                normalizedSearchQuery={normalizedSearchQuery}
-                isSearchActive={isSearchActive}
-                tableMatches={tableMatches}
-                tableNameMatches={tableNameMatches}
-                hoveredRelation={hoveredRelation}
-                onFieldRelationHover={onFieldRelationHover}
-                onFieldRelationLeave={onFieldRelationLeave}
-                showDetails={showDetails}
-                schemaTables={schemaTables}
-              />
-            ))}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={fieldsScrollRef}
+            className="scrollbar-card-fields flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4"
+            role="table"
+            aria-label={`${table.name} fields`}
+          >
+            <div className="shrink-0 py-1" role="rowgroup">
+              {table.fields.map((field, fieldIndex) => (
+                <FieldRow
+                  key={`${table.name}-${field.name}-${fieldIndex}`}
+                  tableName={table.name}
+                  field={field}
+                  categoryTheme={theme}
+                  normalizedSearchQuery={normalizedSearchQuery}
+                  isSearchActive={isSearchActive}
+                  tableMatches={tableMatches}
+                  tableNameMatches={tableNameMatches}
+                  hoveredRelation={hoveredRelation}
+                  onFieldRelationHover={onFieldRelationHover}
+                  onFieldRelationLeave={onFieldRelationLeave}
+                  showDetails={showDetails}
+                  schemaTables={schemaTables}
+                />
+              ))}
+            </div>
           </div>
+          {hiddenFieldCount > 0 && !isFieldsExpanded ? (
+            <>
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-slate-950 dark:via-slate-950/80"
+                aria-hidden
+              />
+              <button
+                type="button"
+                onClick={() => setIsFieldsExpanded(true)}
+                className="absolute inset-x-4 bottom-2 rounded-lg border border-slate-200/80 bg-white/95 px-3 py-1.5 text-center text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300 dark:hover:border-slate-600"
+              >
+                ↓ {hiddenFieldCount} more field{hiddenFieldCount === 1 ? '' : 's'}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     </article>
@@ -397,14 +507,23 @@ function FieldRow({
     >
       <div role="cell" className="relative min-w-0">
         {isRelationInteractive && (
-          <Link2
-            className={`${FIELD_LINK_ICON_CLASS} ${
-              isPathActive
-                ? `opacity-100 ${categoryTheme.pathIcon}`
-                : `${LINK_ICON_IDLE} ${categoryTheme.linkHover}`
-            }`}
-            aria-hidden
-          />
+          <span
+            className={FIELD_LINK_ICON_CLASS}
+            title={
+              field.relatesTo?.[0]
+                ? `Hover to highlight this field's relation in ${field.relatesTo[0].table}`
+                : 'Hover to highlight related tables'
+            }
+          >
+            <Link2
+              className={`h-3.5 w-3.5 ${
+                isPathActive
+                  ? `opacity-90 ${categoryTheme.pathIcon}`
+                  : `${LINK_ICON_IDLE} group-hover/row:opacity-90 ${categoryTheme.linkHover}`
+              }`}
+              aria-hidden
+            />
+          </span>
         )}
         <div className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
@@ -434,7 +553,7 @@ function FieldRow({
             FK
           </span>
         ) : showIndexedMark ? (
-          <span className={FK_PILL_CLASS} title="Indexed field">
+          <span className={IDX_PILL_CLASS} title="Indexed field">
             IDX
           </span>
         ) : (

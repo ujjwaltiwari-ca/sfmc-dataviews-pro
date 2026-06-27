@@ -4,6 +4,7 @@ import {
   synchronizedDeDataViews,
 } from '../data/sfmcSchema.js';
 import type { DataViewField, DataViewTable } from '../data/schemas/types.js';
+import { getKnownLimitations, getTableRetention } from '../data/tableMetadata.js';
 
 /** All workspace segments — core system views, SendLog templates, and synchronized CRM DEs. */
 const ALL_COPILOT_WORKSPACE_TABLES: readonly DataViewTable[] = [
@@ -49,14 +50,29 @@ function formatFieldLine(field: DataViewField): string {
  */
 export function buildDetailedTableContext(table: DataViewTable): string {
   const fieldLines = table.fields.map(formatFieldLine);
+  const retention = getTableRetention(table.name);
+  const limitations = getKnownLimitations(table.name);
 
-  return [
+  const lines = [
     `Table: ${table.name}`,
     `Category: ${table.category}`,
     `Description: ${table.description}`,
-    'Fields:',
-    ...fieldLines,
-  ].join('\n');
+  ];
+
+  if (retention) {
+    lines.push(`Retention: ${retention}`);
+  }
+
+  if (limitations.length > 0) {
+    lines.push('Known limitations:');
+    for (const note of limitations) {
+      lines.push(`  - ${note}`);
+    }
+  }
+
+  lines.push('Fields:', ...fieldLines);
+
+  return lines.join('\n');
 }
 
 /**

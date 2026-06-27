@@ -9,7 +9,7 @@ import type { SqlKeywordCase } from './sqlGenerator';
 import { SITE_ORIGIN } from './seoStatic.js';
 import { sanitizeNumericSqlLiteral } from './sqlSanitize';
 
-export type SandboxEditorTab = 'live' | 'templates';
+export type SandboxEditorTab = 'live' | 'templates' | 'history';
 
 /** URL query parameter keys (shareable workspace). */
 export const WORKSPACE_URL_KEYS = {
@@ -162,7 +162,7 @@ function parseEditorTab(value: string | null | undefined): SandboxEditorTab | nu
     return null;
   }
   const normalized = value.trim().toLowerCase();
-  if (normalized === 'live' || normalized === 'templates') {
+  if (normalized === 'live' || normalized === 'templates' || normalized === 'history') {
     return normalized;
   }
   return null;

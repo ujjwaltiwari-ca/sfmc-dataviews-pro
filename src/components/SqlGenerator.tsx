@@ -42,6 +42,7 @@ import {
   generateSfmcSql,
   getUniqueEventTablesInJoinGraph,
   resolveFilterAlias,
+  suggestBridgeTable,
   UNIQUE_EVENT_FILTER_INACTIVE_HINT,
   lacksTrackingViewDateLookback,
   stripLeadingSqlComments,
@@ -61,6 +62,9 @@ import {
 import { TemplateParametersPanel } from './TemplateParametersPanel';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 import { SandboxSqlCodeMirror } from './SandboxSqlCodeMirror';
+import { SandboxQueryHistory } from './SandboxQueryHistory';
+import { appendSandboxQuerySnapshot } from '../utils/sandboxQueryHistory';
+import type { SandboxQuerySnapshot } from '../utils/sandboxQueryHistory';
 import { sanitizeNumericSqlLiteral } from '../utils/sqlSanitize';
 import {
   clampSandboxHeight,
@@ -252,6 +256,8 @@ interface SqlGeneratorProps {
   templatesShortcutNonce?: number;
   /** Notifies parent when the user-resized drawer height changes (for canvas padding). */
   onSandboxHeightChange?: (height: number) => void;
+  /** When true, generated SQL uses Ent. prefix on system data views. */
+  enterpriseBuMode?: boolean;
 }
 
 function SelectColumnModeControl({
@@ -485,9 +491,11 @@ export function SqlGenerator({
   onEditorTabChange,
   templatesShortcutNonce = 0,
   onSandboxHeightChange,
+  enterpriseBuMode = false,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const [copyWarningOpen, setCopyWarningOpen] = useState(false);
+  const [historyRefreshNonce, setHistoryRefreshNonce] = useState(0);
   const [sandboxHeight, setSandboxHeight] = useState(getDefaultSandboxHeight);
   const [isResizing, setIsResizing] = useState(false);
   const [showExpandHint, setShowExpandHint] = useState(false);
@@ -567,8 +575,16 @@ export function SqlGenerator({
         requireSubscribersJoin: filterActiveSubscribersOnly,
         filterUniqueEvents,
         compactSelect,
+        enterpriseBuMode,
       }),
-    [selectedTableNames, schemaTables, filterActiveSubscribersOnly, filterUniqueEvents, compactSelect],
+    [
+      selectedTableNames,
+      schemaTables,
+      filterActiveSubscribersOnly,
+      filterUniqueEvents,
+      compactSelect,
+      enterpriseBuMode,
+    ],
   );
 
   const {
@@ -695,6 +711,10 @@ export function SqlGenerator({
       }
       return;
     }
+    if (tab === 'history') {
+      onActiveTemplateIdChange(null);
+      return;
+    }
     onActiveTemplateIdChange(null);
   };
 
@@ -722,6 +742,40 @@ export function SqlGenerator({
 
   const showTemplateLibrary = editorTab === 'templates' && activeTemplateId === null;
   const showSqlEditor = editorTab === 'live' || activeTemplateId !== null;
+  const showHistory = editorTab === 'history';
+
+  useEffect(() => {
+    if (editorTab !== 'live' || !sql.trim()) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const saved = appendSandboxQuerySnapshot(sql, selectedTableNames);
+      if (saved) {
+        setHistoryRefreshNonce((nonce) => nonce + 1);
+      }
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [sql, selectedTableNames, editorTab]);
+
+  const handleRestoreHistory = useCallback(
+    (snapshot: SandboxQuerySnapshot) => {
+      onSqlChange(snapshot.sql);
+      onSandboxPreferencesChange({ editorTab: 'live' });
+      setManualSqlLocked(true);
+    },
+    [onSqlChange, onSandboxPreferencesChange],
+  );
+
+  const disconnectedWarnings = useMemo(
+    () =>
+      disconnectedTables.map((tableName) => ({
+        tableName,
+        bridge: suggestBridgeTable(tableName, joinTables, schema),
+      })),
+    [disconnectedTables, joinTables, schema],
+  );
 
   const pathfinderAutoSyncActive =
     editorTab === 'live' && selectedTableNames.length > 0 && !preserveSql;
@@ -891,12 +945,12 @@ export function SqlGenerator({
           aria-valuenow={sandboxHeight}
           onMouseDown={handleResizeStart}
           title="Drag to resize SQL sandbox height"
-          className={`group pointer-events-auto relative flex h-1.5 w-full shrink-0 cursor-row-resize items-center justify-center bg-slate-800/40 transition-colors duration-150 hover:bg-sky-500/80 ${
+          className={`group pointer-events-auto relative flex h-4 w-full shrink-0 cursor-row-resize items-center justify-center bg-slate-800/40 transition-colors duration-150 hover:bg-slate-200 dark:hover:bg-slate-700 ${
             isResizing ? 'bg-sky-500/80' : ''
           }`}
         >
           <GripHorizontal
-            className="pointer-events-none absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-slate-300 opacity-0 transition-opacity duration-200 group-hover:opacity-60 dark:text-slate-400"
+            className="pointer-events-none absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-slate-300 opacity-60 transition-opacity duration-200 group-hover:opacity-100 dark:text-slate-400"
             aria-hidden
           />
         </div>
@@ -932,7 +986,7 @@ export function SqlGenerator({
                     {userSelectedTables.length} target
                     {userSelectedTables.length === 1 ? '' : 's'}
                     {architecture.joinSteps.length > 0 &&
-                      ` · ${architecture.joinSteps.length} BFS join step${architecture.joinSteps.length === 1 ? '' : 's'}`}
+                      ` · ${architecture.joinSteps.length} Pathfinder join step${architecture.joinSteps.length === 1 ? '' : 's'}`}
                     {bridgingTables.length > 0 &&
                       ` · ${bridgingTables.length} bridge${bridgingTables.length === 1 ? '' : 's'}`}
                   </p>
@@ -959,7 +1013,7 @@ export function SqlGenerator({
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
-              {userSelectedTables.length > 0 && (
+              {isExpanded && userSelectedTables.length > 0 ? (
                 <SelectColumnModeControl
                   compactSelect={compactSelect}
                   onChange={(value) => {
@@ -967,30 +1021,32 @@ export function SqlGenerator({
                     onSandboxPreferencesChange({ compactSelect: value });
                   }}
                 />
-              )}
-              <button
-                type="button"
-                onClick={handleCopy}
-                className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 ${
-                  copied
-                    ? 'border-emerald-300/60 bg-gradient-to-b from-emerald-50 to-emerald-100/80 text-emerald-800 shadow-[0_4px_12px_rgba(16,185,129,0.12)] focus:ring-emerald-500/40 dark:border-emerald-600/50 dark:from-emerald-950/50 dark:to-emerald-950/30 dark:text-emerald-200'
-                    : 'border-cyan-300/50 bg-gradient-to-b from-cyan-50 to-white text-cyan-950 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(6,182,212,0.12)] focus:ring-cyan-500/40 dark:border-cyan-600/50 dark:from-cyan-950/40 dark:to-slate-900 dark:text-cyan-100'
-                }`}
-                aria-live="polite"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="hidden sm:inline">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="hidden sm:inline">Copy SQL</span>
-                    <span className="sm:hidden">Copy</span>
-                  </>
-                )}
-              </button>
+              ) : null}
+              {isExpanded ? (
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 ${
+                    copied
+                      ? 'border-emerald-300/60 bg-gradient-to-b from-emerald-50 to-emerald-100/80 text-emerald-800 shadow-[0_4px_12px_rgba(16,185,129,0.12)] focus:ring-emerald-500/40 dark:border-emerald-600/50 dark:from-emerald-950/50 dark:to-emerald-950/30 dark:text-emerald-200'
+                      : 'border-cyan-300/50 bg-gradient-to-b from-cyan-50 to-white text-cyan-950 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(6,182,212,0.12)] focus:ring-cyan-500/40 dark:border-cyan-600/50 dark:from-cyan-950/40 dark:to-slate-900 dark:text-cyan-100'
+                  }`}
+                  aria-live="polite"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="hidden sm:inline">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="hidden sm:inline">Copy SQL</span>
+                      <span className="sm:hidden">Copy</span>
+                    </>
+                  )}
+                </button>
+              ) : null}
               {isExpanded ? (
                 <button
                   type="button"
@@ -1021,6 +1077,25 @@ export function SqlGenerator({
 
           {isExpanded && (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-2 pt-2">
+              {disconnectedWarnings.length > 0 ? (
+                <div className="mx-0 mb-3 space-y-2">
+                  {disconnectedWarnings.map(({ tableName, bridge }) => (
+                    <div
+                      key={tableName}
+                      className="flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100"
+                      role="alert"
+                    >
+                      <Route className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                      <p>
+                        <span className="font-mono font-semibold">{tableName}</span> can&apos;t be
+                        connected to the current join path. Try adding{' '}
+                        <span className="font-mono font-semibold">{bridge ?? '_Subscribers'}</span>{' '}
+                        to your selection.
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-3 lg:gap-5 lg:overflow-hidden">
                 {/* Left — query architecture & filters */}
                 <aside
@@ -1092,12 +1167,10 @@ export function SqlGenerator({
                     )}
                   </section>
 
-                  <section
-                    className={`${GLASS_PANEL_CLASS} p-3`}
-                  >
+                  <section className={`${GLASS_PANEL_CLASS} p-3`}>
                     <div className={`mb-2 flex items-center gap-2 ${SECTION_TITLE_CLASS}`}>
                       <GitBranch className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" aria-hidden />
-                      BFS join path
+                      Pathfinder join path
                     </div>
                     {architecture.joinSteps.length === 0 ? (
                       <p className="text-xs text-slate-500">
@@ -1269,6 +1342,12 @@ export function SqlGenerator({
                               isActive={editorTab === 'templates'}
                               onClick={() => handleEditorTabChange('templates')}
                             />
+                            <EditorTabButton
+                              id="sql-tab-history"
+                              label="History"
+                              isActive={editorTab === 'history'}
+                              onClick={() => handleEditorTabChange('history')}
+                            />
                           </div>
                           <QueryStudioTipIcon tip={QUERY_STUDIO_TIP} />
                           {activeTemplateId && (
@@ -1344,12 +1423,23 @@ export function SqlGenerator({
                       <div
                         id="sql-editor-panel"
                         role="tabpanel"
-                        aria-labelledby={editorTab === 'live' ? 'sql-tab-live' : 'sql-tab-templates'}
+                        aria-labelledby={
+                          editorTab === 'live'
+                            ? 'sql-tab-live'
+                            : editorTab === 'history'
+                              ? 'sql-tab-history'
+                              : 'sql-tab-templates'
+                        }
                         className={`m-2 flex min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117] ${
                           showTemplateParametersPanel ? 'flex-row gap-2 p-2' : 'relative'
                         }`}
                       >
-                        {showTemplateLibrary ? (
+                        {showHistory ? (
+                          <SandboxQueryHistory
+                            onRestore={handleRestoreHistory}
+                            refreshNonce={historyRefreshNonce}
+                          />
+                        ) : showTemplateLibrary ? (
                           <TemplateLibraryGrid onSelectTemplate={handleSelectTemplate} />
                         ) : showSqlEditor ? (
                           <>

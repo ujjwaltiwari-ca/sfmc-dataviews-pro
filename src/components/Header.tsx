@@ -6,6 +6,7 @@ import {
   Keyboard,
   Lightbulb,
   Link2,
+  Lock,
   Moon,
   Search,
   Sparkles,
@@ -22,6 +23,7 @@ import { BRAND_NAME, BRAND_TAGLINE } from '../constants/brand';
 import { AccountProfileDropdown } from './AccountProfileDropdown';
 import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   OPEN_DOCUMENTATION_EVENT,
   OPEN_PLATFORM_INFO_EVENT,
@@ -84,6 +86,7 @@ type HeaderProps = {
   isCopilotOpen?: boolean;
   onSignInRequired?: () => void;
   onOpenSqlTemplates?: () => void;
+  onCloseCopilot?: () => void;
 };
 
 export function Header({
@@ -91,6 +94,7 @@ export function Header({
   isCopilotOpen = false,
   onSignInRequired,
   onOpenSqlTemplates,
+  onCloseCopilot,
 }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
   const { user, isAuthLoading } = useAuth();
@@ -98,6 +102,13 @@ export function Header({
   const [isPlatformInfoOpen, setIsPlatformInfoOpen] = useState(false);
   const docsPanelRef = useRef<HTMLDivElement>(null);
   const docsTitleId = useId();
+
+  useFocusTrap(docsPanelRef, isDocsOpen);
+
+  const openDocs = () => {
+    onCloseCopilot?.();
+    setIsDocsOpen(true);
+  };
 
   useEffect(() => {
     if (!isDocsOpen) {
@@ -121,7 +132,7 @@ export function Header({
   }, [isDocsOpen]);
 
   useEffect(() => {
-    const handleOpenDocumentation = () => setIsDocsOpen(true);
+    const handleOpenDocumentation = () => openDocs();
     const handleOpenPlatformInfo = () => setIsPlatformInfoOpen(true);
 
     window.addEventListener(OPEN_DOCUMENTATION_EVENT, handleOpenDocumentation);
@@ -166,11 +177,18 @@ export function Header({
                 onClick={onToggleCopilot}
                 aria-pressed={isCopilotOpen}
                 aria-expanded={isCopilotOpen}
-                title="AI Copilot — uses your canvas and sandbox context; sign in required"
+                title={
+                  user
+                    ? 'AI Copilot — uses your canvas and sandbox context'
+                    : 'AI Copilot — sign in required'
+                }
                 className={`btn-nav btn-nav-violet ${
                   isCopilotOpen ? 'btn-nav-violet-active' : ''
                 }`}
               >
+                {!user && !isAuthLoading ? (
+                  <Lock className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" aria-hidden />
+                ) : null}
                 <Sparkles
                   className={`h-4 w-4 ${isCopilotOpen ? 'text-violet-600 dark:text-violet-400' : 'text-violet-500 dark:text-violet-400'}`}
                   aria-hidden
@@ -179,9 +197,12 @@ export function Header({
                 <span className="sm:hidden">AI</span>
               </button>
 
-              {!isAuthLoading && user ? (
-                <AccountProfileDropdown onSignedOut={onSignInRequired} />
-              ) : !isAuthLoading ? (
+              {isAuthLoading ? (
+                <div
+                  className="h-10 w-24 animate-pulse rounded-xl border border-slate-200/60 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                  aria-hidden
+                />
+              ) : !user ? (
                 <button
                   type="button"
                   onClick={onSignInRequired}
@@ -189,11 +210,13 @@ export function Header({
                 >
                   Sign In
                 </button>
-              ) : null}
+              ) : (
+                <AccountProfileDropdown onSignedOut={onSignInRequired} />
+              )}
 
               <button
                 type="button"
-                onClick={() => setIsDocsOpen(true)}
+                onClick={openDocs}
                 className="btn-nav btn-nav-cyan"
                 aria-haspopup="dialog"
                 aria-expanded={isDocsOpen}
@@ -239,6 +262,7 @@ export function Header({
 
           <div
             ref={docsPanelRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby={docsTitleId}

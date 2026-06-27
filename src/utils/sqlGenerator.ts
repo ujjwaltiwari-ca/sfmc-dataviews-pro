@@ -1,6 +1,7 @@
 import { isCompactSelectFieldAllowed } from '../data/compactSelectFields.js';
 import type { DataViewTable } from '../data/schemas/types.js';
 import { sfmcDataViews } from '../data/sfmcSchema.js';
+import { qualifySqlTableName } from '../constants/buContext.js';
 
 export interface SqlJoinEdge {
   fromTable: string;
@@ -67,6 +68,8 @@ export interface SqlGenerationOptions {
   filterUniqueEvents?: boolean;
   /** When true, emits essential columns per view instead of all schema fields. */
   compactSelect?: boolean;
+  /** When true, prefixes system data view names with Ent. for parent (enterprise) BU queries. */
+  enterpriseBuMode?: boolean;
 }
 
 const SUBSCRIBERS_TABLE = '_Subscribers';
@@ -456,6 +459,29 @@ export function bfsShortestPath(
   }
 
   return null;
+}
+
+/**
+ * Suggests an intermediate bridge table to connect a disconnected table to the join graph.
+ */
+export function suggestBridgeTable(
+  disconnectedTable: string,
+  connectedTables: string[],
+  tables: DataViewTable[] = sfmcDataViews,
+): string | null {
+  if (connectedTables.length === 0) {
+    return '_Subscribers';
+  }
+
+  const graph = buildSchemaAdjacency(tables);
+  for (const connected of connectedTables) {
+    const path = bfsShortestPath(disconnectedTable, connected, graph);
+    if (path && path.length > 2) {
+      return path[1] ?? null;
+    }
+  }
+
+  return '_Subscribers';
 }
 
 export interface ResolvedJoinTables {
@@ -1457,11 +1483,12 @@ export function generateSfmcSql(
   }
 
   const rootAlias = tableToAlias(rootTable);
+  const sqlTable = (name: string) => qualifySqlTableName(name, options.enterpriseBuMode === true);
 
   lines.push('SELECT');
   lines.push(selectClause);
   lines.push('FROM');
-  lines.push(`${SQL_INDENT}${rootTable} AS ${rootAlias}`);
+  lines.push(`${SQL_INDENT}${sqlTable(rootTable)} AS ${rootAlias}`);
 
   for (const step of steps) {
     const alias = tableToAlias(step.table);
@@ -1471,7 +1498,7 @@ export function generateSfmcSql(
       onConditions.push(buildUniqueEventPredicate(step.table));
     }
     lines.push('LEFT JOIN');
-    lines.push(`${SQL_INDENT}${step.table} AS ${alias}${bridgeNote}`);
+    lines.push(`${SQL_INDENT}${sqlTable(step.table)} AS ${alias}${bridgeNote}`);
     if (onConditions.length === 1) {
       lines.push(`    ON ${onConditions[0]}`);
     } else {
@@ -1486,7 +1513,7 @@ export function generateSfmcSql(
     const alias = tableToAlias(tableName);
     lines.push(`-- WARNING: No relatesTo path found for ${tableName}; add manually if needed.`);
     lines.push(`-- LEFT JOIN`);
-    lines.push(`-- ${SQL_INDENT}${tableName} AS ${alias}`);
+    lines.push(`-- ${SQL_INDENT}${sqlTable(tableName)} AS ${alias}`);
     lines.push(`-- ${SQL_INDENT}ON ...`);
   }
 

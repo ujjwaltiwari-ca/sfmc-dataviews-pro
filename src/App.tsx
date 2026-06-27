@@ -37,12 +37,23 @@ const SqlGenerator = lazy(() =>
 import { CanvasHero } from './components/CanvasHero';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
+import { FieldLookupResults } from './components/FieldLookupResults';
 import { Header } from './components/Header';
 import { SchemaArchitectMark } from './components/SchemaArchitectMark';
 import { SiteFooter } from './components/SiteFooter';
 import { WhatsNewModal } from './components/WhatsNewModal';
 import type { DataViewField } from './data/sfmcSchema';
 import { dedupeTablesByName, getTablesForSegment, type ViewSegmentId } from './data/viewSegments';
+import {
+  readBuContextPreference,
+  writeBuContextPreference,
+  type BuContextMode,
+} from './constants/buContext';
+import {
+  isFieldLookupMode,
+  parseFieldLookupQuery,
+  searchFieldsAcrossTables,
+} from './utils/fieldLookup';
 import { useWorkspaceState } from './hooks/useWorkspaceState';
 import {
   buildWorkspaceShareUrl,
@@ -229,6 +240,7 @@ function AppMain() {
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const [canvasDensity, setCanvasDensity] = useState<CanvasDensity>(readCanvasDensityPreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [buContext, setBuContext] = useState<BuContextMode>(readBuContextPreference);
   const [authShellActive, setAuthShellActive] = useState(() => hasPersistedSupabaseSession());
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [whatsNewUnseen, setWhatsNewUnseen] = useState(() => !hasSeenWhatsNew());
@@ -246,6 +258,15 @@ function AppMain() {
     activateAuthShell();
     setIsCopilotOpen((open) => !open);
   }, [activateAuthShell]);
+
+  const handleCloseCopilot = useCallback(() => {
+    setIsCopilotOpen(false);
+  }, []);
+
+  const handleBuContextChange = useCallback((mode: BuContextMode) => {
+    setBuContext(mode);
+    writeBuContextPreference(mode);
+  }, []);
 
   const handleApplyToSandbox = useCallback((sql: string) => {
     setSandboxSql(sql.trim());
@@ -305,6 +326,20 @@ function AppMain() {
     () => normalizeSearchQuery(searchQuery),
     [searchQuery],
   );
+
+  const fieldLookupTerm = useMemo(
+    () => parseFieldLookupQuery(searchQuery),
+    [searchQuery],
+  );
+
+  const fieldLookupResults = useMemo(() => {
+    if (!fieldLookupTerm) {
+      return [];
+    }
+    return searchFieldsAcrossTables(activeTables, fieldLookupTerm);
+  }, [activeTables, fieldLookupTerm]);
+
+  const showFieldLookup = isFieldLookupMode(searchQuery) && fieldLookupTerm !== null;
 
   const selectedTableNames = useMemo(
     () => activeTables.map((table) => table.name).filter((name) => selectedTables.has(name)),
@@ -376,9 +411,20 @@ function AppMain() {
     toggleTableSelection,
   ]);
 
+  const handleFieldLookupSelect = useCallback((tableName: string) => {
+    setSearchQuery('');
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-table-card="${tableName}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
+
   const handleFocusSearch = useCallback(() => {
     window.dispatchEvent(new CustomEvent(FOCUS_CANVAS_SEARCH_EVENT));
   }, []);
+
+  const enterpriseBuActive = buContext === 'enterprise' && activeSegment === 'core';
 
   const sandboxOpen = selectedTableNames.length > 0 || showSandbox;
 
@@ -460,6 +506,7 @@ function AppMain() {
           isCopilotOpen={isCopilotOpen}
           onSignInRequired={handleSignInRequired}
           onOpenSqlTemplates={handleOpenSqlTemplates}
+          onCloseCopilot={handleCloseCopilot}
         />
         <CommandToolbar
           activeSegment={activeSegment}
@@ -470,10 +517,19 @@ function AppMain() {
           onShowDetailsChange={setShowDetails}
           canvasDensity={canvasDensity}
           onCanvasDensityChange={setCanvasDensity}
+          buContext={buContext}
+          onBuContextChange={handleBuContextChange}
+          showEnterpriseBuToggle={activeSegment === 'core'}
           canClearWorkspace={canClearWorkspace}
           onClearWorkspace={handleClearWorkspace}
           onCopyWorkspaceLink={handleCopyWorkspaceLink}
         />
+        {enterpriseBuActive ? (
+          <div className="border-b border-amber-200/80 bg-amber-50/90 px-4 py-2 text-center text-xs font-medium text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100 sm:px-6">
+            Enterprise BU mode — all system data view queries use the Ent. prefix. Queries run
+            against all child BUs.
+          </div>
+        ) : null}
       </div>
 
 
@@ -486,6 +542,13 @@ function AppMain() {
             onStartWithSent={handleStartWithSent}
             onFocusSearch={handleFocusSearch}
           />
+          {showFieldLookup ? (
+            <FieldLookupResults
+              results={fieldLookupResults}
+              fieldTerm={fieldLookupTerm ?? ''}
+              onSelectResult={handleFieldLookupSelect}
+            />
+          ) : (
           <div
             key={activeSegment}
             className={`flex flex-wrap justify-center ${canvasGridGapClassName(canvasDensity)}`}
@@ -512,6 +575,7 @@ function AppMain() {
               </div>
             ))}
           </div>
+          )}
           <SiteFooter showWhatsNewBadge={whatsNewUnseen} />
         </main>
       </div>
@@ -534,6 +598,7 @@ function AppMain() {
           onEditorTabChange={setSandboxEditorTab}
           templatesShortcutNonce={templatesShortcutNonce}
           onSandboxHeightChange={setSandboxDrawerHeight}
+          enterpriseBuMode={enterpriseBuActive}
         />
       </Suspense>
 
@@ -541,10 +606,11 @@ function AppMain() {
         <Suspense fallback={null}>
           <AiCopilot
             isOpen={isCopilotOpen}
-            onClose={() => setIsCopilotOpen(false)}
+            onClose={handleCloseCopilot}
             onApplyToSandbox={handleApplyToSandbox}
             activeTables={selectedTableNames}
             currentQueryText={sandboxSql}
+            enterpriseBuMode={enterpriseBuActive}
           />
         </Suspense>
       ) : null}

@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Info } from 'lucide-react';
+import { AlertTriangle, Calendar } from 'lucide-react';
 
 type TrackingQueryWarningDialogProps = {
   isOpen: boolean;
@@ -63,7 +63,7 @@ export function TrackingQueryWarningDialog({
             className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400"
             aria-hidden
           >
-            <Info className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
           </span>
           <div className="min-w-0 space-y-1.5">
             <h2 id={titleId} className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -79,7 +79,7 @@ export function TrackingQueryWarningDialog({
             </p>
           </div>
         </div>
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-4 py-3 sm:flex-row sm:justify-end dark:border-slate-800">
+        <div className="flex flex-col gap-2 border-t border-slate-100 px-4 py-3 sm:flex-row sm:justify-end dark:border-slate-800">
           <button
             type="button"
             onClick={onCancel}
@@ -100,7 +100,7 @@ export function TrackingQueryWarningDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
           >
             {confirmLabel}
           </button>

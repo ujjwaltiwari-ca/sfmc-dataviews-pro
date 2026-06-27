@@ -1,7 +1,8 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import { BRAND_NAME, BRAND_RELEASE_LABEL } from '../constants/brand';
 import { CHANGELOG, markWhatsNewSeen } from '../content/changelog';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 type WhatsNewModalProps = {
   isOpen: boolean;
@@ -10,6 +11,9 @@ type WhatsNewModalProps = {
 
 export function WhatsNewModal({ isOpen, onClose }: WhatsNewModalProps) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(dialogRef, isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -51,6 +55,8 @@ export function WhatsNewModal({ isOpen, onClose }: WhatsNewModalProps) {
       />
 
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

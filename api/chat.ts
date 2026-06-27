@@ -128,7 +128,12 @@ function buildCurrentQueryContextMessage(
   };
 }
 
-function buildSystemInstruction(schemaContext: string): string {
+function buildSystemInstruction(schemaContext: string, enterpriseBuMode: boolean): string {
+  const buContextNote = enterpriseBuMode
+    ? `\n### ENTERPRISE BU CONTEXT (active):
+The user is querying from a parent (enterprise) business unit. Prefix all system data view table references with Ent. (e.g. Ent._Sent, Ent._Subscribers). Queries run against all child BUs. SendLog and synchronized CRM data extensions do not use the Ent. prefix.`
+    : '';
+
   return `You are an elite SFMC Architect Copilot for Salesforce Marketing Cloud Data Views and Query Studio SQL. Use exact table names (leading underscores). Reply briefly. Put runnable SQL in \`\`\`sql fences with aliases. Filter large tracking views (_Open, _Click, _Sent) by EventDate when relevant.
 
 You are an exclusive, specialized Salesforce Platform Architect Copilot. Your sole purpose is to assist with Salesforce Marketing Cloud Data Views, SQL queries, and architectural layouts. You must politely decline to answer, write stories, tell jokes, or discuss any topics outside of Salesforce and technical data infrastructure. If a user asks a non-Salesforce question, respond with: 'I am specialized exclusively in Salesforce engineering and architecture. Please let me know how I can help you with your Salesforce Data Views or SQL compilation!'
@@ -158,7 +163,7 @@ The user workspace may highlight specific Active Canvas Tables — prefer those 
 ${CONTEXT_CODE_GROUNDING_INSTRUCTION}
 
 Schema Context:
-${schemaContext}`;
+${schemaContext}${buContextNote}`;
 }
 
 function truncateChatMessageContent(content: string): string {
@@ -194,6 +199,7 @@ type ChatRequestBody = {
   messages?: ClientChatMessage[];
   activeTables?: unknown;
   currentQueryText?: unknown;
+  enterpriseBuMode?: unknown;
 };
 
 type NodeApiRequest = IncomingMessage & { body?: unknown };
@@ -431,7 +437,7 @@ function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | n
     const role = entry.role;
     const content = entry.content;
 
-    if (role !== 'user' || typeof content !== 'string') {
+    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
       return null;
     }
 
@@ -440,7 +446,7 @@ function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | n
       continue;
     }
 
-    normalized.push({ role: 'user', content: trimmed });
+    normalized.push({ role, content: trimmed });
   }
 
   return normalized;
@@ -574,6 +580,7 @@ export async function handleChatRequest(
   );
   const currentQueryText = normalizeCurrentQueryText(body.currentQueryText);
   const currentQueryContextMessage = buildCurrentQueryContextMessage(currentQueryText);
+  const enterpriseBuMode = body.enterpriseBuMode === true;
 
   let usageReservation: UsageReservation;
   try {
@@ -609,7 +616,7 @@ export async function handleChatRequest(
         stream: true,
         max_tokens: OPENAI_MAX_OUTPUT_TOKENS,
         messages: [
-          { role: 'system', content: buildSystemInstruction(schemaContext) },
+          { role: 'system', content: buildSystemInstruction(schemaContext, enterpriseBuMode) },
           ...(currentQueryContextMessage ? [currentQueryContextMessage] : []),
           ...clientMessages,
         ],

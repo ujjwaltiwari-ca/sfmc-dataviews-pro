@@ -44,9 +44,9 @@ export function CopilotMessageContent({ content }: CopilotMessageContentProps) {
           return (
             <pre
               key={`sql-${index}`}
-              className="overflow-x-auto rounded-lg border border-slate-800/80 bg-[#0d1117] px-3 py-2.5 font-mono text-[11px] leading-relaxed text-slate-100 shadow-inner"
+              className="max-w-full overflow-x-auto rounded-lg border border-slate-800/80 bg-[#0d1117] px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre text-slate-100 shadow-inner"
             >
-              <code>{segment.content}</code>
+              <code className="block min-w-max">{segment.content}</code>
             </pre>
           );
         }
