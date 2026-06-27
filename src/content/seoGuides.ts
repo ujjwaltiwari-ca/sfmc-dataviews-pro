@@ -9,7 +9,7 @@ export type SeoGuide = {
   slug: string;
   title: string;
   metaDescription: string;
-  category: 'Joins' | 'Journey' | 'Performance' | 'Subscribers' | 'Tracking' | 'Deliverability' | 'Automation' | 'Engagement';
+  category: 'Joins' | 'Journey' | 'Performance' | 'Subscribers' | 'Tracking' | 'Deliverability' | 'Automation' | 'Engagement' | 'SMS';
   readMinutes: number;
   sections: GuideSection[];
   relatedViews?: { slug: string; name: string }[];
@@ -618,6 +618,142 @@ ORDER BY u.EventDate DESC`,
           'High same-day unsubscribes may signal frequency or relevance issues.',
           'Filter by JobID when auditing a specific campaign deployment.',
           'Combine with _Complaint for full deliverability friction picture.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'join-sent-to-job-email-name',
+    title: 'Why _Sent EmailName Is Null — Join _Job on JobID',
+    metaDescription:
+      'SFMC _Sent does not include EmailName. Join _Job on JobID in Query Studio to get email name, subject, and send metadata for campaign reporting.',
+    category: 'Joins',
+    readMinutes: 4,
+    relatedViews: [
+      { slug: 'sent', name: '_Sent' },
+      { slug: 'job', name: '_Job' },
+    ],
+    workspaceDeepLink: '/?t=_Sent,_Job&sb=1',
+    sections: [
+      {
+        heading: 'The EmailName gotcha',
+        paragraphs: [
+          '_Sent records every deployment event but EmailName is always null on this view. Campaign reporting that needs the email asset name must JOIN _Job on JobID.',
+          'This is one of the most common Query Studio mistakes — the send count looks right but the email name column is blank.',
+        ],
+      },
+      {
+        heading: 'Send volume by email name',
+        sql: `SELECT
+  j.EmailName,
+  j.EmailSubject,
+  COUNT(DISTINCT s.SubscriberKey) AS Sends
+FROM _Sent s
+INNER JOIN _Job j ON s.JobID = j.JobID
+WHERE s.EventDate >= DATEADD(day, -30, GETDATE())
+GROUP BY j.EmailName, j.EmailSubject
+ORDER BY Sends DESC`,
+      },
+      {
+        heading: 'Practitioner tips',
+        bullets: [
+          'Filter EventDate on _Sent before joining — _Job is smaller but the join multiplies if _Sent is unbounded.',
+          'Triggered sends populate TriggererSendDefinitionObjectID on both _Sent and _Job — use it for Journey attribution.',
+          'Exclude test sends with IsTestSend = 0 on _Sent when reporting production volume.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'spam-complaint-feedback-loop',
+    title: 'Analyzing _Complaint Spam Feedback Loop Events',
+    metaDescription:
+      'Query SFMC _Complaint Data View for ISP spam feedback loop events — join patterns, deliverability impact, and pairing with _Unsubscribe.',
+    category: 'Deliverability',
+    readMinutes: 5,
+    relatedViews: [
+      { slug: 'complaint', name: '_Complaint' },
+      { slug: 'sent', name: '_Sent' },
+      { slug: 'unsubscribe', name: '_Unsubscribe' },
+    ],
+    workspaceDeepLink: '/?t=_Complaint,_Sent&sb=1',
+    sections: [
+      {
+        heading: 'What _Complaint captures',
+        paragraphs: [
+          '_Complaint records spam feedback loop (FBL) events from participating ISPs. A complaint typically triggers an automatic unsubscribe and hurts sender reputation.',
+          'Complaint rate is a key deliverability KPI — most senders target well below 0.1% of sends.',
+        ],
+      },
+      {
+        heading: 'Complaints by send job',
+        sql: `SELECT
+  s.JobID,
+  j.EmailName,
+  COUNT(DISTINCT c.SubscriberKey) AS Complaints,
+  COUNT(DISTINCT s.SubscriberKey) AS Sends
+FROM _Sent s
+INNER JOIN _Complaint c
+  ON s.JobID = c.JobID
+  AND s.ListID = c.ListID
+  AND s.BatchID = c.BatchID
+  AND s.SubscriberID = c.SubscriberID
+INNER JOIN _Job j ON s.JobID = j.JobID
+WHERE c.EventDate >= DATEADD(day, -30, GETDATE())
+GROUP BY s.JobID, j.EmailName
+ORDER BY Complaints DESC`,
+      },
+      {
+        heading: 'Deliverability follow-up',
+        bullets: [
+          'Cross-check _Unsubscribe on the same four keys — complaints often generate an opt-out event.',
+          'Review _Subscribers.Status after spikes to confirm auto-unsubscribe processed correctly.',
+          'Sudden complaint surges on a single JobID often indicate list source or frequency problems.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'sms-message-tracking-sql',
+    title: 'SMS Reporting with _SMSMessageTracking',
+    metaDescription:
+      'SFMC SQL patterns for _SMSMessageTracking — delivery status, Journey SMS attribution, keyword joins, and date filters for MobileConnect reporting.',
+    category: 'SMS',
+    readMinutes: 5,
+    relatedViews: [
+      { slug: 'smsmessagetracking', name: '_SMSMessageTracking' },
+      { slug: 'smssubscriptionlog', name: '_SMSSubscriptionLog' },
+      { slug: 'journeyactivity', name: '_JourneyActivity' },
+    ],
+    workspaceDeepLink: '/?t=_SMSMessageTracking&sb=1',
+    sections: [
+      {
+        heading: 'SMS tracking basics',
+        paragraphs: [
+          '_SMSMessageTracking stores MobileConnect MT/MO message events. Unlike email tracking views, there is no six-month purge — but unbounded queries still time out.',
+          'Always anchor on CreateDateTime or ActionDateTime. Join JBDefinitionID to _Journey.VersionID for Journey SMS attribution.',
+        ],
+      },
+      {
+        heading: 'Delivery rate by keyword',
+        sql: `SELECT
+  SharedKeyword,
+  COUNT(*) AS Messages,
+  SUM(CASE WHEN Delivered = 1 THEN 1 ELSE 0 END) AS Delivered,
+  SUM(CASE WHEN Undelivered = 1 THEN 1 ELSE 0 END) AS Undelivered
+FROM _SMSMessageTracking
+WHERE CreateDateTime >= DATEADD(day, -30, GETDATE())
+  AND Outbound = 1
+  AND IsTest = 0
+GROUP BY SharedKeyword
+ORDER BY Messages DESC`,
+      },
+      {
+        heading: 'Practitioner tips',
+        bullets: [
+          'Mobile is stored without a + prefix — normalize E.164 numbers before joining to external lists.',
+          'Pair _UndeliverableSMS when diagnosing repeated failures on the same Mobile number.',
+          'SubscriptionDefinitionID on _SMSSubscriptionLog joins to KeywordID for opt-in history.',
         ],
       },
     ],

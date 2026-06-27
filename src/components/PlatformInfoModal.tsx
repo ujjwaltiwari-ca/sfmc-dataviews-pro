@@ -96,6 +96,13 @@ export function PlatformInfoModal({ isOpen, onClose }: PlatformInfoModalProps) {
             {BRAND_TAGLINE}
           </p>
 
+          <ul className="list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+            <li>33 system Data Views with known limitations and retention metadata</li>
+            <li>SQL Sandbox — Pathfinder joins, safe defaults, 28 templates, query history</li>
+            <li>Saved queries for signed-in users (Supabase, up to 10 per account)</li>
+            <li>16 practitioner SQL guides at /guides/ plus static reference at /views/</li>
+          </ul>
+
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/50">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Attribution

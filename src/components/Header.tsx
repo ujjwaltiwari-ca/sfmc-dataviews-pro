@@ -8,6 +8,7 @@ import {
   Link2,
   Lock,
   Moon,
+  Save,
   Search,
   Sparkles,
   Sun,
@@ -16,6 +17,7 @@ import {
   X,
   Zap,
   LayoutGrid,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../context/authContext.shared';
 import { useTheme } from '../context/ThemeContext';
@@ -33,12 +35,12 @@ const GUIDE_WORKFLOW = [
   {
     title: 'Explore the schema canvas',
     icon: Table2,
-    body: 'Data Views are system tables that expose subscribers, sends, tracking, journeys, and more. Browse cards by segment, inspect field types, and trace primary keys without leaving the workspace.',
+    body: 'Data Views are system tables that expose subscribers, sends, tracking, journeys, and more. Browse cards by segment, inspect field types, retention badges, and ⚠ known limitations without leaving the workspace.',
   },
   {
     title: 'Search across every table',
     icon: Search,
-    body: 'Type a field name (for example JobID or SubscriberKey) in the command toolbar. Matching tables stay in focus; unrelated cards fade so you can spot where a column lives instantly.',
+    body: 'Type a field name (for example JobID or SubscriberKey) in the command toolbar — or prefix with field: for field-only search. Matching tables stay in focus; unrelated cards fade so you can spot where a column lives instantly.',
   },
   {
     title: 'Expand field details',
@@ -53,12 +55,22 @@ const GUIDE_WORKFLOW = [
   {
     title: 'Build SQL in the Sandbox',
     icon: Terminal,
-    body: 'Check tables to include, then use the SQL Sandbox for BFS join paths, bridge tables, and one-click copy into Automation Studio or Query Studio. If a query times out, narrow the date range with sandbox utilities.',
+    body: 'Check tables to open the SQL Sandbox. Pathfinder builds BFS join paths with correct four-key engagement joins. Utilities add date lookback, test-send exclusion, and unique-event filters — enabled by default for tracking views.',
+  },
+  {
+    title: 'Starter templates & guides',
+    icon: Zap,
+    body: 'Open Starter Templates for 28 practitioner patterns (filter by category or search). For long-form join walkthroughs, visit /guides/ — 16 articles covering _Sent→_Open, Ent._Subscribers, complaints, SMS, and more.',
+  },
+  {
+    title: 'Save and restore queries',
+    icon: Save,
+    body: 'Sign in to save named queries (up to 10) with SQL, table selection, segment, and sandbox settings. Use the Saved tab to restore; History keeps local snapshots in your browser.',
   },
   {
     title: 'Select tables for SQL',
     icon: CheckSquare,
-    body: 'When selections do not share direct keys, the pathfinder injects bridge tables automatically in the JOIN section — your checkboxes stay limited to what you chose.',
+    body: 'When selections do not share direct keys, Pathfinder injects bridge tables automatically in the JOIN section — your checkboxes stay limited to what you chose.',
   },
 ] as const;
 
@@ -71,7 +83,17 @@ const PRO_TIPS = [
   {
     icon: Lightbulb,
     title: 'Query performance',
-    body: 'Large joins against _Open or _Click can time out in Query Studio. Use the Sandbox “Limit past 30 days” utility or filter on EventDate early.',
+    body: 'Large joins against _Open or _Click can time out in Query Studio. The sandbox enables “Limit past 30 days” automatically when tracking views are selected — keep EventDate filters early.',
+  },
+  {
+    icon: AlertTriangle,
+    title: 'Known limitations',
+    body: 'Click ⚠ on any card header for practitioner warnings — e.g. _Sent.EmailName is null (join _Job), Apple MPP inflates _Open, or Ent._Subscribers for child BU scope.',
+  },
+  {
+    icon: Lock,
+    title: 'Enterprise BU mode',
+    body: 'Toggle Enterprise BU in the command toolbar (core segment) to prefix system data views with Ent. — required for parent-account queries that span child business units.',
   },
 ] as const;
 
@@ -278,8 +300,8 @@ export function Header({
                     Documentation &amp; User Guide
                   </h2>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Step-by-step guides for the schema canvas, SQL Sandbox, and shareable workspace
-                    links.
+                    Step-by-step guides for the schema canvas, SQL Sandbox, saved queries, templates,
+                    and shareable workspace links.
                   </p>
                 </div>
                 <button
@@ -310,6 +332,31 @@ export function Header({
                     <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{body}</p>
                   </article>
                 ))}
+              </section>
+
+              <section className="mt-8">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  SQL Sandbox tabs
+                </h3>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                  <li>
+                    <strong className="font-medium text-slate-800 dark:text-slate-200">Live Query</strong>{' '}
+                    — card-driven SQL with Pathfinder joins and utility toggles.
+                  </li>
+                  <li>
+                    <strong className="font-medium text-slate-800 dark:text-slate-200">Starter Templates</strong>{' '}
+                    — 28 patterns; filter by Deliverability, Journey, SMS, and more.
+                  </li>
+                  <li>
+                    <strong className="font-medium text-slate-800 dark:text-slate-200">History</strong>{' '}
+                    — recent SQL snapshots stored locally in your browser.
+                  </li>
+                  <li>
+                    <strong className="font-medium text-slate-800 dark:text-slate-200">Saved</strong>{' '}
+                    — cloud saved queries (sign-in, up to 10). Use <strong className="font-medium">Save query</strong> in
+                    the toolbar.
+                  </li>
+                </ul>
               </section>
 
               <section className="mt-8">
@@ -377,8 +424,28 @@ export function Header({
                 </ul>
               </section>
 
-              <p className="mt-8 flex items-center gap-2 text-xs text-slate-500">
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              <p className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-2">
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <a
+                    href="/guides/"
+                    className="font-medium text-cyan-600 underline-offset-2 hover:underline dark:text-cyan-400"
+                  >
+                    Practitioner SQL guides
+                  </a>
+                </span>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-2">
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <a
+                    href="/views/"
+                    className="font-medium text-cyan-600 underline-offset-2 hover:underline dark:text-cyan-400"
+                  >
+                    Static data view reference
+                  </a>
+                </span>
+              </p>
+              <p className="mt-3 text-xs text-slate-500">
                 Field descriptions align with official SFMC Data View documentation.
               </p>
             </div>

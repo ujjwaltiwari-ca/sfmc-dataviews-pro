@@ -12,4 +12,4 @@ export const BRAND_DESCRIPTION =
   'An interactive workspace for exploring Salesforce Marketing Cloud Data Views, visualizing relationships, and generating production-ready SQL for Query Studio and Automation Studio.';
 
 /** Current public release label. */
-export const BRAND_RELEASE_LABEL = 'Version 1.0';
+export const BRAND_RELEASE_LABEL = 'Version 1.1';

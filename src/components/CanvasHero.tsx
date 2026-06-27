@@ -16,7 +16,8 @@ export function CanvasHero({ onStartWithSent, onFocusSearch }: CanvasHeroProps) 
           Interactive SFMC Data View reference and SQL workspace
         </h2>
         <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:max-w-xl">
-          Select tables below, trace join paths, and copy Query Studio–ready SQL from the sandbox.
+          Select tables below, trace join paths, and copy Query Studio–ready SQL. Templates, saved
+          queries, and practitioner guides at /guides/.
         </p>
       </div>
 

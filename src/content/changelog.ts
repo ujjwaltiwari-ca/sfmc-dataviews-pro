@@ -7,6 +7,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1',
+    date: 'June 2026',
+    title: 'Workspace retention & practitioner depth',
+    highlights: [
+      'Saved queries (sign-in) — save, rename, restore SQL plus table selection and sandbox settings (up to 10 per user)',
+      '28 starter templates with category filters and search — deliverability, engagement, journeys, SMS, and automation',
+      '16 SEO practitioner guides at /guides/ — join patterns, Ent._Subscribers, complaints, SMS tracking, and more',
+      'Known limitations on every data view card (⚠) — retention, join gotchas, and Query Studio pitfalls',
+      'Safe SQL defaults — 30-day lookback, exclude test sends, and unique events enabled when tracking views are selected',
+      'Enterprise BU mode — Ent. prefix on system data views for parent-account queries across child BUs',
+      'Query history tab, field: search syntax, and expanded card metadata (hidden fields, relation icons)',
+    ],
+  },
+  {
     version: '1.0',
     date: 'June 2026',
     title: 'General Availability',
@@ -22,7 +36,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 ];
 
 export const WHATS_NEW_STORAGE_KEY = 'sfmc-whats-new-seen';
-export const WHATS_NEW_VERSION = '1.0';
+export const WHATS_NEW_VERSION = '1.1';
 export const VISIT_COUNT_STORAGE_KEY = 'sfmc-visit-count';
 
 export function hasSeenWhatsNew(): boolean {
