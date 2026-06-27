@@ -8,8 +8,12 @@ import {
 import type { SqlKeywordCase } from './sqlGenerator';
 import { SITE_ORIGIN } from './seoStatic.js';
 import { sanitizeNumericSqlLiteral } from './sqlSanitize';
+import {
+  migrateSandboxPreferences,
+  SANDBOX_PREFS_VERSION,
+} from './safeSqlDefaults.js';
 
-export type SandboxEditorTab = 'live' | 'templates' | 'history';
+export type SandboxEditorTab = 'live' | 'templates' | 'history' | 'saved';
 
 /** URL query parameter keys (shareable workspace). */
 export const WORKSPACE_URL_KEYS = {
@@ -36,6 +40,7 @@ export const WORKSPACE_STORAGE_KEYS = {
   sandboxOpen: 'sfmc-ws-sb',
   templateId: 'sfmc-ws-tpl',
   preferences: 'sfmc-ws-prefs',
+  preferencesVersion: 'sfmc-ws-prefs-v',
 } as const;
 
 const TEMPLATE_IDS = new Set(sfmcQueryTemplates.map((template) => template.id));
@@ -79,9 +84,9 @@ export function isWorkspaceUrlEmpty(
 export const DEFAULT_SANDBOX_PREFERENCES: SandboxPreferences = {
   keywordCase: 'upper',
   compactSelect: true,
-  limitPast30Days: false,
+  limitPast30Days: true,
   filterUniqueEvents: true,
-  excludeTestSends: false,
+  excludeTestSends: true,
   filterActiveSubscribersOnly: false,
   filterByCampaignJobId: false,
   campaignJobId: '',
@@ -162,7 +167,7 @@ function parseEditorTab(value: string | null | undefined): SandboxEditorTab | nu
     return null;
   }
   const normalized = value.trim().toLowerCase();
-  if (normalized === 'live' || normalized === 'templates' || normalized === 'history') {
+  if (normalized === 'live' || normalized === 'templates' || normalized === 'history' || normalized === 'saved') {
     return normalized;
   }
   return null;
@@ -342,7 +347,7 @@ function mergeSandboxPreferences(
     ? sanitizeNumericSqlLiteral((params.get(WORKSPACE_URL_KEYS.campaignJobId) ?? '').trim())
     : null;
 
-  return {
+  const merged: SandboxPreferences = {
     keywordCase:
       keywordFromUrl ??
       keywordFromStorage ??
@@ -392,6 +397,17 @@ function mergeSandboxPreferences(
       ) ??
       DEFAULT_SANDBOX_PREFERENCES.editorTab,
   };
+
+  return migrateSandboxPreferences(merged, readStoredPreferencesVersion());
+}
+
+function readStoredPreferencesVersion(): number | null {
+  const raw = readLocalStorageItem(WORKSPACE_STORAGE_KEYS.preferencesVersion);
+  if (!raw) {
+    return null;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /** Hydrates workspace state. Empty URL → defaults only; otherwise URL → localStorage → defaults. */
@@ -572,6 +588,10 @@ export function persistWorkspaceState(snapshot: WorkspaceSnapshot): void {
       writeLocalStorageItem(
         WORKSPACE_STORAGE_KEYS.preferences,
         JSON.stringify(snapshot.sandboxPreferences),
+      );
+      writeLocalStorageItem(
+        WORKSPACE_STORAGE_KEYS.preferencesVersion,
+        String(SANDBOX_PREFS_VERSION),
       );
     } catch {
       /* ignore */

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SandboxEditorTab } from '../utils/workspacePersistence';
 import type { ViewSegmentId } from '../data/viewSegments';
+import { buildSafeSqlPreferencePatch } from '../utils/safeSqlDefaults';
 import {
   DEFAULT_SANDBOX_PREFERENCES,
   DEFAULT_WORKSPACE_SNAPSHOT,
@@ -75,6 +76,10 @@ export function useWorkspaceState(): WorkspaceStateApi {
   const setSelectedTableNames = useCallback((names: string[]) => {
     const filtered = filterTableNamesForSegment(names, segment);
     setSelectedTableNamesState(filtered);
+    setSandboxPreferences((previous) => ({
+      ...previous,
+      ...buildSafeSqlPreferencePatch(filtered, previous),
+    }));
   }, [segment]);
 
   const updateSandboxPreferences = useCallback((patch: Partial<SandboxPreferences>) => {
@@ -92,10 +97,16 @@ export function useWorkspaceState(): WorkspaceStateApi {
       const isSelecting = !selectedTableNames.includes(name);
 
       setSelectedTableNamesState((previous) => {
-        if (previous.includes(name)) {
-          return previous.filter((entry) => entry !== name);
-        }
-        return [...previous, name];
+        const next = previous.includes(name)
+          ? previous.filter((entry) => entry !== name)
+          : [...previous, name];
+
+        setSandboxPreferences((prefs) => ({
+          ...prefs,
+          ...buildSafeSqlPreferencePatch(next, prefs),
+        }));
+
+        return next;
       });
 
       if (isSelecting) {

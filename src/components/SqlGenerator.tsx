@@ -25,6 +25,8 @@ import {
   Hash,
   Info,
   Route,
+  Save,
+  Search,
   Shield,
   Terminal,
   Users,
@@ -48,7 +50,10 @@ import {
   stripLeadingSqlComments,
   type SqlKeywordCase,
 } from '../utils/sqlGenerator';
-import { sfmcQueryTemplates } from '../data/queryTemplates';
+import { sfmcQueryTemplates, QUERY_TEMPLATE_CATEGORIES } from '../data/queryTemplates';
+import type { QueryTemplateCategory } from '../data/queryTemplates';
+import type { ViewSegmentId } from '../data/viewSegments';
+import type { BuContextMode } from '../constants/buContext';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { FieldExpressionLabel, SqlSyntaxSnippet } from './SqlStyledCode';
 import { getIdentifierSyntaxClass, SYNTAX_TEXT_CLASS } from '../utils/typeSyntax';
@@ -63,6 +68,10 @@ import { TemplateParametersPanel } from './TemplateParametersPanel';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 import { SandboxSqlCodeMirror } from './SandboxSqlCodeMirror';
 import { SandboxQueryHistory } from './SandboxQueryHistory';
+import { SavedQueriesPanel } from './SavedQueriesPanel';
+import { createSavedQuery } from '../utils/savedQueriesApi';
+import type { SavedQuery } from '../utils/savedQueriesApi';
+import { useAuth } from '../context/authContext.shared';
 import { appendSandboxQuerySnapshot } from '../utils/sandboxQueryHistory';
 import type { SandboxQuerySnapshot } from '../utils/sandboxQueryHistory';
 import { sanitizeNumericSqlLiteral } from '../utils/sqlSanitize';
@@ -205,33 +214,221 @@ function TemplateLibraryGrid({
 }: {
   onSelectTemplate: (templateId: string) => void;
 }) {
+  const [category, setCategory] = useState<QueryTemplateCategory>('All');
+  const [search, setSearch] = useState('');
+
+  const filteredTemplates = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return sfmcQueryTemplates.filter((template) => {
+      if (category !== 'All' && template.category !== category) {
+        return false;
+      }
+      if (!needle) {
+        return true;
+      }
+      return (
+        template.title.toLowerCase().includes(needle) ||
+        template.description.toLowerCase().includes(needle) ||
+        template.category.toLowerCase().includes(needle)
+      );
+    });
+  }, [category, search]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-slate-800/80 px-4 py-3">
-        <p className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
-          {sfmcQueryTemplates.length} production templates
-        </p>
-      </div>
-      <div className="scrollbar-sql-editor min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
-        <div className="grid auto-rows-min grid-cols-1 content-start gap-3 sm:grid-cols-2">
-          {sfmcQueryTemplates.map((template) => (
+      <div className="shrink-0 space-y-3 border-b border-slate-800/80 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-mono text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+            {filteredTemplates.length} of {sfmcQueryTemplates.length} templates
+          </p>
+          <label className="relative min-w-[10rem] flex-1 sm:max-w-xs">
+            <span className="sr-only">Search templates</span>
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search templates…"
+              className="w-full rounded-lg border border-slate-800 bg-slate-950 py-1.5 pl-8 pr-2 font-mono text-xs text-slate-200 placeholder:text-slate-600 focus:border-sky-500/50 focus:outline-none focus:ring-1 focus:ring-sky-500/30"
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Template categories">
+          {QUERY_TEMPLATE_CATEGORIES.map((entry) => (
             <button
-              key={template.id}
+              key={entry}
               type="button"
-              onClick={() => onSelectTemplate(template.id)}
-              className="group flex flex-col rounded-lg border border-slate-800/80 bg-slate-900/40 px-4 py-3.5 text-left transition-all hover:border-sky-500/40 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+              onClick={() => setCategory(entry)}
+              aria-pressed={category === entry}
+              className={`rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
+                category === entry
+                  ? 'bg-sky-600/90 text-white'
+                  : 'bg-slate-800/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
             >
-              <span className="flex items-center gap-2 font-mono text-sm font-semibold leading-snug text-slate-100 group-hover:text-sky-300">
-                <Zap className="h-4 w-4 shrink-0 text-amber-400/90" aria-hidden />
-                {template.title}
-              </span>
-              <span className="mt-2 text-sm leading-relaxed text-slate-400 group-hover:text-slate-300">
-                {template.description}
-              </span>
+              {entry}
             </button>
           ))}
         </div>
       </div>
+      <div className="scrollbar-sql-editor min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
+        {filteredTemplates.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-500">No templates match your filters.</p>
+        ) : (
+          <div className="grid auto-rows-min grid-cols-1 content-start gap-3 sm:grid-cols-2">
+            {filteredTemplates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => onSelectTemplate(template.id)}
+                className="group flex flex-col rounded-lg border border-slate-800/80 bg-slate-900/40 px-4 py-3.5 text-left transition-all hover:border-sky-500/40 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+              >
+                <span className="flex items-center gap-2 font-mono text-sm font-semibold leading-snug text-slate-100 group-hover:text-sky-300">
+                  <Zap className="h-4 w-4 shrink-0 text-amber-400/90" aria-hidden />
+                  {template.title}
+                </span>
+                <span className="mt-1 font-mono text-[10px] uppercase tracking-wide text-slate-500">
+                  {template.category}
+                </span>
+                <span className="mt-2 text-sm leading-relaxed text-slate-400 group-hover:text-slate-300">
+                  {template.description}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SaveQueryControl({
+  title,
+  sqlText,
+  tableSelection,
+  segment,
+  filterState,
+  onSaved,
+  onSignInRequired,
+}: {
+  title: string;
+  sqlText: string;
+  tableSelection: string[];
+  segment: ViewSegmentId;
+  filterState: {
+    sandboxPreferences: Partial<SandboxPreferences>;
+    buContext: BuContextMode;
+  };
+  onSaved: () => void;
+  onSignInRequired?: () => void;
+}) {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [queryTitle, setQueryTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSave = sqlText.trim().length > 0 || tableSelection.length > 0;
+
+  const handleSave = async () => {
+    if (!user) {
+      onSignInRequired?.();
+      return;
+    }
+    if (!canSave) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    try {
+      await createSavedQuery({
+        title: queryTitle.trim() || title,
+        sqlText,
+        tableSelection,
+        segment,
+        filterState,
+      });
+      setOpen(false);
+      setQueryTitle('');
+      onSaved();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!canSave) {
+    return null;
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          if (!user) {
+            onSignInRequired?.();
+            return;
+          }
+          setOpen((previous) => !previous);
+        }}
+        className="inline-flex items-center gap-1.5 rounded-md border border-slate-700/60 bg-slate-900 px-2.5 py-1 text-xs font-medium text-slate-300 transition-all hover:border-sky-500/40 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+      >
+        <Save className="h-3.5 w-3.5" aria-hidden />
+        Save query
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-slate-700 bg-slate-900 p-3 shadow-xl">
+          <label htmlFor="save-query-title" className="font-mono text-[10px] uppercase text-slate-500">
+            Query name
+          </label>
+          <input
+            id="save-query-title"
+            type="text"
+            value={queryTitle}
+            onChange={(event) => setQueryTitle(event.target.value)}
+            placeholder={title}
+            maxLength={120}
+            className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-xs text-slate-100"
+            autoFocus
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                void handleSave();
+              }
+              if (event.key === 'Escape') {
+                setOpen(false);
+              }
+            }}
+          />
+          {error ? (
+            <p className="mt-2 text-[10px] text-red-400" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded px-2 py-1 text-[10px] text-slate-400 hover:text-slate-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => void handleSave()}
+              className="rounded bg-sky-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
+            >
+              {isSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -258,6 +455,10 @@ interface SqlGeneratorProps {
   onSandboxHeightChange?: (height: number) => void;
   /** When true, generated SQL uses Ent. prefix on system data views. */
   enterpriseBuMode?: boolean;
+  segment: ViewSegmentId;
+  buContext: BuContextMode;
+  onSignInRequired?: () => void;
+  onRestoreSavedQuery: (query: SavedQuery) => void;
 }
 
 function SelectColumnModeControl({
@@ -492,10 +693,15 @@ export function SqlGenerator({
   templatesShortcutNonce = 0,
   onSandboxHeightChange,
   enterpriseBuMode = false,
+  segment,
+  buContext,
+  onSignInRequired,
+  onRestoreSavedQuery,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const [copyWarningOpen, setCopyWarningOpen] = useState(false);
   const [historyRefreshNonce, setHistoryRefreshNonce] = useState(0);
+  const [savedQueriesRefreshNonce, setSavedQueriesRefreshNonce] = useState(0);
   const [sandboxHeight, setSandboxHeight] = useState(getDefaultSandboxHeight);
   const [isResizing, setIsResizing] = useState(false);
   const [showExpandHint, setShowExpandHint] = useState(false);
@@ -715,6 +921,10 @@ export function SqlGenerator({
       onActiveTemplateIdChange(null);
       return;
     }
+    if (tab === 'saved') {
+      onActiveTemplateIdChange(null);
+      return;
+    }
     onActiveTemplateIdChange(null);
   };
 
@@ -743,6 +953,43 @@ export function SqlGenerator({
   const showTemplateLibrary = editorTab === 'templates' && activeTemplateId === null;
   const showSqlEditor = editorTab === 'live' || activeTemplateId !== null;
   const showHistory = editorTab === 'history';
+  const showSaved = editorTab === 'saved';
+
+  const savedQueryFilterState = useMemo(
+    () => ({
+      sandboxPreferences: {
+        compactSelect,
+        limitPast30Days,
+        filterUniqueEvents,
+        excludeTestSends,
+        filterActiveSubscribersOnly,
+        filterByCampaignJobId,
+        campaignJobId,
+        includeTargetDeScaffolding,
+        keywordCase,
+      },
+      buContext,
+    }),
+    [
+      buContext,
+      campaignJobId,
+      compactSelect,
+      excludeTestSends,
+      filterActiveSubscribersOnly,
+      filterByCampaignJobId,
+      filterUniqueEvents,
+      includeTargetDeScaffolding,
+      keywordCase,
+      limitPast30Days,
+    ],
+  );
+
+  const defaultSavedQueryTitle = useMemo(() => {
+    if (selectedTableNames.length > 0) {
+      return selectedTableNames.join(' + ');
+    }
+    return 'Untitled Query';
+  }, [selectedTableNames]);
 
   useEffect(() => {
     if (editorTab !== 'live' || !sql.trim()) {
@@ -1348,6 +1595,13 @@ export function SqlGenerator({
                               isActive={editorTab === 'history'}
                               onClick={() => handleEditorTabChange('history')}
                             />
+                            <EditorTabButton
+                              id="sql-tab-saved"
+                              label="Saved"
+                              icon={<Save className="h-3 w-3 shrink-0 text-sky-400/90" aria-hidden />}
+                              isActive={editorTab === 'saved'}
+                              onClick={() => handleEditorTabChange('saved')}
+                            />
                           </div>
                           <QueryStudioTipIcon tip={QUERY_STUDIO_TIP} />
                           {activeTemplateId && (
@@ -1396,6 +1650,17 @@ export function SqlGenerator({
                                 utilities active
                               </span>
                             )}
+                          {(editorTab === 'live' || editorTab === 'saved') && (
+                            <SaveQueryControl
+                              title={defaultSavedQueryTitle}
+                              sqlText={sql}
+                              tableSelection={selectedTableNames}
+                              segment={segment}
+                              filterState={savedQueryFilterState}
+                              onSaved={() => setSavedQueriesRefreshNonce((nonce) => nonce + 1)}
+                              onSignInRequired={onSignInRequired}
+                            />
+                          )}
                           <button
                             type="button"
                             onClick={handleCopy}
@@ -1428,7 +1693,9 @@ export function SqlGenerator({
                             ? 'sql-tab-live'
                             : editorTab === 'history'
                               ? 'sql-tab-history'
-                              : 'sql-tab-templates'
+                              : editorTab === 'saved'
+                                ? 'sql-tab-saved'
+                                : 'sql-tab-templates'
                         }
                         className={`m-2 flex min-h-0 flex-1 overflow-hidden rounded-md border border-slate-800/80 bg-[#0d1117] ${
                           showTemplateParametersPanel ? 'flex-row gap-2 p-2' : 'relative'
@@ -1438,6 +1705,12 @@ export function SqlGenerator({
                           <SandboxQueryHistory
                             onRestore={handleRestoreHistory}
                             refreshNonce={historyRefreshNonce}
+                          />
+                        ) : showSaved ? (
+                          <SavedQueriesPanel
+                            onRestore={onRestoreSavedQuery}
+                            onSignInRequired={onSignInRequired}
+                            refreshNonce={savedQueriesRefreshNonce}
                           />
                         ) : showTemplateLibrary ? (
                           <TemplateLibraryGrid onSelectTemplate={handleSelectTemplate} />

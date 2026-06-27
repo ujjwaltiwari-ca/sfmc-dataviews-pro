@@ -5,6 +5,7 @@ import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { handleApplyMigrationRequest } from './api/apply-migration';
 import { handleChatRequest, resetSupabaseServerClient } from './api/chat';
+import { handleSavedQueriesRequest } from './api/saved-queries';
 import { handleStagingRequest } from './api/staging';
 import { handleUsageRequest } from './api/usage';
 import { generateLegalStaticAssets } from './src/build/generateLegalStatic';
@@ -124,7 +125,8 @@ async function handleLocalApiRoutes(
     pathname !== '/api/chat' &&
     pathname !== '/api/usage' &&
     pathname !== '/api/staging' &&
-    pathname !== '/api/apply-migration'
+    pathname !== '/api/apply-migration' &&
+    pathname !== '/api/saved-queries'
   ) {
     next();
     return;
@@ -149,6 +151,11 @@ async function handleLocalApiRoutes(
 
       if (pathname === '/api/apply-migration') {
         await handleApplyMigrationRequest(req, res);
+        return;
+      }
+
+      if (pathname === '/api/saved-queries') {
+        await handleSavedQueriesRequest(req, res);
         return;
       }
 

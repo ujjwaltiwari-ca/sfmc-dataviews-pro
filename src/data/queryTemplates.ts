@@ -1,13 +1,13 @@
-export interface QueryTemplate {
-  id: string;
-  title: string;
-  description: string;
-  sql: string;
-}
+import { sfmcQueryTemplatesExtended } from './queryTemplatesExtended.js';
+import type { QueryTemplate } from './queryTemplateTypes.js';
 
-export const sfmcQueryTemplates: QueryTemplate[] = [
+export type { QueryTemplate, QueryTemplateCategory } from './queryTemplateTypes.js';
+export { QUERY_TEMPLATE_CATEGORIES } from './queryTemplateTypes.js';
+
+const CORE_TEMPLATES: QueryTemplate[] = [
   {
     id: 'recent-hard-bounces',
+    category: 'List Hygiene',
     title: 'Recent Hard Bounces',
     description:
       'Find subscribers who hit a hard bounce in the last 30 days for list hygiene.',
@@ -25,6 +25,7 @@ WHERE b.BounceCategory = 'Hard Bounce'
   },
   {
     id: 'unengaged-ghost-subscribers',
+    category: 'Engagement',
     title: "Unengaged 'Ghost' Subscribers",
     description:
       'Identify users sent 10+ emails in the last 90 days with zero recorded opens.',
@@ -48,6 +49,7 @@ WHERE sub.SubscriberKey IN (
   },
   {
     id: 'recent-automation-failures',
+    category: 'Automation',
     title: 'Recent Automation Failures',
     description:
       'Identify all Automation Studio tasks that failed or skipped in the last 24 hours.',
@@ -64,6 +66,7 @@ ORDER BY AutomationInstanceStartTime_UTC DESC`,
   },
   {
     id: 'high-friction-unsubscribes',
+    category: 'Deliverability',
     title: 'High-Friction Unsubscribes',
     description:
       'Track subscribers who opted out within 24 hours of receiving a specific email job.',
@@ -83,6 +86,7 @@ WHERE u.EventDate <= DATEADD(hour, 24, s.EventDate)
   },
   {
     id: 'held-status-audit',
+    category: 'List Hygiene',
     title: 'Held Status Audit',
     description:
       "Find 'Held' subscribers along with their last recorded bounce reason to clear delivery blocks.",
@@ -103,6 +107,7 @@ WHERE sub.Status = 'held'
   },
   {
     id: 'spam-complaint-surge',
+    category: 'Deliverability',
     title: 'Spam Complaint Surge',
     description:
       'Audit spam complaints received in the last 7 days grouped by email campaign details.',
@@ -117,6 +122,7 @@ ORDER BY TotalComplaints DESC`,
   },
   {
     id: 'sms-outbound-failures',
+    category: 'SMS',
     title: 'SMS Outbound Failures',
     description:
       'Isolate text messages that returned an undelivered or error state from the gateway.',
@@ -135,6 +141,7 @@ ORDER BY ActionDateTime DESC`,
   },
   {
     id: 'targeted-campaign-non-openers',
+    category: 'Campaign',
     title: 'Targeted Campaign Non-Openers',
     description:
       'Find all subscribers who were sent a specific email Job ID but never recorded an Open event.',
@@ -156,6 +163,7 @@ WHERE s.JobID = 'YOUR_JOB_ID_HERE'
   },
   {
     id: 'campaign-non-converters',
+    category: 'Campaign',
     title: 'Campaign Non-Converters',
     description:
       "Isolate subscribers who clicked a link in a specific email Job ID but didn't open or take action elsewhere.",
@@ -175,6 +183,7 @@ WHERE c.JobID = 'YOUR_JOB_ID_HERE'
   },
   {
     id: 'journey-email-performance-audit',
+    category: 'Journey',
     title: 'Journey Email Performance Audit',
     description:
       'Identify which specific email activities within Journeys are triggering the highest unsubscribe volumes.',
@@ -189,4 +198,9 @@ WHERE u.EventDate >= DATEADD(day, -30, GETDATE())
 GROUP BY jny.JourneyName, ja.ActivityName
 ORDER BY TotalUnsubscribes DESC`,
   },
+];
+
+export const sfmcQueryTemplates: QueryTemplate[] = [
+  ...CORE_TEMPLATES,
+  ...sfmcQueryTemplatesExtended,
 ];

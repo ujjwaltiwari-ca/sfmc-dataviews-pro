@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SFMC SQL Guides | DataViews.pro</title>
-  <meta name="description" content="Practitioner SQL guides for Salesforce Marketing Cloud Data Views — joins, journeys, tracking timeouts, and subscriber patterns." />
-  <link rel="canonical" href="https://dataviews.pro/guides/" />
+  <title>How to Join _Sent to _Click in SFMC SQL | DataViews.pro</title>
+  <meta name="description" content="Correct four-key join between _Sent and _Click in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID with date filters." />
+  <link rel="canonical" href="https://dataviews.pro/guides/join-sent-to-click/" />
   <link rel="stylesheet" href="/fonts/plus-jakarta-sans.css" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://dataviews.pro/guides/" />
-  <meta property="og:title" content="SFMC SQL Guides | DataViews.pro" />
-  <meta property="og:description" content="Practitioner SQL guides for Salesforce Marketing Cloud Data Views — joins, journeys, tracking timeouts, and subscriber patterns." />
+  <meta property="og:url" content="https://dataviews.pro/guides/join-sent-to-click/" />
+  <meta property="og:title" content="How to Join _Sent to _Click in SFMC SQL | DataViews.pro" />
+  <meta property="og:description" content="Correct four-key join between _Sent and _Click in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID with date filters." />
   <meta property="og:image" content="https://dataviews.pro/og-preview.png" />
   <meta property="og:image:alt" content="DataViews.pro — SFMC schema canvas with SQL workspace, BFS join paths, and interactive Data View cards" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://dataviews.pro/guides/" />
-  <meta name="twitter:title" content="SFMC SQL Guides | DataViews.pro" />
-  <meta name="twitter:description" content="Practitioner SQL guides for Salesforce Marketing Cloud Data Views — joins, journeys, tracking timeouts, and subscriber patterns." />
+  <meta name="twitter:url" content="https://dataviews.pro/guides/join-sent-to-click/" />
+  <meta name="twitter:title" content="How to Join _Sent to _Click in SFMC SQL | DataViews.pro" />
+  <meta name="twitter:description" content="Correct four-key join between _Sent and _Click in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID with date filters." />
   <meta name="twitter:image" content="https://dataviews.pro/og-preview.png" />
   <meta name="twitter:image:alt" content="DataViews.pro — SFMC schema canvas with SQL workspace, BFS join paths, and interactive Data View cards" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -152,74 +152,55 @@
   ul.index-list { columns: 2; gap: 2rem; padding-left: 1.1rem; margin: 0; }
   @media (max-width: 640px) { ul.index-list { columns: 1; } }
   ul.index-list li { margin-bottom: 0.35rem; break-inside: avoid; }</style>
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"CollectionPage","name":"SFMC SQL Guides","url":"https://dataviews.pro/guides/","isPartOf":{"@type":"WebSite","name":"DataViews.pro","url":"https://dataviews.pro"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"DataViews.pro","item":"https://dataviews.pro/"},{"@type":"ListItem","position":2,"name":"SQL Guides","item":"https://dataviews.pro/guides/"}]}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","headline":"How to Join _Sent to _Click in SFMC SQL","description":"Correct four-key join between _Sent and _Click in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and SubscriberID with date filters.","url":"https://dataviews.pro/guides/join-sent-to-click/","author":{"@type":"Person","name":"Ujjwal Tiwari"},"publisher":{"@type":"Organization","name":"DataViews.pro"},"isPartOf":{"@type":"WebSite","name":"DataViews.pro","url":"https://dataviews.pro"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"DataViews.pro","item":"https://dataviews.pro/"},{"@type":"ListItem","position":2,"name":"SQL Guides","item":"https://dataviews.pro/guides/"},{"@type":"ListItem","position":3,"name":"How to Join _Sent to _Click in SFMC SQL","item":"https://dataviews.pro/guides/join-sent-to-click/"}]}]}</script>
 </head>
 <body>
   <div class="wrap">
-    <nav class="top" aria-label="Breadcrumb"><a href="/">DataViews.pro</a> → <a href="/guides/">SQL Guides</a></nav>
+    <nav class="top" aria-label="Breadcrumb"><a href="/">DataViews.pro</a> → <a href="/guides/">SQL Guides</a> → How to Join _Sent to _Click in SFMC SQL</nav>
     
-    <header class="card">
-      <h1>SFMC SQL Practitioner Guides</h1>
-      <p class="muted">
-        Join patterns, Journey Builder queries, timeout avoidance, and subscriber scoping —
-        short guides with copy-ready SQL for Query Studio and Automation Studio.
-      </p>
-      <div class="actions"><a class="btn btn-primary" href="/">Open Interactive Workspace</a></div>
-    </header>
-    <section class="card">
-      <ul class="guide-list"><li>
-      <a href="/guides/join-sent-to-open/"><strong>How to Join _Sent to _Open in SFMC SQL</strong></a>
-      <span class="muted"> — Learn the correct join grain between _Sent and _Open in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID…</span>
-    </li>
-<li>
-      <a href="/guides/journey-builder-sql-patterns/"><strong>Journey Builder SQL Patterns with Data Views</strong></a>
-      <span class="muted"> — SQL patterns for _Journey, _JourneyActivity, and email tracking views using TriggererSendDefinitionObjectID in Salesforc…</span>
-    </li>
-<li>
-      <a href="/guides/tracking-view-query-timeouts/"><strong>Avoiding Query Studio Timeouts on _Open and _Click</strong></a>
-      <span class="muted"> — Practical SFMC SQL patterns to prevent Query Studio timeouts when querying _Open, _Click, and other high-volume tracking…</span>
-    </li>
-<li>
-      <a href="/guides/subscribers-ent-prefix-child-bu/"><strong>_Subscribers vs Ent._Subscribers in Child Business Units</strong></a>
-      <span class="muted"> — When to query _Subscribers versus Ent._Subscribers in Salesforce Marketing Cloud child business unit SQL.</span>
-    </li>
-<li>
-      <a href="/guides/unique-opens-and-clicks/"><strong>Using IsUnique on _Open and _Click</strong></a>
-      <span class="muted"> — Understand the IsUnique flag on SFMC _Open and _Click Data Views for first-event metrics versus total event counts.</span>
-    </li>
-<li>
-      <a href="/guides/join-sent-to-click/"><strong>How to Join _Sent to _Click in SFMC SQL</strong></a>
-      <span class="muted"> — Correct four-key join between _Sent and _Click in Salesforce Marketing Cloud Query Studio — JobID, ListID, BatchID, and …</span>
-    </li>
-<li>
-      <a href="/guides/join-sent-to-bounce/"><strong>How to Join _Sent to _Bounce for Deliverability Audits</strong></a>
-      <span class="muted"> — Join _Sent to _Bounce in SFMC SQL using SubscriberKey or the four engagement keys — patterns for hard bounce and soft bo…</span>
-    </li>
-<li>
-      <a href="/guides/engagement-four-key-grain/"><strong>The Four-Key Engagement Grain in SFMC Tracking Views</strong></a>
-      <span class="muted"> — Understand JobID, ListID, BatchID, and SubscriberID — the engagement quadrinity required for correct joins between _Sent…</span>
-    </li>
-<li>
-      <a href="/guides/re-engagement-non-openers/"><strong>Re-Engagement SQL: Finding Non-Openers After Send</strong></a>
-      <span class="muted"> — SFMC SQL pattern to identify subscribers who received an email but did not open — re-engagement and win-back campaign au…</span>
-    </li>
-<li>
-      <a href="/guides/exclude-test-sends-filter/"><strong>Excluding Test Sends from _Sent Queries</strong></a>
-      <span class="muted"> — Filter test and preview sends out of SFMC _Sent reporting using Category or test-send patterns — keep production metrics…</span>
-    </li>
-<li>
-      <a href="/guides/automation-studio-query-patterns/"><strong>Automation Studio Query Activity Patterns</strong></a>
-      <span class="muted"> — SQL patterns for _AutomationInstance, _AutomationActivityInstance, and _AutomationTaskInstance — monitoring automations …</span>
-    </li>
-<li>
-      <a href="/guides/list-subscriber-status-audit/"><strong>List Membership and Status Audit with _ListSubscribers</strong></a>
-      <span class="muted"> — Audit active, unsubscribed, and bounced list members using _ListSubscribers joined to _Subscribers in SFMC SQL.</span>
-    </li>
-<li>
-      <a href="/guides/join-sent-to-unsubscribe/"><strong>Joining _Sent to _Unsubscribe for Opt-Out Analysis</strong></a>
-      <span class="muted"> — SFMC SQL to correlate email sends with unsubscribe events — four-key join pattern and post-send opt-out reporting.</span>
-    </li></ul>
-    </section>
+    <article class="card">
+      <span class="badge">Joins</span>
+      <h1>How to Join _Sent to _Click in SFMC SQL</h1>
+      <p class="meta muted">6 min read · SFMC SQL practitioner guide</p>
+      <section>
+  <h2>Click tracking grain</h2>
+  <p>_Click records link clicks in email sends. Like _Open, each row sits at the engagement event grain — the same four keys that tie a subscriber to a specific deployment batch within a job.</p>
+<p>Analysts join _Sent to _Click to measure click-through rate, time-to-click, and link-level engagement after send.</p>
+  
+  
+</section>
+<section>
+  <h2>Four-key join pattern</h2>
+  
+  
+  <pre><code>SELECT TOP 1000
+  s.SubscriberKey,
+  s.EventDate AS SentDate,
+  c.EventDate AS ClickDate,
+  c.URL,
+  c.IsUnique
+FROM _Sent s
+INNER JOIN _Click c
+  ON s.JobID = c.JobID
+  AND s.ListID = c.ListID
+  AND s.BatchID = c.BatchID
+  AND s.SubscriberID = c.SubscriberID
+WHERE s.EventDate &gt;= DATEADD(day, -30, GETDATE())
+  AND c.EventDate &gt;= DATEADD(day, -30, GETDATE())
+ORDER BY c.EventDate DESC</code></pre>
+</section>
+<section>
+  <h2>Practitioner tips</h2>
+  
+  <ul><li>Filter EventDate on both legs — _Click volume rivals _Open in many accounts.</li><li>Use IsUnique = 1 when reporting first-click metrics per send job.</li><li>Join _Job when you need email name or subject alongside click URLs.</li></ul>
+  
+</section>
+      <div class="actions">
+        <a class="btn btn-primary" href="/?t=_Sent,_Click&amp;sb=1">Try in workspace</a>
+        <a class="btn btn-secondary" href="/guides/">All guides</a>
+      </div>
+      <p class="muted" style="margin-top:1rem">Related reference: <a href="/views/sent/"><code>_Sent</code></a> · <a href="/views/click/"><code>_Click</code></a> · <a href="/views/job/"><code>_Job</code></a></p>
+    </article>
   
     <footer class="disclaimer muted" role="contentinfo">
     <p><strong>Schema accuracy:</strong> Reference last reviewed 2026-06-17. Field definitions are curated from official Salesforce documentation and established practitioner sources. SFMC behavior varies by business unit, stack, and release — always validate in your tenant before production use.</p>

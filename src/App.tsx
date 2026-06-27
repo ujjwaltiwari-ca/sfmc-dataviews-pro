@@ -62,6 +62,7 @@ import {
 } from './utils/workspacePersistence';
 import { hasPersistedSupabaseSession } from './utils/supabaseSessionStorage';
 import { buildRelationHighlight, normalizeSearchQuery, type HoveredRelation } from './utils/schemaExplorer';
+import type { SavedQuery } from './utils/savedQueriesApi';
 
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
@@ -220,6 +221,7 @@ function AppMain() {
     segment: activeSegment,
     setSegment: setActiveSegment,
     selectedTables,
+    setSelectedTableNames,
     toggleTableSelection,
     showSandbox,
     setShowSandbox,
@@ -497,6 +499,35 @@ function AppMain() {
     setIsCopilotOpen(true);
   }, [activateAuthShell]);
 
+  const handleRestoreSavedQuery = useCallback(
+    (query: SavedQuery) => {
+      setActiveSegment(query.segment);
+      setSelectedTableNames(query.tableSelection);
+      setSandboxSql(query.sqlText);
+      setShowSandbox(true);
+      setIsSandboxExpanded(true);
+      setCopilotSqlActive(true);
+      setActiveTemplateId(null);
+      setSandboxEditorTab('live');
+      if (query.filterState?.sandboxPreferences) {
+        updateSandboxPreferences(query.filterState.sandboxPreferences);
+      }
+      if (query.filterState?.buContext) {
+        handleBuContextChange(query.filterState.buContext);
+      }
+    },
+    [
+      handleBuContextChange,
+      setActiveSegment,
+      setActiveTemplateId,
+      setIsSandboxExpanded,
+      setSandboxEditorTab,
+      setSelectedTableNames,
+      setShowSandbox,
+      updateSandboxPreferences,
+    ],
+  );
+
   return (
     <DeferredAuthProvider active={authShellActive}>
       <div className="canvas-gradient flex h-screen w-screen flex-col overflow-hidden text-slate-900 transition-colors duration-300 ease-in-out dark:text-slate-100">
@@ -599,6 +630,10 @@ function AppMain() {
           templatesShortcutNonce={templatesShortcutNonce}
           onSandboxHeightChange={setSandboxDrawerHeight}
           enterpriseBuMode={enterpriseBuActive}
+          segment={activeSegment}
+          buContext={buContext}
+          onSignInRequired={handleSignInRequired}
+          onRestoreSavedQuery={handleRestoreSavedQuery}
         />
       </Suspense>
 
