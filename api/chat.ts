@@ -6,9 +6,13 @@ import { getClientIp } from './lib/clientIp.js';
 import { CHAT_POST_LIMIT, checkRateLimit } from './lib/rateLimit.js';
 import { assertStagingUnlocked } from './lib/stagingCookieNode.js';
 import { buildDynamicCopilotSchemaContext } from '../src/utils/compressSchemaForCopilot.js';
+import { isDisposableEmail } from './lib/disposableEmail.js';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
 const OPENAI_MODEL = 'gpt-4o-mini';
+const OPENAI_MAX_OUTPUT_TOKENS = 1500;
+const AI_SERVICE_UNAVAILABLE =
+  'AI service temporarily unavailable. Please try again later.';
 const DAILY_QUERY_LIMIT = DAILY_COPILOT_QUERY_LIMIT;
 
 /** Last 6 messages = 3 user/assistant turns. */
@@ -86,9 +90,9 @@ const MAX_CURRENT_QUERY_TEXT_CHARACTERS = 16_000;
 const MAX_REQUEST_BODY_BYTES = 256 * 1024;
 
 const CONTEXT_CODE_GROUNDING_INSTRUCTION = `CONTEXT CODE GROUNDING:
-You are provided with a parameter called \`currentQueryText\`, representing the code currently loaded in the user's workspace editor window.
-- If \`currentQueryText\` is NOT blank or empty, you MUST base your response on it. Analyze its aliases, current filters (like EventDate or JobID), and select fields. Modify or extend this EXACT query to satisfy the user's prompt rather than writing one from scratch. When correcting or adding joins, align aliases to the mandatory single-letter conventions in CRITICAL SFMC SQL ARCHITECTURE RULES below.
-- Only generate a standard foundational template from scratch if \`currentQueryText\` is completely empty or blank.`;
+You may receive a user message prefixed with "[Workspace SQL context" containing the SQL currently loaded in the user's workspace editor.
+- If that message is present and the SQL is NOT blank, you MUST base your response on it. Analyze its aliases, current filters (like EventDate or JobID), and select fields. Modify or extend this EXACT query to satisfy the user's prompt rather than writing one from scratch. When correcting or adding joins, align aliases to the mandatory single-letter conventions in CRITICAL SFMC SQL ARCHITECTURE RULES below.
+- Only generate a standard foundational template from scratch if no workspace SQL is provided or it is completely empty.`;
 
 function normalizeCurrentQueryText(raw: unknown): string {
   if (typeof raw !== 'string') {
@@ -107,15 +111,24 @@ function normalizeCurrentQueryText(raw: unknown): string {
   return trimmed.slice(0, MAX_CURRENT_QUERY_TEXT_CHARACTERS);
 }
 
-function buildCurrentQueryTextSection(currentQueryText: string): string {
-  if (!currentQueryText) {
-    return '\n\ncurrentQueryText: (empty — workspace editor has no SQL loaded)';
-  }
-
-  return `\n\ncurrentQueryText (loaded in workspace editor):\n\`\`\`sql\n${currentQueryText}\n\`\`\``;
+function escapeMarkdownFenceContent(text: string): string {
+  return text.replace(/```/g, '``\\`');
 }
 
-function buildSystemInstruction(schemaContext: string, currentQueryText: string): string {
+function buildCurrentQueryContextMessage(
+  currentQueryText: string,
+): ChatCompletionMessageParam | null {
+  if (!currentQueryText) {
+    return null;
+  }
+
+  return {
+    role: 'user',
+    content: `[Workspace SQL context — loaded in the editor; analyze and extend this query when responding]\n\`\`\`sql\n${escapeMarkdownFenceContent(currentQueryText)}\n\`\`\``,
+  };
+}
+
+function buildSystemInstruction(schemaContext: string): string {
   return `You are an elite SFMC Architect Copilot for Salesforce Marketing Cloud Data Views and Query Studio SQL. Use exact table names (leading underscores). Reply briefly. Put runnable SQL in \`\`\`sql fences with aliases. Filter large tracking views (_Open, _Click, _Sent) by EventDate when relevant.
 
 You are an exclusive, specialized Salesforce Platform Architect Copilot. Your sole purpose is to assist with Salesforce Marketing Cloud Data Views, SQL queries, and architectural layouts. You must politely decline to answer, write stories, tell jokes, or discuss any topics outside of Salesforce and technical data infrastructure. If a user asks a non-Salesforce question, respond with: 'I am specialized exclusively in Salesforce engineering and architecture. Please let me know how I can help you with your Salesforce Data Views or SQL compilation!'
@@ -142,7 +155,7 @@ The user workspace may highlight specific Active Canvas Tables — prefer those 
 - Add IsUnique = 1 on _Open/_Click/_Bounce/_Unsubscribe/_Complaint when deduplicating to one row per send grain.
 - Pull EmailName, FromName, EmailSubject from _Job (j.JobID = s.JobID), never from _Sent.
 
-${CONTEXT_CODE_GROUNDING_INSTRUCTION}${buildCurrentQueryTextSection(currentQueryText)}
+${CONTEXT_CODE_GROUNDING_INSTRUCTION}
 
 Schema Context:
 ${schemaContext}`;
@@ -221,7 +234,7 @@ async function resolveAuthenticatedUser(
   supabase: SupabaseClient,
   accessToken: string,
   res: ServerResponse,
-): Promise<{ user: { id: string } } | null> {
+): Promise<{ user: { id: string; email: string | null } } | null> {
   if (!isPlausibleJwt(accessToken)) {
     console.error('[api/chat] Rejected request: malformed JWT structure');
     sendJsonError(res, 'Unauthorized: invalid or expired session', 401);
@@ -243,7 +256,7 @@ async function resolveAuthenticatedUser(
       return null;
     }
 
-    return { user };
+    return { user: { id: user.id, email: user.email ?? null } };
   } catch (authFailure) {
     const message =
       authFailure instanceof Error ? authFailure.message : 'Token verification failed';
@@ -291,7 +304,7 @@ async function reserveCopilotUsageSlotLegacy(userId: string): Promise<UsageReser
   }
 
   const countAfter = await getTodayCopilotUsageCount(userId);
-  if (countAfter > DAILY_QUERY_LIMIT) {
+  if (countAfter >= DAILY_QUERY_LIMIT) {
     await supabase.from('user_usage').delete().eq('id', usageRowId);
     return { ok: false, reason: 'limit' };
   }
@@ -418,7 +431,7 @@ function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | n
     const role = entry.role;
     const content = entry.content;
 
-    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
+    if (role !== 'user' || typeof content !== 'string') {
       return null;
     }
 
@@ -427,7 +440,7 @@ function normalizeClientMessages(raw: unknown): ChatCompletionMessageParam[] | n
       continue;
     }
 
-    normalized.push({ role, content: trimmed });
+    normalized.push({ role: 'user', content: trimmed });
   }
 
   return normalized;
@@ -507,8 +520,13 @@ export async function handleChatRequest(
 
   const { user } = authResult;
 
+  if (user.email && isDisposableEmail(user.email)) {
+    sendJsonError(res, 'Sign-ups from disposable email domains are not allowed.', 403);
+    return;
+  }
+
   const clientIp = getClientIp(req);
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `chat-post:${clientIp}:${user.id}`,
     CHAT_POST_LIMIT.max,
     CHAT_POST_LIMIT.windowMs,
@@ -555,6 +573,7 @@ export async function handleChatRequest(
     Array.isArray(body.activeTables) ? body.activeTables : [],
   );
   const currentQueryText = normalizeCurrentQueryText(body.currentQueryText);
+  const currentQueryContextMessage = buildCurrentQueryContextMessage(currentQueryText);
 
   let usageReservation: UsageReservation;
   try {
@@ -588,8 +607,10 @@ export async function handleChatRequest(
       {
         model: OPENAI_MODEL,
         stream: true,
+        max_tokens: OPENAI_MAX_OUTPUT_TOKENS,
         messages: [
-          { role: 'system', content: buildSystemInstruction(schemaContext, currentQueryText) },
+          { role: 'system', content: buildSystemInstruction(schemaContext) },
+          ...(currentQueryContextMessage ? [currentQueryContextMessage] : []),
           ...clientMessages,
         ],
       },
@@ -601,7 +622,8 @@ export async function handleChatRequest(
     await releaseCopilotUsageSlot(reservedUsageRowId);
     const message =
       error instanceof Error ? error.message : 'Failed to start OpenAI completion stream';
-    sendJsonError(res, message, 502);
+    console.error('[api/chat] OpenAI stream creation failed', message);
+    sendJsonError(res, AI_SERVICE_UNAVAILABLE, 502);
     return;
   }
 
@@ -642,7 +664,8 @@ export async function handleChatRequest(
           streamError instanceof Error
             ? streamError.message
             : 'Stream interrupted while reading OpenAI response';
-        writeSseData(res, { error: message });
+        console.error('[api/chat] OpenAI stream read failed', message);
+        writeSseData(res, { error: AI_SERVICE_UNAVAILABLE });
         res.end();
       }
     }

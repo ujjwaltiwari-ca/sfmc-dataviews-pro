@@ -313,7 +313,7 @@ function AppMain() {
 
   useEffect(() => {
     setCopilotSqlActive(false);
-  }, [selectedTableNames.length]);
+  }, [selectedTableNames]);
 
   const workspaceSnapshot = useMemo<WorkspaceSnapshot>(
     () => ({

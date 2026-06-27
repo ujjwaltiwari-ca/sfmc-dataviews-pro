@@ -91,9 +91,9 @@ function extractSqlFromMessage(content: string): string | null {
 
 function toApiHistory(messages: ChatMessage[]): ApiChatMessage[] {
   return messages
-    .filter((message) => !message.isStreaming && message.content.trim())
+    .filter((message) => message.role === 'user' && !message.isStreaming && message.content.trim())
     .map((message) => ({
-      role: message.role,
+      role: 'user' as const,
       content: message.content,
     }));
 }
@@ -141,6 +141,7 @@ async function streamChatFromProxy(
   payload: CopilotChatRequestPayload,
   accessToken: string,
   onDelta: (accumulated: string) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
   const { messages, activeTables, currentQueryText } = payload;
   const bearerToken = accessToken.trim();
@@ -155,6 +156,7 @@ async function streamChatFromProxy(
       Authorization: `Bearer ${bearerToken}`,
     },
     body: JSON.stringify({ messages, activeTables, currentQueryText }),
+    signal,
   });
 
   if (response.status === 401) {
@@ -231,8 +233,20 @@ export function AiCopilot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const appliedMessageTimerRef = useRef<number | null>(null);
 
   useFocusTrap(panelRef, isOpen);
+
+  useEffect(() => {
+    return () => {
+      chatAbortRef.current?.abort();
+      chatAbortRef.current = null;
+      if (appliedMessageTimerRef.current !== null) {
+        window.clearTimeout(appliedMessageTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -283,6 +297,9 @@ export function AiCopilot({
     setError(null);
     setInput('');
     setIsSending(true);
+    chatAbortRef.current?.abort();
+    const abortController = new AbortController();
+    chatAbortRef.current = abortController;
 
     const userMessage: ChatMessage = {
       id: createMessageId(),
@@ -351,13 +368,23 @@ export function AiCopilot({
         },
         accessToken,
         appendAssistantDelta,
+        abortController.signal,
       );
+      if (abortController.signal.aborted) {
+        return;
+      }
       finalizeAssistant(accumulated || 'No response received.');
       if (isDailyCopilotLimitMessage(accumulated)) {
         applyKnownUsageCount(DAILY_COPILOT_QUERY_LIMIT);
       }
       void refreshUsage();
     } catch (sendError) {
+      if (abortController.signal.aborted) {
+        return;
+      }
+      if (sendError instanceof DOMException && sendError.name === 'AbortError') {
+        return;
+      }
       logCopilotApiError(sendError);
       const isAuthError =
         sendError instanceof Error &&
@@ -376,6 +403,9 @@ export function AiCopilot({
       setError(message);
       finalizeAssistant(message);
     } finally {
+      if (chatAbortRef.current === abortController) {
+        chatAbortRef.current = null;
+      }
       setIsSending(false);
     }
   }, [
@@ -406,7 +436,13 @@ export function AiCopilot({
       onApplyToSandbox(sql);
       onClose();
       setAppliedMessageId(messageId);
-      window.setTimeout(() => setAppliedMessageId(null), 2200);
+      if (appliedMessageTimerRef.current !== null) {
+        window.clearTimeout(appliedMessageTimerRef.current);
+      }
+      appliedMessageTimerRef.current = window.setTimeout(() => {
+        setAppliedMessageId(null);
+        appliedMessageTimerRef.current = null;
+      }, 2200);
     },
     [onApplyToSandbox, onClose],
   );

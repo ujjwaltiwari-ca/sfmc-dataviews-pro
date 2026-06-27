@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.106.2",
     "@uiw/react-codemirror": "^4.25.10",
     "@vercel/analytics": "^2.0.1",
+    "disposable-email-domains": "^1.0.62",
     "lucide-react": "^1.17.0",
     "openai": "^6.39.1",
     "pg": "^8.16.0",

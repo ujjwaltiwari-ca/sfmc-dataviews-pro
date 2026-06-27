@@ -1,11 +1,8 @@
-const DISPOSABLE_EMAIL_DOMAINS = [
-  'mailinator.com',
-  '10minutemail.com',
-  'tempmail.com',
-  'yopmail.com',
-  'sharklasers.com',
-  'guerrillamail.com',
-] as const;
+import disposableDomains from 'disposable-email-domains';
+
+const DISPOSABLE_DOMAIN_SET = new Set(
+  (disposableDomains as readonly string[]).map((domain) => domain.toLowerCase()),
+);
 
 export function getEmailDomain(email: string): string | null {
   const atIndex = email.lastIndexOf('@');
@@ -17,12 +14,11 @@ export function getEmailDomain(email: string): string | null {
   return domain || null;
 }
 
-/** Client-side hint only — authoritative enforcement is in /api/chat. */
 export function isDisposableEmail(email: string): boolean {
   const domain = getEmailDomain(email);
   if (!domain) {
     return false;
   }
 
-  return (DISPOSABLE_EMAIL_DOMAINS as readonly string[]).includes(domain);
+  return DISPOSABLE_DOMAIN_SET.has(domain);
 }

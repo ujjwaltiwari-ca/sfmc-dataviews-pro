@@ -13,6 +13,8 @@ import {
 
 type NodeApiRequest = IncomingMessage & { body?: unknown };
 
+const MAX_REQUEST_BODY_BYTES = 256 * 1024;
+
 function passwordsMatch(attempt: string, expected: string): boolean {
   const attemptHash = createHash('sha256').update(attempt).digest();
   const expectedHash = createHash('sha256').update(expected).digest();
@@ -53,14 +55,30 @@ function parseCookies(header: string | undefined): Record<string, string> {
 async function readJsonBody(req: NodeApiRequest): Promise<{ password?: unknown }> {
   if (req.body !== undefined && req.body !== null) {
     if (typeof req.body === 'string') {
+      if (Buffer.byteLength(req.body, 'utf8') > MAX_REQUEST_BODY_BYTES) {
+        throw new Error('Request body too large');
+      }
       return JSON.parse(req.body) as { password?: unknown };
+    }
+    const serialized = JSON.stringify(req.body);
+    if (Buffer.byteLength(serialized, 'utf8') > MAX_REQUEST_BODY_BYTES) {
+      throw new Error('Request body too large');
     }
     return req.body as { password?: unknown };
   }
 
   const raw = await new Promise<string>((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let totalBytes = 0;
+
+    req.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+        reject(new Error('Request body too large'));
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
@@ -98,7 +116,7 @@ export async function handleStagingRequest(
 
   if (req.method === 'POST') {
     const clientIp = getClientIp(req);
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `staging-post:${clientIp}`,
       STAGING_POST_LIMIT.max,
       STAGING_POST_LIMIT.windowMs,
@@ -112,8 +130,12 @@ export async function handleStagingRequest(
     let body: { password?: unknown };
     try {
       body = await readJsonBody(req);
-    } catch {
-      sendJson(res, 400, { error: 'Invalid JSON body' });
+    } catch (readError) {
+      const message =
+        readError instanceof Error && readError.message === 'Request body too large'
+          ? 'Request body too large'
+          : 'Invalid JSON body';
+      sendJson(res, message.includes('large') ? 413 : 400, { error: message });
       return;
     }
 

@@ -3,17 +3,17 @@ import { loadEnvLocal } from './loadEnvLocal.mjs';
 loadEnvLocal();
 
 const siteUrl = process.env.VERIFY_SITE_URL?.trim() || 'https://dataviews.pro';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const migrationSecret = process.env.MIGRATION_SECRET?.trim();
 
-if (!serviceRoleKey) {
-  console.error('[migrate] SUPABASE_SERVICE_ROLE_KEY is required in .env.local');
+if (!migrationSecret) {
+  console.error('[migrate] MIGRATION_SECRET is required in .env.local');
   process.exit(1);
 }
 
 const response = await fetch(`${siteUrl}/api/apply-migration`, {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${serviceRoleKey}`,
+    Authorization: `Bearer ${migrationSecret}`,
     'Content-Type': 'application/json',
   },
 });

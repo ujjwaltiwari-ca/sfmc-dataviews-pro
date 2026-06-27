@@ -78,15 +78,10 @@ export async function handleApplyMigrationRequest(
   }
 
   const migrationSecret = process.env.MIGRATION_SECRET?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const databaseUrl = process.env.SUPABASE_DB_URL?.trim() || process.env.DATABASE_URL?.trim();
   const bearer = extractBearerToken(req);
 
-  const authorized =
-    (migrationSecret && bearer === migrationSecret) ||
-    (serviceRoleKey && bearer === serviceRoleKey);
-
-  if (!authorized) {
+  if (!migrationSecret || bearer !== migrationSecret) {
     sendJson(res, 401, { error: 'Unauthorized' });
     return;
   }
