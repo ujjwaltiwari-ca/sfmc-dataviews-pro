@@ -16,7 +16,7 @@ import { buildDynamicCopilotSchemaContext } from '../src/utils/compressSchemaFor
 import { isDisposableEmail } from './lib/disposableEmail.js';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
-const OPENAI_MODEL = 'gpt-4o-mini';
+const OPENAI_MODEL = 'gpt-4o';
 const OPENAI_MAX_OUTPUT_TOKENS = 1500;
 const AI_SERVICE_UNAVAILABLE =
   'AI service temporarily unavailable. Please try again later.';
