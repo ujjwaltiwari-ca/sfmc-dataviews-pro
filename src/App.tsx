@@ -88,6 +88,7 @@ import {
   type HoveredRelation,
 } from './utils/schemaExplorer';
 import type { SavedQuery } from './utils/savedQueriesApi';
+import { sfmcQueryTemplates } from './data/queryTemplates';
 
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
@@ -606,17 +607,23 @@ function AppMain() {
 
   const handleOnboardingIntent = useCallback(
     (intent: OnboardingIntent) => {
+      const template = sfmcQueryTemplates.find((item) => item.id === intent.templateId);
+      if (!template) {
+        return;
+      }
+
       dismissOnboarding();
       setOnboardingDismissed(true);
       if (intent.segment !== activeSegment) {
         handleSegmentChange(intent.segment);
       }
       setSelectedTableNames(intent.tableNames);
-      setActiveTemplateId(intent.templateId);
+      setActiveTemplateId(null);
+      setSandboxSql(template.sql);
+      setCopilotSqlActive(true);
       setShowSandbox(true);
       setIsSandboxExpanded(true);
-      setSandboxEditorTab('templates');
-      setTemplatesShortcutNonce((nonce) => nonce + 1);
+      setSandboxEditorTab('live');
     },
     [
       activeSegment,
