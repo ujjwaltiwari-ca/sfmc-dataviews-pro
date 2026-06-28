@@ -199,9 +199,9 @@ ORDER BY c.EventDate DESC`,
   {
     id: 'journey-email-performance-audit',
     category: 'Journey',
-    title: 'Journey Email Performance Audit',
+    title: 'Journey Activity Unsubscribe Audit',
     description:
-      'Identify which specific email activities within Journeys are triggering the highest unsubscribe volumes.',
+      'Rank Journey email activities by unsubscribe volume over the last 30 days (unsubs only — not a full sends/opens/clicks audit).',
     sql: `SELECT TOP 200
   jny.JourneyName,
   ja.ActivityName AS EmailActivityName,

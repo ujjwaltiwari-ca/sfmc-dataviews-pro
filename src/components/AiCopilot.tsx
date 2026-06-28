@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import {
   DAILY_COPILOT_QUERY_LIMIT,
+  getRemainingCopilotQueries,
   isDailyCopilotLimitMessage,
 } from '../constants/copilotQuota';
 import { useAuth } from '../context/authContext.shared';
@@ -572,9 +573,7 @@ export function AiCopilot({
     setPendingApply(null);
   };
 
-  const usageCount = dailyUsageCount ?? 0;
-  const remainingQueries =
-    dailyUsageCount === null ? null : Math.max(0, dailyLimit - usageCount);
+  const remainingQueries = getRemainingCopilotQueries(dailyUsageCount, dailyLimit);
   const isAtDailyLimit = remainingQueries === 0;
   const isLowQueries = remainingQueries === 1;
 

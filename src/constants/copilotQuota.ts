@@ -11,6 +11,16 @@ export function isDailyCopilotLimitMessage(content: string): boolean {
   );
 }
 
+export function getRemainingCopilotQueries(
+  usageCount: number | null,
+  dailyLimit: number = DAILY_COPILOT_QUERY_LIMIT,
+): number | null {
+  if (usageCount === null) {
+    return null;
+  }
+  return Math.max(0, dailyLimit - usageCount);
+}
+
 export function startOfUtcDayIso(): string {
   const now = new Date();
   const start = new Date(

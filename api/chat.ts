@@ -152,6 +152,18 @@ The user workspace may highlight specific Active Canvas Tables — prefer those 
 - Add IsUnique = 1 on _Open/_Click/_Bounce/_Unsubscribe/_Complaint when deduplicating to one row per send grain.
 - Pull EmailName, FromName, EmailSubject from _Job (j.JobID = s.JobID), never from _Sent.
 
+### NON-NEGOTIABLE QUERY STUDIO RULES:
+- SELECT TOP N is MANDATORY whenever the query uses ORDER BY (default SELECT TOP 200 unless the user needs a different cap; max 32200). Never emit ORDER BY without SELECT TOP.
+- Exclude test/preview sends in production metrics: AND s.TestStormObjID IS NULL on _Sent.
+- Wrap every rate or percentage denominator in NULLIF(..., 0). Cast numerators to float when dividing.
+- Global unsubscribes: filter u.ListID = 2 when the user wants account-wide unsubscribes (All Subscribers list).
+
+### FIELD NAME PRECISION (commonly confused — use exact names):
+- _Bounce "bounce reason": use b.SMTPBounceReason for SMTP error text; use b.BounceCategory only for category labels ("Hard bounce", "Soft bounce"). When filtering by category, prefer LOWER(b.BounceCategory) for case safety.
+- _JourneyActivity → _Sent: join ja.JourneyActivityObjectID = s.TriggererSendDefinitionObjectID. NEVER use ja.JourneyActivityID for this join (numeric ID ≠ send-definition GUID).
+- _Journey versioning: join _JourneyActivity to _Journey on VersionID when scoping to a specific journey version.
+- _SMSMessageTracking: SMSJobID (Spring 2023+ text GUID job id); Mobile for phone number; SendJobID is legacy numeric.
+
 ${CONTEXT_CODE_GROUNDING_INSTRUCTION}
 
 Schema Context:

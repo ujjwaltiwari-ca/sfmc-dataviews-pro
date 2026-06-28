@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 import { ChevronDown, LogOut } from 'lucide-react';
+import { getRemainingCopilotQueries } from '../constants/copilotQuota';
 import { useAuth } from '../context/authContext.shared';
 
 type AccountProfileDropdownProps = {
@@ -18,6 +19,7 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
   const { user, dailyUsageCount, dailyLimit, refreshUsage, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isUsageLoading, setIsUsageLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
@@ -28,7 +30,10 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
       return;
     }
 
-    void refreshUsage();
+    setIsUsageLoading(true);
+    void refreshUsage().finally(() => {
+      setIsUsageLoading(false);
+    });
   }, [isOpen, refreshUsage]);
 
   useEffect(() => {
@@ -86,10 +91,26 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
   }
 
   const usageCount = dailyUsageCount ?? 0;
-  const isAtDailyLimit = dailyUsageCount !== null && usageCount >= dailyLimit;
-  const usageDisplay = dailyUsageCount === null ? '—' : String(usageCount);
+  const remainingQueries = getRemainingCopilotQueries(dailyUsageCount, dailyLimit);
+  const isAtDailyLimit = remainingQueries === 0;
+  const isLowQueries = remainingQueries === 1;
   const usagePercent =
     dailyUsageCount === null ? 0 : Math.min(100, (usageCount / dailyLimit) * 100);
+  const remainingPercent =
+    dailyUsageCount === null ? 0 : Math.min(100, ((remainingQueries ?? 0) / dailyLimit) * 100);
+
+  const usageHeadline = isUsageLoading
+    ? 'Checking usage…'
+    : remainingQueries === null
+      ? 'Usage unavailable'
+      : `${remainingQueries} of ${dailyLimit} Copilot queries left today`;
+
+  const usageSubtext =
+    !isUsageLoading && dailyUsageCount !== null
+      ? `${usageCount} used · resets at midnight UTC`
+      : !isUsageLoading && remainingQueries === null
+        ? 'Sign in again or refresh if this persists'
+        : null;
 
   return (
     <div ref={containerRef} className="relative z-50">
@@ -131,36 +152,43 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
 
           <div
             className="rounded-lg border border-slate-200/70 bg-slate-50/60 p-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/40"
-            aria-label={`AI Query Usage: ${usageDisplay} of ${dailyLimit}`}
+            aria-label={
+              remainingQueries === null
+                ? 'Copilot query usage unavailable'
+                : `${remainingQueries} of ${dailyLimit} Copilot queries remaining today`
+            }
           >
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                AI Query Usage
-              </span>
-              <span
-                className={`text-xs tabular-nums ${
-                  isAtDailyLimit
-                    ? 'font-semibold text-rose-500 dark:text-rose-400'
-                    : 'font-medium text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {usageDisplay} / {dailyLimit}
-              </span>
-            </div>
+            <p
+              className={`text-sm font-medium leading-snug ${
+                isAtDailyLimit
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : isLowQueries
+                    ? 'text-amber-700 dark:text-amber-400'
+                    : 'text-slate-700 dark:text-slate-200'
+              }`}
+            >
+              {usageHeadline}
+            </p>
+            {usageSubtext ? (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{usageSubtext}</p>
+            ) : null}
             <div
               className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/60"
               role="progressbar"
-              aria-valuenow={dailyUsageCount ?? 0}
+              aria-valuenow={remainingQueries ?? 0}
               aria-valuemin={0}
               aria-valuemax={dailyLimit}
+              aria-label="Copilot queries remaining today"
             >
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out ${
                   isAtDailyLimit
                     ? 'bg-gradient-to-r from-rose-500 to-rose-600'
-                    : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                    : isLowQueries
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      : 'bg-gradient-to-r from-cyan-500 to-indigo-500'
                 }`}
-                style={{ width: `${usagePercent}%` }}
+                style={{ width: `${remainingQueries === null ? usagePercent : remainingPercent}%` }}
               />
             </div>
           </div>
