@@ -12,7 +12,7 @@ const CORE_TEMPLATES: QueryTemplate[] = [
     description:
       'Find subscribers who hit a hard bounce in the last 30 days for list hygiene.',
     sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
-SELECT
+SELECT TOP 200
   sub.SubscriberKey,
   sub.EmailAddress,
   b.BounceCategory,
@@ -21,7 +21,8 @@ SELECT
 FROM _Subscribers sub
 JOIN _Bounce b ON sub.SubscriberKey = b.SubscriberKey
 WHERE LOWER(b.BounceCategory) = 'hard bounce'
-  AND b.EventDate >= DATEADD(day, -30, GETDATE())`,
+  AND b.EventDate >= DATEADD(day, -30, GETDATE())
+ORDER BY b.EventDate DESC`,
   },
   {
     id: 'unengaged-ghost-subscribers',
@@ -30,7 +31,7 @@ WHERE LOWER(b.BounceCategory) = 'hard bounce'
     description:
       'Identify users sent 10+ emails in the last 90 days with zero recorded opens.',
     sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
-SELECT
+SELECT TOP 500
   sub.SubscriberKey,
   sub.EmailAddress
 FROM _Subscribers sub
@@ -39,6 +40,7 @@ WHERE EXISTS (
     FROM _Sent s
     WHERE s.SubscriberKey = sub.SubscriberKey
       AND s.EventDate >= DATEADD(day, -90, GETDATE())
+      AND s.TestStormObjID IS NULL
     GROUP BY s.SubscriberKey
     HAVING COUNT(DISTINCT s.JobID) >= 10
   )
@@ -54,7 +56,7 @@ WHERE EXISTS (
     category: 'Automation',
     title: 'Recent Automation Failures',
     description:
-      'Identify all Automation Studio tasks that failed or skipped in the last 24 hours.',
+      'Identify Automation Studio tasks that failed in the last 24 hours.',
     sql: `SELECT TOP 200
   AutomationName,
   AutomationCustomerKey,
@@ -62,7 +64,7 @@ WHERE EXISTS (
   AutomationInstanceEndTime_UTC,
   AutomationInstanceStatus
 FROM _AutomationInstance
-WHERE AutomationInstanceStatus IN ('Error', 'Skipped')
+WHERE AutomationInstanceStatus = 'Error'
   AND AutomationInstanceStartTime_UTC >= DATEADD(hour, -24, GETDATE())
 ORDER BY AutomationInstanceStartTime_UTC DESC`,
   },
@@ -72,7 +74,7 @@ ORDER BY AutomationInstanceStartTime_UTC DESC`,
     title: 'High-Friction Unsubscribes',
     description:
       'Track subscribers who opted out within 24 hours of receiving a specific email job.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   u.SubscriberKey,
   u.EventDate AS UnsubscribeDate,
   s.EventDate AS SentDate,
@@ -83,8 +85,10 @@ JOIN _Sent s
   AND u.ListID = s.ListID
   AND u.BatchID = s.BatchID
   AND u.SubscriberID = s.SubscriberID
-WHERE u.EventDate <= DATEADD(hour, 24, s.EventDate)
-  AND u.EventDate >= DATEADD(day, -30, GETDATE())`,
+WHERE u.EventDate >= s.EventDate
+  AND u.EventDate <= DATEADD(hour, 24, s.EventDate)
+  AND u.EventDate >= DATEADD(day, -30, GETDATE())
+ORDER BY u.EventDate DESC`,
   },
   {
     id: 'held-status-audit',
@@ -93,7 +97,7 @@ WHERE u.EventDate <= DATEADD(hour, 24, s.EventDate)
     description:
       "Find 'Held' subscribers along with their last recorded bounce reason to clear delivery blocks.",
     sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
-SELECT
+SELECT TOP 200
   sub.SubscriberKey,
   sub.Status,
   b.SMTPBounceReason,
@@ -105,7 +109,8 @@ WHERE sub.Status = 'held'
     SELECT MAX(InternalB.EventDate)
     FROM _Bounce InternalB
     WHERE InternalB.SubscriberKey = sub.SubscriberKey
-  )`,
+  )
+ORDER BY b.EventDate DESC`,
   },
   {
     id: 'spam-complaint-surge',
@@ -115,7 +120,7 @@ WHERE sub.Status = 'held'
       'Audit spam complaints received in the last 7 days grouped by email campaign details.',
     sql: `SELECT TOP 200
   c.JobID,
-  COUNT(c.SubscriberID) AS TotalComplaints,
+  COUNT(DISTINCT c.SubscriberID) AS TotalComplaints,
   MAX(c.EventDate) AS LatestComplaint
 FROM _Complaint c
 WHERE c.EventDate >= DATEADD(day, -7, GETDATE())
@@ -134,7 +139,7 @@ ORDER BY TotalComplaints DESC`,
   CodeID,
   SMSStandardStatusCodeId,
   Description,
-  SendJobID,
+  SMSJobID,
   ActionDateTime
 FROM _SMSMessageTracking
 WHERE Delivered = 0
@@ -148,7 +153,7 @@ ORDER BY ActionDateTime DESC`,
     description:
       'Find all subscribers who were sent a specific email Job ID but never recorded an Open event.',
     sql: `-- Child BU: use Ent._Subscribers instead of _Subscribers
-SELECT
+SELECT TOP 1000
   sub.SubscriberKey,
   sub.EmailAddress,
   s.JobID,
@@ -161,15 +166,18 @@ LEFT JOIN _Open o
   AND s.BatchID = o.BatchID
   AND s.SubscriberID = o.SubscriberID
 WHERE s.JobID = 'YOUR_JOB_ID_HERE'
-  AND o.SubscriberID IS NULL`,
+  AND s.EventDate >= DATEADD(day, -90, GETDATE())
+  AND s.TestStormObjID IS NULL
+  AND o.SubscriberID IS NULL
+ORDER BY s.EventDate DESC`,
   },
   {
     id: 'campaign-non-converters',
     category: 'Campaign',
-    title: 'Campaign Non-Converters',
+    title: 'Clickers Who Stayed Subscribed',
     description:
-      "Isolate subscribers who clicked a link in a specific email Job ID but didn't open or take action elsewhere.",
-    sql: `SELECT
+      'Subscribers who clicked a specific Job ID and did not unsubscribe — engaged recipients still on the list.',
+    sql: `SELECT TOP 200
   c.SubscriberKey,
   c.LinkName,
   c.LinkContent,
@@ -177,12 +185,16 @@ WHERE s.JobID = 'YOUR_JOB_ID_HERE'
 FROM _Click c
 WHERE c.JobID = 'YOUR_JOB_ID_HERE'
   AND c.EventDate >= DATEADD(day, -30, GETDATE())
+  AND c.IsUnique = 1
   AND NOT EXISTS (
     SELECT 1
     FROM _Unsubscribe u
     WHERE u.JobID = c.JobID
+      AND u.ListID = c.ListID
+      AND u.BatchID = c.BatchID
       AND u.SubscriberID = c.SubscriberID
-  )`,
+  )
+ORDER BY c.EventDate DESC`,
   },
   {
     id: 'journey-email-performance-audit',
@@ -193,11 +205,17 @@ WHERE c.JobID = 'YOUR_JOB_ID_HERE'
     sql: `SELECT TOP 200
   jny.JourneyName,
   ja.ActivityName AS EmailActivityName,
-  COUNT(u.SubscriberID) AS TotalUnsubscribes
+  COUNT(DISTINCT u.SubscriberID) AS TotalUnsubscribes
 FROM _Journey jny
 JOIN _JourneyActivity ja ON jny.VersionID = ja.VersionID
-JOIN _Unsubscribe u ON ja.JourneyActivityObjectID = u.TriggererSendDefinitionObjectID
-WHERE u.EventDate >= DATEADD(day, -30, GETDATE())
+JOIN _Sent s ON ja.JourneyActivityObjectID = s.TriggererSendDefinitionObjectID
+JOIN _Unsubscribe u
+  ON s.JobID = u.JobID
+  AND s.ListID = u.ListID
+  AND s.BatchID = u.BatchID
+  AND s.SubscriberID = u.SubscriberID
+WHERE ja.JourneyActivityObjectID IS NOT NULL
+  AND u.EventDate >= DATEADD(day, -30, GETDATE())
 GROUP BY jny.JourneyName, ja.ActivityName
 ORDER BY TotalUnsubscribes DESC`,
   },
