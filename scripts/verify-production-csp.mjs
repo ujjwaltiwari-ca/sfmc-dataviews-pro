@@ -22,6 +22,8 @@ async function main() {
     "font-src 'self'",
     'supabase.co',
     'google-analytics.com',
+    'analytics.google.com',
+    'www.google.com',
     'vitals.vercel-insights.com',
   ];
 
