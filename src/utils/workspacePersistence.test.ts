@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   buildWorkspaceSearchParams,
   buildWorkspaceShareUrl,
   hydrateWorkspaceState,
+  persistWorkspaceState,
+  WORKSPACE_STORAGE_KEYS,
 } from './workspacePersistence';
 import { encodeShareSql } from './workspaceShareSql.js';
 
@@ -94,5 +96,61 @@ describe('buildWorkspaceShareUrl', () => {
     const hydrated = hydrateWorkspaceState(new URLSearchParams(params.toString()));
     expect(hydrated.initialSharedSql).toBe(sql);
     expect(hydrated.showSandbox).toBe(true);
+  });
+});
+
+describe('hydrateWorkspaceState session restore', () => {
+  const storage = new Map<string, string>();
+
+  beforeEach(() => {
+    storage.clear();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+      removeItem: (key: string) => {
+        storage.delete(key);
+      },
+    });
+    vi.stubGlobal('window', {
+      location: { pathname: '/', search: '', origin: 'https://dataviews.pro' },
+      history: { replaceState: vi.fn(), state: null },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('restores sandbox SQL from localStorage on a bare URL', () => {
+    const sql = 'SELECT SubscriberKey FROM _Sent';
+    persistWorkspaceState({
+      segment: 'core',
+      selectedTableNames: ['_Sent'],
+      showSandbox: true,
+      activeTemplateId: null,
+      sandboxSql: sql,
+      sandboxPreferences: {
+        keywordCase: 'upper',
+        compactSelect: true,
+        limitPast30Days: true,
+        filterUniqueEvents: true,
+        excludeTestSends: true,
+        filterActiveSubscribersOnly: false,
+        filterByCampaignJobId: false,
+        campaignJobId: '',
+        includeTargetDeScaffolding: false,
+        isSandboxExpanded: true,
+        editorTab: 'live',
+      },
+    });
+
+    const hydrated = hydrateWorkspaceState(new URLSearchParams());
+    expect(hydrated.source).toBe('storage');
+    expect(hydrated.initialSharedSql).toBe(sql);
+    expect(hydrated.selectedTableNames).toEqual(['_Sent']);
+    expect(hydrated.showSandbox).toBe(true);
+    expect(storage.get(WORKSPACE_STORAGE_KEYS.sandboxSql)).toBeTruthy();
   });
 });

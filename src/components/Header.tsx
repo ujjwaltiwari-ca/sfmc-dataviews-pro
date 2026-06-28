@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../context/authContext.shared';
 import { useTheme } from '../context/ThemeContext';
 import { BRAND_NAME, BRAND_TAGLINE } from '../constants/brand';
+import { DAILY_COPILOT_QUERY_LIMIT } from '../constants/copilotQuota';
 import { AccountProfileDropdown } from './AccountProfileDropdown';
 import { PlatformInfoModal } from './PlatformInfoModal';
 import { SchemaArchitectMark } from './SchemaArchitectMark';
@@ -119,7 +120,7 @@ export function Header({
   onCloseCopilot,
 }: HeaderProps) {
   const { isDark, toggleTheme } = useTheme();
-  const { user, isAuthLoading } = useAuth();
+  const { user, isAuthLoading, dailyUsageCount, dailyLimit } = useAuth();
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isPlatformInfoOpen, setIsPlatformInfoOpen] = useState(false);
   const docsPanelRef = useRef<HTMLDivElement>(null);
@@ -166,6 +167,16 @@ export function Header({
     };
   }, []);
 
+  const copilotUsageLabel =
+    user && dailyUsageCount !== null
+      ? `${dailyUsageCount}/${dailyLimit ?? DAILY_COPILOT_QUERY_LIMIT}`
+      : null;
+  const copilotAtLimit =
+    dailyUsageCount !== null && dailyUsageCount >= (dailyLimit ?? DAILY_COPILOT_QUERY_LIMIT);
+  const copilotLowUsage =
+    dailyUsageCount !== null &&
+    dailyUsageCount === (dailyLimit ?? DAILY_COPILOT_QUERY_LIMIT) - 1;
+
   return (
     <>
       <header className="relative overflow-visible border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80">
@@ -201,10 +212,12 @@ export function Header({
                 aria-expanded={isCopilotOpen}
                 title={
                   user
-                    ? 'AI Copilot — uses your canvas and sandbox context'
+                    ? copilotUsageLabel
+                      ? `AI Copilot — ${copilotUsageLabel} queries used today`
+                      : 'AI Copilot — uses your canvas and sandbox context'
                     : 'AI Copilot — sign in required'
                 }
-                className={`btn-nav btn-nav-violet ${
+                className={`btn-nav btn-nav-violet relative ${
                   isCopilotOpen ? 'btn-nav-violet-active' : ''
                 }`}
               >
@@ -217,6 +230,19 @@ export function Header({
                 />
                 <span className="hidden sm:inline">AI Copilot</span>
                 <span className="sm:hidden">AI</span>
+                {copilotUsageLabel ? (
+                  <span
+                    className={`ml-0.5 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none ${
+                      copilotAtLimit
+                        ? 'bg-red-500 text-white'
+                        : copilotLowUsage
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-200'
+                    }`}
+                  >
+                    {copilotUsageLabel}
+                  </span>
+                ) : null}
               </button>
 
               {isAuthLoading ? (

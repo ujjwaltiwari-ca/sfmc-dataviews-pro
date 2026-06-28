@@ -642,7 +642,7 @@ export function AiCopilot({
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">Loading usage…</p>
               ) : isAtDailyLimit ? (
                 <p className="text-[10px] font-medium text-red-600 dark:text-red-400">
-                  Daily limit reached ({dailyLimit} queries). Resets at midnight UTC.
+                  Daily limit reached ({dailyUsageCount} of {dailyLimit} used). Resets at midnight UTC.
                 </p>
               ) : (
                 <p
@@ -652,7 +652,7 @@ export function AiCopilot({
                       : 'text-slate-500 dark:text-slate-400'
                   }`}
                 >
-                  {remainingQueries} of {dailyLimit} queries remaining today
+                  {dailyUsageCount} of {dailyLimit} queries used today
                 </p>
               )}
             </div>

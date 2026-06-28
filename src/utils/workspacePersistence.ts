@@ -42,6 +42,7 @@ export const WORKSPACE_STORAGE_KEYS = {
   tables: 'sfmc-ws-t',
   sandboxOpen: 'sfmc-ws-sb',
   templateId: 'sfmc-ws-tpl',
+  sandboxSql: 'sfmc-ws-sql',
   preferences: 'sfmc-ws-prefs',
   preferencesVersion: 'sfmc-ws-prefs-v',
 } as const;
@@ -63,7 +64,7 @@ export type SandboxPreferences = {
   editorTab: SandboxEditorTab;
 };
 
-export type WorkspaceHydrationSource = 'fresh-url' | 'url-or-storage';
+export type WorkspaceHydrationSource = 'fresh-url' | 'storage' | 'url-or-storage';
 
 export type WorkspaceHydration = {
   segment: ViewSegmentId;
@@ -294,8 +295,19 @@ export function clearWorkspaceStorage(): void {
   writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.tables, null);
   writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.sandboxOpen, null);
   writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.templateId, null);
+  writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.sandboxSql, null);
   writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.preferences, null);
   writeLocalStorageItem(VIEW_SEGMENT_STORAGE_KEY, null);
+}
+
+function hasStoredWorkspaceSession(): boolean {
+  return Boolean(
+    readLocalStorageItem(WORKSPACE_STORAGE_KEYS.tables) ||
+      readLocalStorageItem(WORKSPACE_STORAGE_KEYS.sandboxSql) ||
+      readLocalStorageItem(WORKSPACE_STORAGE_KEYS.sandboxOpen) === '1' ||
+      readLocalStorageItem(WORKSPACE_STORAGE_KEYS.templateId) ||
+      readLocalStorageItem(WORKSPACE_STORAGE_KEYS.preferences),
+  );
 }
 
 export function hydrateDefaultWorkspaceState(): WorkspaceHydration {
@@ -419,14 +431,26 @@ function readStoredPreferencesVersion(): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** Hydrates workspace state. Empty URL → defaults only; otherwise URL → localStorage → defaults. */
+function resolveStoredSandboxSql(
+  searchParams: URLSearchParams,
+): string | null {
+  if (searchParams.has(WORKSPACE_URL_KEYS.sandboxSql)) {
+    return decodeShareSql(searchParams.get(WORKSPACE_URL_KEYS.sandboxSql));
+  }
+
+  const storedEncoded = readLocalStorageItem(WORKSPACE_STORAGE_KEYS.sandboxSql);
+  if (!storedEncoded) {
+    return null;
+  }
+
+  return decodeShareSql(storedEncoded);
+}
+
+/** Hydrates workspace state. URL params win; bare `/` restores the last browser session. */
 export function hydrateWorkspaceState(
   searchParams: URLSearchParams = new URLSearchParams(window.location.search),
 ): WorkspaceHydration {
-  if (isWorkspaceUrlEmpty(searchParams)) {
-    clearWorkspaceStorage();
-    return hydrateDefaultWorkspaceState();
-  }
+  const bareUrl = isWorkspaceUrlEmpty(searchParams);
 
   const segment = resolveSegment(searchParams);
   const validNames = getValidTableNamesForSegment(segment);
@@ -461,11 +485,9 @@ export function hydrateWorkspaceState(
     resolvedEditorTab = 'templates';
   }
 
-  const sharedSqlFromUrl = searchParams.has(WORKSPACE_URL_KEYS.sandboxSql)
-    ? decodeShareSql(searchParams.get(WORKSPACE_URL_KEYS.sandboxSql))
-    : null;
+  const resolvedSandboxSql = resolveStoredSandboxSql(searchParams);
 
-  if (sharedSqlFromUrl) {
+  if (resolvedSandboxSql) {
     resolvedEditorTab = 'live';
   }
 
@@ -486,7 +508,7 @@ export function hydrateWorkspaceState(
     showSandbox ||
     selectedTableNames.length > 0 ||
     activeTemplateId !== null ||
-    Boolean(sharedSqlFromUrl);
+    Boolean(resolvedSandboxSql);
 
   return {
     segment,
@@ -495,8 +517,12 @@ export function hydrateWorkspaceState(
     activeTemplateId,
     sandboxPreferences: resolvedPreferences,
     initialTemplateSql: template?.sql ?? null,
-    initialSharedSql: sharedSqlFromUrl,
-    source: 'url-or-storage',
+    initialSharedSql: resolvedSandboxSql,
+    source: bareUrl
+      ? hasStoredWorkspaceSession()
+        ? 'storage'
+        : 'fresh-url'
+      : 'url-or-storage',
   };
 }
 
@@ -609,6 +635,9 @@ export function persistWorkspaceState(snapshot: WorkspaceSnapshot): void {
     );
     writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.templateId, snapshot.activeTemplateId);
     writeLocalStorageItem(VIEW_SEGMENT_STORAGE_KEY, snapshot.segment);
+
+    const encodedSql = snapshot.sandboxSql ? encodeShareSql(snapshot.sandboxSql) : null;
+    writeLocalStorageItem(WORKSPACE_STORAGE_KEYS.sandboxSql, encodedSql);
 
     try {
       writeLocalStorageItem(

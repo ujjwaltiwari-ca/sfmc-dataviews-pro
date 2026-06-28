@@ -32,7 +32,13 @@ import {
   SANDBOX_RESIZE_GUTTER_HEIGHT_PX,
 } from './constants/sandboxLayout';
 import { FOCUS_CANVAS_SEARCH_EVENT, OPEN_WHATS_NEW_EVENT } from './constants/siteChromeEvents';
+import {
+  dismissOnboarding,
+  isOnboardingDismissed,
+  type OnboardingIntent,
+} from './constants/onboardingIntents';
 import { hasSeenWhatsNew, recordAppVisit, shouldAutoOpenWhatsNew } from './content/changelog';
+import { useAuth } from './context/authContext.shared';
 
 const AiCopilot = lazy(() =>
   import('./components/AiCopilot').then((module) => ({ default: module.AiCopilot })),
@@ -41,6 +47,7 @@ const SqlGenerator = lazy(() =>
   import('./components/SqlGenerator').then((module) => ({ default: module.SqlGenerator })),
 );
 import { CanvasHero } from './components/CanvasHero';
+import { CopilotFab } from './components/CopilotFab';
 import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { FieldLookupResults } from './components/FieldLookupResults';
@@ -48,7 +55,9 @@ import { Header } from './components/Header';
 import { SchemaGraph } from './components/SchemaGraph';
 import { SchemaArchitectMark } from './components/SchemaArchitectMark';
 import { SiteFooter } from './components/SiteFooter';
+import { SessionRestoredBanner } from './components/SessionRestoredBanner';
 import { WhatsNewModal } from './components/WhatsNewModal';
+import { WorkspaceOnboarding } from './components/WorkspaceOnboarding';
 import type { DataViewField } from './data/sfmcSchema';
 import { dedupeTablesByName, getTablesForSegment, type ViewSegmentId } from './data/viewSegments';
 import {
@@ -65,6 +74,8 @@ import { useWorkspaceState } from './hooks/useWorkspaceState';
 import { useQuerySlots } from './hooks/useQuerySlots';
 import {
   buildWorkspaceShareUrl,
+  isDefaultWorkspaceSnapshot,
+  persistWorkspaceState,
   workspaceHasCustomState,
   type WorkspaceSnapshot,
 } from './utils/workspacePersistence';
@@ -81,6 +92,32 @@ import type { SavedQuery } from './utils/savedQueriesApi';
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
 
 const RELATION_LEAVE_DELAY_MS = 40;
+
+function AppCopilotFab({
+  isCopilotOpen,
+  onOpen,
+  showPulse,
+  bottomOffsetPx,
+}: {
+  isCopilotOpen: boolean;
+  onOpen: () => void;
+  showPulse: boolean;
+  bottomOffsetPx: number;
+}) {
+  const { user, dailyUsageCount, dailyLimit } = useAuth();
+
+  return (
+    <CopilotFab
+      isCopilotOpen={isCopilotOpen}
+      onOpen={onOpen}
+      usageCount={dailyUsageCount}
+      dailyLimit={dailyLimit}
+      isSignedIn={Boolean(user)}
+      showPulse={showPulse}
+      bottomOffsetPx={bottomOffsetPx}
+    />
+  );
+}
 
 function StagingBootScreen() {
   return (
@@ -249,6 +286,7 @@ function AppMain() {
     setEditorTab: setSandboxEditorTab,
     initialTemplateSql,
     initialSharedSql,
+    hydrationSource,
     resetWorkspace,
   } = workspace;
 
@@ -262,6 +300,8 @@ function AppMain() {
   const [authShellActive, setAuthShellActive] = useState(() => hasPersistedSupabaseSession());
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [whatsNewUnseen, setWhatsNewUnseen] = useState(() => !hasSeenWhatsNew());
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => isOnboardingDismissed());
+  const [sessionRestoredDismissed, setSessionRestoredDismissed] = useState(false);
   const [sandboxSql, setSandboxSql] = useState(
     () => initialSharedSql ?? initialTemplateSql ?? '',
   );
@@ -271,6 +311,7 @@ function AppMain() {
     Boolean(initialSharedSql?.trim()),
   );
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstPersistRef = useRef(true);
 
   const activateAuthShell = useCallback(() => {
     setAuthShellActive(true);
@@ -327,8 +368,13 @@ function AppMain() {
     }
     setShowSandbox(true);
     setIsSandboxExpanded(true);
-    setSandboxEditorTab('live');
+    if (activeTemplateId) {
+      setSandboxEditorTab('templates');
+    } else {
+      setSandboxEditorTab('live');
+    }
   }, [
+    activeTemplateId,
     initialSharedSql,
     setIsSandboxExpanded,
     setSandboxEditorTab,
@@ -486,6 +532,16 @@ function AppMain() {
     ],
   );
 
+  useEffect(() => {
+    if (isFirstPersistRef.current) {
+      isFirstPersistRef.current = false;
+      if (hydrationSource === 'fresh-url' && isDefaultWorkspaceSnapshot(workspaceSnapshot)) {
+        return;
+      }
+    }
+    persistWorkspaceState(workspaceSnapshot);
+  }, [hydrationSource, workspaceSnapshot]);
+
   const handleCopyWorkspaceLink = useCallback(async (): Promise<boolean> => {
     const url = buildWorkspaceShareUrl(workspaceSnapshot);
     try {
@@ -542,6 +598,47 @@ function AppMain() {
   const handleFocusSearch = useCallback(() => {
     window.dispatchEvent(new CustomEvent(FOCUS_CANVAS_SEARCH_EVENT));
   }, []);
+
+  const handleDismissOnboarding = useCallback(() => {
+    dismissOnboarding();
+    setOnboardingDismissed(true);
+  }, []);
+
+  const handleOnboardingIntent = useCallback(
+    (intent: OnboardingIntent) => {
+      dismissOnboarding();
+      setOnboardingDismissed(true);
+      if (intent.segment !== activeSegment) {
+        handleSegmentChange(intent.segment);
+      }
+      setSelectedTableNames(intent.tableNames);
+      setActiveTemplateId(intent.templateId);
+      setShowSandbox(true);
+      setIsSandboxExpanded(true);
+      setSandboxEditorTab('templates');
+      setTemplatesShortcutNonce((nonce) => nonce + 1);
+    },
+    [
+      activeSegment,
+      handleSegmentChange,
+      setActiveTemplateId,
+      setIsSandboxExpanded,
+      setSandboxEditorTab,
+      setSelectedTableNames,
+      setShowSandbox,
+    ],
+  );
+
+  const showOnboarding =
+    !onboardingDismissed &&
+    hydrationSource === 'fresh-url' &&
+    isDefaultWorkspaceSnapshot(workspaceSnapshot) &&
+    !searchQuery.trim();
+
+  const showSessionRestoredBanner =
+    !sessionRestoredDismissed &&
+    hydrationSource === 'storage' &&
+    (selectedTableNames.length > 0 || Boolean(sandboxSql.trim()));
 
   const enterpriseBuActive = buContext === 'enterprise' && activeSegment === 'core';
 
@@ -688,10 +785,24 @@ function AppMain() {
         style={canvasBottomPaddingPx > 0 ? { paddingBottom: canvasBottomPaddingPx } : undefined}
       >
         <main className={`mx-auto w-full ${canvasMainMaxWidthClassName(canvasDensity)} p-6 sm:p-8`}>
-          <CanvasHero
-            onStartWithSent={handleStartWithSent}
-            onFocusSearch={handleFocusSearch}
-          />
+          {showSessionRestoredBanner ? (
+            <SessionRestoredBanner
+              tableCount={selectedTableNames.length}
+              hasSql={Boolean(sandboxSql.trim())}
+              onDismiss={() => setSessionRestoredDismissed(true)}
+            />
+          ) : null}
+          {showOnboarding ? (
+            <WorkspaceOnboarding
+              onSelectIntent={handleOnboardingIntent}
+              onDismiss={handleDismissOnboarding}
+            />
+          ) : (
+            <CanvasHero
+              onStartWithSent={handleStartWithSent}
+              onFocusSearch={handleFocusSearch}
+            />
+          )}
           {showFieldLookup ? (
             <FieldLookupResults
               results={fieldLookupResults}
@@ -780,6 +891,13 @@ function AppMain() {
           />
         </Suspense>
       ) : null}
+
+      <AppCopilotFab
+        isCopilotOpen={isCopilotOpen}
+        onOpen={handleToggleCopilot}
+        showPulse={showOnboarding}
+        bottomOffsetPx={canvasBottomPaddingPx}
+      />
 
       <WhatsNewModal
         isOpen={isWhatsNewOpen}

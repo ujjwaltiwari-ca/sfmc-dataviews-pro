@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { SandboxEditorTab } from '../utils/workspacePersistence';
 import type { ViewSegmentId } from '../data/viewSegments';
 import { buildSafeSqlPreferencePatch } from '../utils/safeSqlDefaults';
@@ -7,10 +7,8 @@ import {
   DEFAULT_WORKSPACE_SNAPSHOT,
   filterTableNamesForSegment,
   hydrateWorkspaceState,
-  isWorkspaceUrlEmpty,
   persistWorkspaceState,
   type SandboxPreferences,
-  type WorkspaceSnapshot,
 } from '../utils/workspacePersistence';
 
 export type WorkspaceStateApi = {
@@ -32,16 +30,13 @@ export type WorkspaceStateApi = {
   setEditorTab: (tab: SandboxEditorTab) => void;
   initialTemplateSql: string | null;
   initialSharedSql: string | null;
+  hydrationSource: 'fresh-url' | 'storage' | 'url-or-storage';
   /** Clears selections, sandbox, share URL params, and persisted workspace keys. */
   resetWorkspace: () => void;
 };
 
 export function useWorkspaceState(): WorkspaceStateApi {
   const hydrated = useMemo(() => hydrateWorkspaceState(), []);
-  const loadedFromBareUrlRef = useRef(
-    hydrated.source === 'fresh-url' && isWorkspaceUrlEmpty(),
-  );
-  const isFirstPersistRef = useRef(true);
 
   const [segment, setSegmentState] = useState<ViewSegmentId>(hydrated.segment);
   const [selectedTableNames, setSelectedTableNamesState] = useState<string[]>(
@@ -145,28 +140,6 @@ export function useWorkspaceState(): WorkspaceStateApi {
   }, []);
 
 
-  const snapshot: WorkspaceSnapshot = useMemo(
-    () => ({
-      segment,
-      selectedTableNames,
-      showSandbox,
-      activeTemplateId,
-      sandboxPreferences,
-    }),
-    [segment, selectedTableNames, showSandbox, activeTemplateId, sandboxPreferences],
-  );
-
-  useEffect(() => {
-    if (isFirstPersistRef.current) {
-      isFirstPersistRef.current = false;
-      if (loadedFromBareUrlRef.current) {
-        loadedFromBareUrlRef.current = false;
-        return;
-      }
-    }
-    persistWorkspaceState(snapshot);
-  }, [snapshot]);
-
   return {
     segment,
     setSegment,
@@ -186,6 +159,7 @@ export function useWorkspaceState(): WorkspaceStateApi {
     setEditorTab,
     initialTemplateSql: hydrated.initialTemplateSql,
     initialSharedSql: hydrated.initialSharedSql,
+    hydrationSource: hydrated.source,
     resetWorkspace,
   };
 }
