@@ -1,6 +1,13 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ServerResponse } from 'node:http';
 import { assertStagingUnlocked } from './lib/stagingCookieNode.js';
+import {
+  extractBearerToken,
+  getSupabaseServerClient,
+  getSupabaseServerConfigError,
+  sendJson,
+  sendJsonError,
+  type NodeApiRequest,
+} from './lib/supabaseServer.js';
 
 const DAILY_COPILOT_QUERY_LIMIT = 5;
 
@@ -10,30 +17,6 @@ function startOfUtcDayIso(): string {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
   );
   return start.toISOString();
-}
-
-let supabaseServerClient: SupabaseClient | null = null;
-
-function getSupabaseServerClient(): SupabaseClient | null {
-  if (supabaseServerClient) {
-    return supabaseServerClient;
-  }
-
-  const url = process.env.SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-  if (!url || !serviceRoleKey) {
-    return null;
-  }
-
-  supabaseServerClient = createClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  return supabaseServerClient;
 }
 
 async function getTodayCopilotUsageCount(userId: string): Promise<number> {
@@ -55,31 +38,6 @@ async function getTodayCopilotUsageCount(userId: string): Promise<number> {
   }
 
   return count ?? 0;
-}
-
-type NodeApiRequest = IncomingMessage & { body?: unknown };
-
-function sendJson(res: ServerResponse, status: number, payload: unknown): void {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(payload));
-}
-
-function sendJsonError(res: ServerResponse, message: string, status: number): void {
-  sendJson(res, status, { error: message });
-}
-
-function extractBearerToken(request: NodeApiRequest): string | null {
-  const raw =
-    request.headers['authorization'] ?? request.headers.authorization;
-  const authHeader = Array.isArray(raw) ? raw[0] : raw;
-
-  if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.slice('Bearer '.length).trim();
-  return token || null;
 }
 
 function isPlausibleJwt(token: string): boolean {
@@ -106,8 +64,9 @@ export async function handleUsageRequest(
   }
 
   const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    sendJsonError(res, 'Supabase is not configured on the server', 500);
+  const configError = getSupabaseServerConfigError();
+  if (!supabase || configError) {
+    sendJsonError(res, configError ?? 'Supabase is not configured on the server', 500);
     return;
   }
 

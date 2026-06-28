@@ -3,13 +3,47 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 let supabaseServerClient: SupabaseClient | null = null;
 
+/** Server-side Supabase project URL (falls back to VITE_SUPABASE_URL for Vercel setups). */
+export function resolveSupabaseServerUrl(): string {
+  return (
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.VITE_SUPABASE_URL?.trim() ||
+    ''
+  );
+}
+
+export function resolveSupabaseServiceRoleKey(): string {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
+}
+
+/** Human-readable hint when server Supabase env is incomplete. */
+export function getSupabaseServerConfigError(): string | null {
+  const url = resolveSupabaseServerUrl();
+  const serviceRoleKey = resolveSupabaseServiceRoleKey();
+
+  if (!url && !serviceRoleKey) {
+    return 'Server Supabase is not configured. Set SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY in Vercel env.';
+  }
+  if (!url) {
+    return 'Server Supabase URL is missing. Set SUPABASE_URL or VITE_SUPABASE_URL in Vercel env.';
+  }
+  if (!serviceRoleKey) {
+    return 'Server Supabase service role key is missing. Set SUPABASE_SERVICE_ROLE_KEY in Vercel env.';
+  }
+  return null;
+}
+
+export function resetSupabaseServerClient(): void {
+  supabaseServerClient = null;
+}
+
 export function getSupabaseServerClient(): SupabaseClient | null {
   if (supabaseServerClient) {
     return supabaseServerClient;
   }
 
-  const url = process.env.SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const url = resolveSupabaseServerUrl();
+  const serviceRoleKey = resolveSupabaseServiceRoleKey();
 
   if (!url || !serviceRoleKey) {
     return null;

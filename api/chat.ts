@@ -1,10 +1,17 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ServerResponse } from 'node:http';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { getClientIp } from './lib/clientIp.js';
 import { CHAT_POST_LIMIT, checkRateLimit } from './lib/rateLimit.js';
 import { assertStagingUnlocked } from './lib/stagingCookieNode.js';
+import {
+  extractBearerToken,
+  getSupabaseServerClient,
+  getSupabaseServerConfigError,
+  sendJsonError,
+  type NodeApiRequest,
+} from './lib/supabaseServer.js';
 import { buildDynamicCopilotSchemaContext } from '../src/utils/compressSchemaForCopilot.js';
 import { isDisposableEmail } from './lib/disposableEmail.js';
 
@@ -36,34 +43,8 @@ const SSE_HEADERS: Record<string, string> = {
   Connection: 'keep-alive',
 };
 
-let supabaseServerClient: SupabaseClient | null = null;
-
-/** Clears the cached Supabase client (used by the Vite dev middleware when env is rebound). */
-export function resetSupabaseServerClient(): void {
-  supabaseServerClient = null;
-}
-
-function getSupabaseServerClient(): SupabaseClient | null {
-  if (supabaseServerClient) {
-    return supabaseServerClient;
-  }
-
-  const url = process.env.SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-  if (!url || !serviceRoleKey) {
-    return null;
-  }
-
-  supabaseServerClient = createClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  return supabaseServerClient;
-}
+/** @deprecated Import resetSupabaseServerClient from ./lib/supabaseServer.js */
+export { resetSupabaseServerClient } from './lib/supabaseServer.js';
 
 async function getTodayCopilotUsageCount(userId: string): Promise<number> {
   const supabase = getSupabaseServerClient();
@@ -201,31 +182,6 @@ type ChatRequestBody = {
   currentQueryText?: unknown;
   enterpriseBuMode?: unknown;
 };
-
-type NodeApiRequest = IncomingMessage & { body?: unknown };
-
-function sendJson(res: ServerResponse, status: number, payload: unknown): void {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(payload));
-}
-
-function sendJsonError(res: ServerResponse, message: string, status: number): void {
-  sendJson(res, status, { error: message });
-}
-
-function extractBearerToken(request: NodeApiRequest): string | null {
-  const raw =
-    request.headers['authorization'] ?? request.headers.authorization;
-  const authHeader = Array.isArray(raw) ? raw[0] : raw;
-
-  if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.slice('Bearer '.length).trim();
-  return token || null;
-}
 
 function isPlausibleJwt(token: string): boolean {
   const parts = token.split('.');
@@ -507,8 +463,10 @@ export async function handleChatRequest(
   }
 
   const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    sendJsonError(res, 'Supabase is not configured on the server', 500);
+  const configError = getSupabaseServerConfigError();
+  if (!supabase || configError) {
+    console.error('[api/chat] Supabase config error:', configError ?? 'unknown');
+    sendJsonError(res, configError ?? 'Supabase is not configured on the server', 500);
     return;
   }
 
@@ -545,7 +503,11 @@ export async function handleChatRequest(
 
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    sendJsonError(res, 'OpenAI API key is not configured on the server', 500);
+    sendJsonError(
+      res,
+      'OpenAI API key is not configured. Set OPENAI_API_KEY in Vercel env.',
+      500,
+    );
     return;
   }
 

@@ -44,11 +44,12 @@ See `.env.example`. Summary:
 
 | Variable | Scope | Purpose |
 |----------|-------|---------|
-| `VITE_SUPABASE_URL` | Client | Auth for AI Copilot |
+| `VITE_SUPABASE_URL` | Client | Auth for AI Copilot (also used server-side if `SUPABASE_URL` is unset) |
 | `VITE_SUPABASE_ANON_KEY` | Client | Auth for AI Copilot |
 | `VITE_GA_MEASUREMENT_ID` | Client | Google Analytics (production) |
-| `OPENAI_API_KEY` | Server | AI Copilot responses |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server | Usage quota tracking and saved queries API |
+| `OPENAI_API_KEY` | Server | **Required** for AI Copilot (`/api/chat`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | **Required** for Copilot quota + saved queries API |
+| `SUPABASE_URL` | Server | Optional alias — defaults to `VITE_SUPABASE_URL` on Vercel |
 | `STAGING_PASSWORD` | Server / build | Optional pre-launch gate — **omit for public launch** |
 | `STAGING_COOKIE_SECRET` | Server | **Required in production** when `STAGING_PASSWORD` is set |
 
