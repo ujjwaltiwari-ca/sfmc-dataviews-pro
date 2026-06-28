@@ -1,7 +1,11 @@
-import disposableDomains from 'disposable-email-domains';
+import { createRequire } from 'node:module';
 
-const DISPOSABLE_DOMAIN_SET = new Set(
-  (disposableDomains as readonly string[]).map((domain) => domain.toLowerCase()),
+const require = createRequire(import.meta.url);
+
+const DISPOSABLE_DOMAIN_SET = new Set<string>(
+  (require('disposable-email-domains') as readonly string[]).map((domain) =>
+    domain.toLowerCase(),
+  ),
 );
 
 export function getEmailDomain(email: string): string | null {
