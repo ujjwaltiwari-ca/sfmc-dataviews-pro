@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, LayoutGrid, Link2, ListTree, RotateCcw, Search } from 'lucide-react';
+import { Check, GitBranch, LayoutGrid, Link2, ListTree, RotateCcw, Search } from 'lucide-react';
 import { type CanvasDensity } from '../constants/canvasDensity';
+import { type CanvasViewMode } from '../constants/canvasViewMode';
 import { type BuContextMode } from '../constants/buContext';
 import { VIEW_SEGMENTS, type ViewSegmentId } from '../data/viewSegments';
 import { FOCUS_CANVAS_SEARCH_EVENT } from '../constants/siteChromeEvents';
@@ -16,6 +17,8 @@ type CommandToolbarProps = {
   onShowDetailsChange: (value: boolean) => void;
   canvasDensity: CanvasDensity;
   onCanvasDensityChange: (density: CanvasDensity) => void;
+  canvasViewMode: CanvasViewMode;
+  onCanvasViewModeChange: (mode: CanvasViewMode) => void;
   buContext: BuContextMode;
   onBuContextChange: (mode: BuContextMode) => void;
   showEnterpriseBuToggle: boolean;
@@ -33,6 +36,8 @@ export function CommandToolbar({
   onShowDetailsChange,
   canvasDensity,
   onCanvasDensityChange,
+  canvasViewMode,
+  onCanvasViewModeChange,
   buContext,
   onBuContextChange,
   showEnterpriseBuToggle,
@@ -163,6 +168,30 @@ export function CommandToolbar({
               onClick={() => onCanvasDensityChange('compact')}
             >
               Compact
+            </button>
+          </div>
+
+          <div
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200/80 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            role="group"
+            aria-label="Canvas view"
+          >
+            <GitBranch className="ml-1.5 hidden h-3.5 w-3.5 text-slate-400 sm:inline" aria-hidden />
+            <button
+              type="button"
+              className={densityToggleClass(canvasViewMode === 'grid')}
+              aria-pressed={canvasViewMode === 'grid'}
+              onClick={() => onCanvasViewModeChange('grid')}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              className={densityToggleClass(canvasViewMode === 'graph')}
+              aria-pressed={canvasViewMode === 'graph'}
+              onClick={() => onCanvasViewModeChange('graph')}
+            >
+              Graph
             </button>
           </div>
 

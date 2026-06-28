@@ -105,3 +105,25 @@ export function buildRelationHighlight(
     targets: inbound,
   };
 }
+
+const ENGAGEMENT_QUADRINITY = new Set(['JobID', 'ListID', 'BatchID', 'SubscriberID']);
+
+export function getJoinHintForField(
+  tableName: string,
+  fieldName: string,
+  relatesTo?: DataViewField['relatesTo'],
+): string | null {
+  if (ENGAGEMENT_QUADRINITY.has(fieldName)) {
+    const trackingTables = ['_Sent', '_Open', '_Click', '_Bounce', '_Complaint', '_Unsubscribe'];
+    if (trackingTables.includes(tableName)) {
+      return `${fieldName} is part of the engagement quadrinity — join tracking views on JobID, ListID, BatchID, and SubscriberID together.`;
+    }
+  }
+
+  if (!relatesTo?.length) {
+    return null;
+  }
+
+  const targets = relatesTo.map((relation) => `${relation.table}.${relation.field}`).join(', ');
+  return `Joins to ${targets} on ${fieldName}.`;
+}

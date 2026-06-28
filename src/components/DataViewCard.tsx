@@ -6,6 +6,7 @@ import type { HoveredRelation } from '../utils/schemaExplorer';
 import {
   buildRelationHighlight,
   fieldMatchesSearch,
+  getJoinHintForField,
   isFieldRelationHighlighted,
   isSameFieldRef,
   tableMatchesSearch,
@@ -484,6 +485,8 @@ function FieldRow({
     ? `${categoryTheme.pathText} opacity-80`
     : 'text-slate-500 dark:text-slate-400';
 
+  const joinHint = getJoinHintForField(tableName, field.name, field.relatesTo);
+
   return (
     <div
       role="row"
@@ -510,9 +513,10 @@ function FieldRow({
           <span
             className={FIELD_LINK_ICON_CLASS}
             title={
-              field.relatesTo?.[0]
+              joinHint ??
+              (field.relatesTo?.[0]
                 ? `Hover to highlight this field's relation in ${field.relatesTo[0].table}`
-                : 'Hover to highlight related tables'
+                : 'Hover to highlight related tables')
             }
           >
             <Link2

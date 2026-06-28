@@ -21,6 +21,12 @@ import {
   type CanvasDensity,
 } from './constants/canvasDensity';
 import {
+  CANVAS_VIEW_MODE_STORAGE_KEY,
+  readCanvasViewModePreference,
+  writeCanvasViewModePreference,
+  type CanvasViewMode,
+} from './constants/canvasViewMode';
+import {
   getDefaultSandboxHeight,
   SANDBOX_COLLAPSED_CHROME_HEIGHT_PX,
   SANDBOX_RESIZE_GUTTER_HEIGHT_PX,
@@ -39,6 +45,7 @@ import { CommandToolbar } from './components/CommandToolbar';
 import { DataViewCard } from './components/DataViewCard';
 import { FieldLookupResults } from './components/FieldLookupResults';
 import { Header } from './components/Header';
+import { SchemaGraph } from './components/SchemaGraph';
 import { SchemaArchitectMark } from './components/SchemaArchitectMark';
 import { SiteFooter } from './components/SiteFooter';
 import { WhatsNewModal } from './components/WhatsNewModal';
@@ -55,13 +62,20 @@ import {
   searchFieldsAcrossTables,
 } from './utils/fieldLookup';
 import { useWorkspaceState } from './hooks/useWorkspaceState';
+import { useQuerySlots } from './hooks/useQuerySlots';
 import {
   buildWorkspaceShareUrl,
   workspaceHasCustomState,
   type WorkspaceSnapshot,
 } from './utils/workspacePersistence';
+import { extractTablesFromSql } from './utils/extractTablesFromSql';
 import { hasPersistedSupabaseSession } from './utils/supabaseSessionStorage';
-import { buildRelationHighlight, normalizeSearchQuery, type HoveredRelation } from './utils/schemaExplorer';
+import {
+  buildRelationHighlight,
+  normalizeSearchQuery,
+  tableMatchesSearch,
+  type HoveredRelation,
+} from './utils/schemaExplorer';
 import type { SavedQuery } from './utils/savedQueriesApi';
 
 type StagingGateStatus = 'loading' | 'disabled' | 'locked' | 'unlocked';
@@ -241,6 +255,7 @@ function AppMain() {
   const [hoveredRelation, setHoveredRelation] = useState<HoveredRelation | null>(null);
   const [showDetails, setShowDetails] = useState(readShowDetailsPreference);
   const [canvasDensity, setCanvasDensity] = useState<CanvasDensity>(readCanvasDensityPreference);
+  const [canvasViewMode, setCanvasViewMode] = useState<CanvasViewMode>(readCanvasViewModePreference);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [buContext, setBuContext] = useState<BuContextMode>(readBuContextPreference);
   const [authShellActive, setAuthShellActive] = useState(() => hasPersistedSupabaseSession());
@@ -309,6 +324,18 @@ function AppMain() {
   }, []);
 
   useEffect(() => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (path !== '/templates') {
+      return;
+    }
+    setShowSandbox(true);
+    setIsSandboxExpanded(true);
+    setSandboxEditorTab('templates');
+    setTemplatesShortcutNonce((nonce) => nonce + 1);
+    window.history.replaceState(null, '', `${window.location.origin}/`);
+  }, [setIsSandboxExpanded, setSandboxEditorTab, setShowSandbox]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(SHOW_DETAILS_STORAGE_KEY, String(showDetails));
     } catch {
@@ -323,6 +350,14 @@ function AppMain() {
       /* ignore */
     }
   }, [canvasDensity]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CANVAS_VIEW_MODE_STORAGE_KEY, canvasViewMode);
+    } catch {
+      /* ignore */
+    }
+  }, [canvasViewMode]);
 
   const normalizedSearchQuery = useMemo(
     () => normalizeSearchQuery(searchQuery),
@@ -348,9 +383,65 @@ function AppMain() {
     [activeTables, selectedTables],
   );
 
-  useEffect(() => {
-    setCopilotSqlActive(false);
-  }, [selectedTableNames]);
+  const handleApplyQuerySlot = useCallback(
+    (slot: { tableNames: string[]; sql: string }) => {
+      setSelectedTableNames(slot.tableNames);
+      setSandboxSql(slot.sql);
+      setCopilotSqlActive(slot.sql.trim().length > 0);
+      if (slot.tableNames.length > 0) {
+        setShowSandbox(true);
+      }
+    },
+    [setSelectedTableNames, setShowSandbox],
+  );
+
+  const querySlots = useQuerySlots({
+    tableNames: selectedTableNames,
+    sql: sandboxSql,
+    onApplySlot: handleApplyQuerySlot,
+  });
+
+  const canvasTables = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return activeTables;
+    }
+    return activeTables.filter((table) => tableMatchesSearch(table, normalizedSearchQuery));
+  }, [activeTables, normalizedSearchQuery]);
+
+  const handleCanvasViewModeChange = useCallback((mode: CanvasViewMode) => {
+    setCanvasViewMode(mode);
+    writeCanvasViewModePreference(mode);
+  }, []);
+
+  const handleApplyTemplateToWorkspace = useCallback(
+    (sql: string) => {
+      const tables = extractTablesFromSql(sql);
+      setCopilotSqlActive(true);
+      setSandboxSql(sql);
+      if (tables.length > 0) {
+        setSelectedTableNames(tables);
+      }
+      setActiveTemplateId(null);
+      setSandboxEditorTab('live');
+      setShowSandbox(true);
+      setIsSandboxExpanded(true);
+    },
+    [
+      setActiveTemplateId,
+      setIsSandboxExpanded,
+      setSandboxEditorTab,
+      setSelectedTableNames,
+      setShowSandbox,
+    ],
+  );
+
+  const handleToggleTableSelection = useCallback(
+    (tableName: string) => {
+      setCopilotSqlActive(false);
+      toggleTableSelection(tableName);
+    },
+    [toggleTableSelection],
+  );
 
   const workspaceSnapshot = useMemo<WorkspaceSnapshot>(
     () => ({
@@ -391,14 +482,14 @@ function AppMain() {
     if (activeSegment !== 'core') {
       handleSegmentChange('core');
       window.requestAnimationFrame(() => {
-        toggleTableSelection('_Sent');
+        handleToggleTableSelection('_Sent');
         scrollToSent();
       });
       return;
     }
 
     if (!selectedTables.has('_Sent')) {
-      toggleTableSelection('_Sent');
+      handleToggleTableSelection('_Sent');
     } else {
       setShowSandbox(true);
       setIsSandboxExpanded(true);
@@ -408,9 +499,9 @@ function AppMain() {
     activeSegment,
     handleSegmentChange,
     selectedTables,
+    handleToggleTableSelection,
     setIsSandboxExpanded,
     setShowSandbox,
-    toggleTableSelection,
   ]);
 
   const handleFieldLookupSelect = useCallback((tableName: string) => {
@@ -548,6 +639,8 @@ function AppMain() {
           onShowDetailsChange={setShowDetails}
           canvasDensity={canvasDensity}
           onCanvasDensityChange={setCanvasDensity}
+          canvasViewMode={canvasViewMode}
+          onCanvasViewModeChange={handleCanvasViewModeChange}
           buContext={buContext}
           onBuContextChange={handleBuContextChange}
           showEnterpriseBuToggle={activeSegment === 'core'}
@@ -579,12 +672,19 @@ function AppMain() {
               fieldTerm={fieldLookupTerm ?? ''}
               onSelectResult={handleFieldLookupSelect}
             />
+          ) : canvasViewMode === 'graph' ? (
+            <SchemaGraph
+              tables={canvasTables}
+              selectedTableNames={selectedTables}
+              onToggleSelect={handleToggleTableSelection}
+              hoveredRelation={hoveredRelation}
+            />
           ) : (
           <div
             key={activeSegment}
             className={`flex flex-wrap justify-center ${canvasGridGapClassName(canvasDensity)}`}
           >
-            {activeTables.map((table, index) => (
+            {canvasTables.map((table, index) => (
               <div
                 key={table.name}
                 data-table-card={table.name}
@@ -594,7 +694,7 @@ function AppMain() {
                 <DataViewCard
                   table={table}
                   isSelected={selectedTables.has(table.name)}
-                  onToggleSelect={toggleTableSelection}
+                  onToggleSelect={handleToggleTableSelection}
                   normalizedSearchQuery={normalizedSearchQuery}
                   hoveredRelation={hoveredRelation}
                   onFieldRelationHover={handleFieldRelationHover}
@@ -634,6 +734,11 @@ function AppMain() {
           buContext={buContext}
           onSignInRequired={handleSignInRequired}
           onRestoreSavedQuery={handleRestoreSavedQuery}
+          querySlotIndex={querySlots.activeIndex}
+          querySlotLabels={querySlots.slots.map((slot) => slot.label)}
+          onQuerySlotChange={querySlots.switchSlot}
+          onQuerySlotRename={querySlots.renameSlot}
+          onApplyTemplateToWorkspace={handleApplyTemplateToWorkspace}
         />
       </Suspense>
 

@@ -20,7 +20,7 @@ SELECT
   b.EventDate
 FROM _Subscribers sub
 JOIN _Bounce b ON sub.SubscriberKey = b.SubscriberKey
-WHERE b.BounceCategory = 'Hard Bounce'
+WHERE LOWER(b.BounceCategory) = 'hard bounce'
   AND b.EventDate >= DATEADD(day, -30, GETDATE())`,
   },
   {
@@ -34,17 +34,19 @@ SELECT
   sub.SubscriberKey,
   sub.EmailAddress
 FROM _Subscribers sub
-WHERE sub.SubscriberKey IN (
-    SELECT s.SubscriberKey
+WHERE EXISTS (
+    SELECT 1
     FROM _Sent s
-    WHERE s.EventDate >= DATEADD(day, -90, GETDATE())
+    WHERE s.SubscriberKey = sub.SubscriberKey
+      AND s.EventDate >= DATEADD(day, -90, GETDATE())
     GROUP BY s.SubscriberKey
-    HAVING COUNT(s.JobID) >= 10
+    HAVING COUNT(DISTINCT s.JobID) >= 10
   )
-  AND sub.SubscriberKey NOT IN (
-    SELECT o.SubscriberKey
+  AND NOT EXISTS (
+    SELECT 1
     FROM _Open o
-    WHERE o.EventDate >= DATEADD(day, -90, GETDATE())
+    WHERE o.SubscriberKey = sub.SubscriberKey
+      AND o.EventDate >= DATEADD(day, -90, GETDATE())
   )`,
   },
   {
@@ -53,7 +55,7 @@ WHERE sub.SubscriberKey IN (
     title: 'Recent Automation Failures',
     description:
       'Identify all Automation Studio tasks that failed or skipped in the last 24 hours.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   AutomationName,
   AutomationCustomerKey,
   AutomationInstanceStartTime_UTC,
@@ -111,7 +113,7 @@ WHERE sub.Status = 'held'
     title: 'Spam Complaint Surge',
     description:
       'Audit spam complaints received in the last 7 days grouped by email campaign details.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   c.JobID,
   COUNT(c.SubscriberID) AS TotalComplaints,
   MAX(c.EventDate) AS LatestComplaint
@@ -126,7 +128,7 @@ ORDER BY TotalComplaints DESC`,
     title: 'SMS Outbound Failures',
     description:
       'Isolate text messages that returned an undelivered or error state from the gateway.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   Mobile,
   MessageID,
   CodeID,
@@ -187,7 +189,7 @@ WHERE c.JobID = 'YOUR_JOB_ID_HERE'
     title: 'Journey Email Performance Audit',
     description:
       'Identify which specific email activities within Journeys are triggering the highest unsubscribe volumes.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   jny.JourneyName,
   ja.ActivityName AS EmailActivityName,
   COUNT(u.SubscriberID) AS TotalUnsubscribes

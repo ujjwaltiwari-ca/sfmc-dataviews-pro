@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, SlidersHorizontal } from 'lucide-react';
 import type { TemplateParameterDefinition } from '../utils/templatePlaceholders';
 
 const PANEL_CLASS =
@@ -12,6 +12,7 @@ type TemplateParametersPanelProps = {
   parameters: TemplateParameterDefinition[];
   values: Record<string, string>;
   onValueChange: (token: string, value: string) => void;
+  onApplyToWorkspace?: () => void;
   className?: string;
 };
 
@@ -20,6 +21,7 @@ export function TemplateParametersPanel({
   parameters,
   values,
   onValueChange,
+  onApplyToWorkspace,
   className = '',
 }: TemplateParametersPanelProps) {
   if (parameters.length === 0) {
@@ -73,9 +75,21 @@ export function TemplateParametersPanel({
         })}
       </div>
 
-      <p className="shrink-0 border-t border-slate-800/80 px-4 py-3 text-xs leading-relaxed text-slate-500">
-        Values inject into the query in real time. Copy SQL when ready for Query Studio.
-      </p>
+      <div className="shrink-0 space-y-2 border-t border-slate-800/80 px-4 py-3">
+        <p className="text-xs leading-relaxed text-slate-500">
+          Values inject into the query in real time. Copy SQL when ready for Query Studio.
+        </p>
+        {onApplyToWorkspace ? (
+          <button
+            type="button"
+            onClick={onApplyToWorkspace}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 transition-colors hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+          >
+            Use in Live Query
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ) : null}
+      </div>
     </aside>
   );
 }

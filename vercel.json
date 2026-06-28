@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/templates", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/og-preview.png",

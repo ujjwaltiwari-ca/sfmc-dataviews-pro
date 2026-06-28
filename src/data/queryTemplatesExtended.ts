@@ -6,7 +6,7 @@ export const sfmcQueryTemplatesExtended: QueryTemplate[] = [
     category: 'Deliverability',
     title: 'Soft Bounce Monitor (30 Days)',
     description: 'Subscribers with recent soft bounces for deliverability triage before they become held.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   sub.SubscriberKey,
   sub.EmailAddress,
   b.BounceCategory,
@@ -14,7 +14,7 @@ export const sfmcQueryTemplatesExtended: QueryTemplate[] = [
   b.EventDate
 FROM _Subscribers sub
 JOIN _Bounce b ON sub.SubscriberKey = b.SubscriberKey
-WHERE b.BounceCategory = 'Soft Bounce'
+WHERE LOWER(b.BounceCategory) = 'soft bounce'
   AND b.EventDate >= DATEADD(day, -30, GETDATE())
 ORDER BY b.EventDate DESC`,
   },
@@ -54,17 +54,19 @@ SELECT
   sub.Status
 FROM _Subscribers sub
 WHERE sub.Status = 'active'
-  AND sub.SubscriberKey IN (
-    SELECT s.SubscriberKey
+  AND EXISTS (
+    SELECT 1
     FROM _Sent s
-    WHERE s.EventDate >= DATEADD(day, -180, GETDATE())
+    WHERE s.SubscriberKey = sub.SubscriberKey
+      AND s.EventDate >= DATEADD(day, -180, GETDATE())
     GROUP BY s.SubscriberKey
-    HAVING COUNT(s.JobID) >= 5
+    HAVING COUNT(DISTINCT s.JobID) >= 5
   )
-  AND sub.SubscriberKey NOT IN (
-    SELECT o.SubscriberKey
+  AND NOT EXISTS (
+    SELECT 1
     FROM _Open o
-    WHERE o.EventDate >= DATEADD(day, -180, GETDATE())
+    WHERE o.SubscriberKey = sub.SubscriberKey
+      AND o.EventDate >= DATEADD(day, -180, GETDATE())
   )`,
   },
   {
@@ -72,7 +74,7 @@ WHERE sub.Status = 'active'
     category: 'List Hygiene',
     title: 'List Subscribers Marked Unsubscribed',
     description: 'Audit _ListSubscribers with unsubscribed status for a specific list context.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   ls.ListID,
   ls.SubscriberID,
   ls.SubscriberKey,
@@ -89,7 +91,7 @@ ORDER BY ls.DateUnsubscribed DESC`,
     category: 'Campaign',
     title: 'Job Performance Summary',
     description: 'Sent, unique open, and unique click counts by JobID with _Job email names.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   j.JobID,
   j.EmailName,
   COUNT(DISTINCT s.SubscriberKey) AS Sent,
@@ -139,10 +141,11 @@ WHERE s.EventDate >= DATEADD(day, -7, GETDATE())
 FROM _Open o
 WHERE o.EventDate >= DATEADD(day, -60, GETDATE())
   AND o.IsUnique = 1
-  AND o.SubscriberKey NOT IN (
-    SELECT c.SubscriberKey
+  AND NOT EXISTS (
+    SELECT 1
     FROM _Click c
-    WHERE c.EventDate >= DATEADD(day, -60, GETDATE())
+    WHERE c.SubscriberKey = o.SubscriberKey
+      AND c.EventDate >= DATEADD(day, -60, GETDATE())
   )`,
   },
   {
@@ -150,7 +153,7 @@ WHERE o.EventDate >= DATEADD(day, -60, GETDATE())
     category: 'Deliverability',
     title: 'Complaint Rate by Job',
     description: 'Spam complaints grouped by JobID against send volume for the last 14 days.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   c.JobID,
   COUNT(DISTINCT c.SubscriberID) AS Complaints,
   (
@@ -169,7 +172,7 @@ ORDER BY Complaints DESC`,
     category: 'Automation',
     title: 'Automation Success Rate (7 Days)',
     description: 'Completed vs failed automation instances for operational monitoring.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   AutomationName,
   AutomationInstanceStatus,
   COUNT(*) AS InstanceCount
@@ -183,7 +186,7 @@ ORDER BY AutomationName, AutomationInstanceStatus`,
     category: 'Journey',
     title: 'Running Journeys Entry Audit',
     description: 'Active journeys with version metadata for governance and cleanup reviews.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   JourneyName,
   VersionID,
   JourneyStatus,
@@ -198,7 +201,7 @@ ORDER BY ModifiedDate DESC`,
     category: 'Journey',
     title: 'Journey Activity Type Breakdown',
     description: 'Count journey canvas activities by type for a running journey version.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   j.JourneyName,
   ja.ActivityType,
   COUNT(*) AS ActivityCount
@@ -213,7 +216,7 @@ ORDER BY j.JourneyName, ActivityCount DESC`,
     category: 'SMS',
     title: 'SMS Subscription Log Audit',
     description: 'Recent SMS opt-in and opt-out events from _SMSSubscriptionLog.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   MobileNumber,
   OptInStatusID,
   OptInMethodID,
@@ -231,7 +234,7 @@ ORDER BY OptInDate DESC`,
     category: 'SMS',
     title: 'SMS Failures by Status Code',
     description: 'Undelivered SMS grouped by standard status code for carrier troubleshooting.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   SMSStandardStatusCodeId,
   Description,
   COUNT(*) AS FailureCount
@@ -246,7 +249,7 @@ ORDER BY FailureCount DESC`,
     category: 'Deliverability',
     title: 'Business Unit Unsubscribes (30 Days)',
     description: 'BU-level unsubscribe events for compliance and frequency analysis.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   BusinessUnitID,
   COUNT(*) AS UnsubscribeCount,
   MAX(EventDate) AS LatestUnsubscribe
@@ -292,7 +295,7 @@ ORDER BY s.EventDate DESC`,
     category: 'List Hygiene',
     title: 'Global Unsubscribe Audit (30 Days)',
     description: 'Recent global unsubscribes with send context for friction analysis.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   u.SubscriberKey,
   u.EventDate AS UnsubscribeDate,
   u.JobID,
@@ -306,7 +309,7 @@ ORDER BY u.EventDate DESC`,
     category: 'Engagement',
     title: 'Multi-Send Fatigue Check',
     description: 'Subscribers receiving 15+ sends in 14 days — frequency cap audit.',
-    sql: `SELECT
+    sql: `SELECT TOP 200
   s.SubscriberKey,
   COUNT(DISTINCT s.JobID) AS SendCount
 FROM _Sent s

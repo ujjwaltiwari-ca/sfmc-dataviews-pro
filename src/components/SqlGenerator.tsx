@@ -65,6 +65,10 @@ import {
   parseTemplatePlaceholders,
 } from '../utils/templatePlaceholders';
 import { TemplateParametersPanel } from './TemplateParametersPanel';
+import { QuerySlotTabs } from './QuerySlotTabs';
+import { CopyValidationPanel } from './CopyValidationPanel';
+import { explainBridgeTable, explainJoinStep } from '../utils/joinPathExplain';
+import { assessSqlCopyReadiness, copyValidationSummary } from '../utils/sqlCopyValidation';
 import { TrackingQueryWarningDialog } from './TrackingQueryWarningDialog';
 import { SandboxSqlCodeMirror } from './SandboxSqlCodeMirror';
 import { SandboxQueryHistory } from './SandboxQueryHistory';
@@ -459,6 +463,11 @@ interface SqlGeneratorProps {
   buContext: BuContextMode;
   onSignInRequired?: () => void;
   onRestoreSavedQuery: (query: SavedQuery) => void;
+  querySlotIndex?: number;
+  querySlotLabels?: string[];
+  onQuerySlotChange?: (index: number) => void;
+  onQuerySlotRename?: (index: number, label: string) => void;
+  onApplyTemplateToWorkspace?: (sql: string) => void;
 }
 
 function SelectColumnModeControl({
@@ -697,6 +706,11 @@ export function SqlGenerator({
   buContext,
   onSignInRequired,
   onRestoreSavedQuery,
+  querySlotIndex = 0,
+  querySlotLabels = ['Query 1', 'Query 2', 'Query 3'],
+  onQuerySlotChange,
+  onQuerySlotRename,
+  onApplyTemplateToWorkspace,
 }: SqlGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const [copyWarningOpen, setCopyWarningOpen] = useState(false);
@@ -804,6 +818,30 @@ export function SqlGenerator({
   } = generation;
 
   const subscribersInJoinPath = joinTables.includes('_Subscribers');
+
+  const copyValidationItems = useMemo(
+    () =>
+      assessSqlCopyReadiness({
+        sql,
+        selectedTableNames,
+        preferences: { limitPast30Days, excludeTestSends },
+        disconnectedTables,
+      }),
+    [sql, selectedTableNames, limitPast30Days, excludeTestSends, disconnectedTables],
+  );
+
+  const copyValidation = useMemo(
+    () => copyValidationSummary(copyValidationItems),
+    [copyValidationItems],
+  );
+
+  const bridgeExplanations = useMemo(
+    () =>
+      bridgingTables.map((bridge) =>
+        explainBridgeTable(bridge, userSelectedTables, joinTables, schema),
+      ),
+    [bridgingTables, userSelectedTables, joinTables, schema],
+  );
 
   const jobIdFilterAlias = useMemo(
     () => resolveFilterAlias(userSelectedTables, joinTables, schema, ['JobID']),
@@ -1140,12 +1178,22 @@ export function SqlGenerator({
   }, [sql]);
 
   const handleCopy = useCallback(() => {
-    if (lacksTrackingViewDateLookback(sql)) {
+    if (copyValidation.hasFail) {
+      return;
+    }
+    if (lacksTrackingViewDateLookback(sql) || copyValidation.hasWarn) {
       setCopyWarningOpen(true);
       return;
     }
     void performCopy();
-  }, [sql, performCopy]);
+  }, [sql, performCopy, copyValidation]);
+
+  const handleApplyTemplateToWorkspace = useCallback(() => {
+    if (!onApplyTemplateToWorkspace || !sql.trim()) {
+      return;
+    }
+    onApplyTemplateToWorkspace(sql);
+  }, [onApplyTemplateToWorkspace, sql]);
 
   const handleConfirmRiskyCopy = useCallback(() => {
     setCopyWarningOpen(false);
@@ -1270,10 +1318,20 @@ export function SqlGenerator({
                 />
               ) : null}
               {isExpanded ? (
-                <button
+                <div className="flex flex-col items-end gap-1.5">
+                  {(editorTab === 'live' || editorTab === 'saved') && sql.trim().length > 0 ? (
+                    <CopyValidationPanel
+                      sql={sql}
+                      selectedTableNames={selectedTableNames}
+                      preferences={{ limitPast30Days, excludeTestSends }}
+                      disconnectedTables={disconnectedTables}
+                    />
+                  ) : null}
+                  <button
                   type="button"
                   onClick={handleCopy}
-                  className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 ${
+                  disabled={copyValidation.hasFail}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-50 ${
                     copied
                       ? 'border-emerald-300/60 bg-gradient-to-b from-emerald-50 to-emerald-100/80 text-emerald-800 shadow-[0_4px_12px_rgba(16,185,129,0.12)] focus:ring-emerald-500/40 dark:border-emerald-600/50 dark:from-emerald-950/50 dark:to-emerald-950/30 dark:text-emerald-200'
                       : 'border-cyan-300/50 bg-gradient-to-b from-cyan-50 to-white text-cyan-950 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(6,182,212,0.12)] focus:ring-cyan-500/40 dark:border-cyan-600/50 dark:from-cyan-950/40 dark:to-slate-900 dark:text-cyan-100'
@@ -1293,6 +1351,7 @@ export function SqlGenerator({
                     </>
                   )}
                 </button>
+                </div>
               ) : null}
               {isExpanded ? (
                 <button
@@ -1398,13 +1457,21 @@ export function SqlGenerator({
                       <p className="text-xs text-slate-500">—</p>
                     )}
                     {bridgingTables.length > 0 && (
-                      <p className="mt-2 flex items-start gap-1.5 text-[10px] leading-snug text-amber-700 dark:text-amber-300/90">
-                        <Route className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-                        <span>
-                          Pathfinder bridges:{' '}
-                          <span className="font-mono font-medium">{bridgingTables.join(', ')}</span>
-                        </span>
-                      </p>
+                      <ul className="mt-2 space-y-1.5">
+                        {bridgingTables.map((bridge, index) => (
+                          <li
+                            key={bridge}
+                            className="flex items-start gap-1.5 text-[10px] leading-snug text-amber-700 dark:text-amber-300/90"
+                          >
+                            <Route className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                            <span>
+                              <span className="font-mono font-medium">{bridge}</span>
+                              {' — '}
+                              {bridgeExplanations[index]}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                     {disconnectedTables.length > 0 && (
                       <p className="mt-2 text-[10px] leading-snug text-red-600 dark:text-red-400">
@@ -1453,6 +1520,14 @@ export function SqlGenerator({
                                 text={`${step.joinType} JOIN ${step.table} ON ${step.conditions.join(' AND ')}`}
                               />
                             </p>
+                            {(() => {
+                              const joinHint = explainJoinStep(step, userSelectedTables);
+                              return joinHint ? (
+                                <p className="mt-1 text-[10px] leading-snug text-amber-700 dark:text-amber-300/90">
+                                  {joinHint}
+                                </p>
+                              ) : null;
+                            })()}
                           </li>
                         ))}
                       </ol>
@@ -1569,6 +1644,14 @@ export function SqlGenerator({
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                       <div className="flex shrink-0 items-center justify-between border-b border-slate-800/80 bg-[#0d1117] px-3 py-1.5">
                         <div className="flex items-center gap-2">
+                          {editorTab === 'live' && onQuerySlotChange && onQuerySlotRename ? (
+                            <QuerySlotTabs
+                              activeIndex={querySlotIndex}
+                              labels={querySlotLabels}
+                              onChange={onQuerySlotChange}
+                              onRename={onQuerySlotRename}
+                            />
+                          ) : null}
                           <div
                             className="flex items-center gap-1 border-r border-slate-800/80 pr-2"
                             role="tablist"
@@ -1614,6 +1697,15 @@ export function SqlGenerator({
                               Back to Templates
                             </button>
                           )}
+                          {activeTemplateId && onApplyTemplateToWorkspace && sql.trim().length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={handleApplyTemplateToWorkspace}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 font-mono text-xs font-semibold text-sky-200 transition-colors hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                            >
+                              Use in Live Query
+                            </button>
+                          ) : null}
                         </div>
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           {editorTab === 'live' && selectedTableNames.length > 0 && (
@@ -1661,10 +1753,19 @@ export function SqlGenerator({
                               onSignInRequired={onSignInRequired}
                             />
                           )}
+                          {(editorTab === 'live' || editorTab === 'saved') && sql.trim().length > 0 ? (
+                            <CopyValidationPanel
+                              sql={sql}
+                              selectedTableNames={selectedTableNames}
+                              preferences={{ limitPast30Days, excludeTestSends }}
+                              disconnectedTables={disconnectedTables}
+                            />
+                          ) : null}
                           <button
                             type="button"
                             onClick={handleCopy}
-                            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-sky-500/40 ${
+                            disabled={copyValidation.hasFail}
+                            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${
                               copied
                                 ? 'border-emerald-500/40 bg-emerald-600/90 text-white'
                                 : 'border-slate-700/60 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800 hover:text-white'
@@ -1722,6 +1823,9 @@ export function SqlGenerator({
                                 parameters={templateParameterDefinitions}
                                 values={templateParamValues}
                                 onValueChange={handleTemplateParameterChange}
+                                onApplyToWorkspace={
+                                  onApplyTemplateToWorkspace ? handleApplyTemplateToWorkspace : undefined
+                                }
                                 className="w-full shrink-0 sm:w-52 lg:w-56"
                               />
                             ) : null}
