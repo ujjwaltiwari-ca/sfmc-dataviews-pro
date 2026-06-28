@@ -111,8 +111,42 @@ export function buildCompressedSchemaContext(tables: readonly DataViewTable[]): 
     .join('\n\n');
 }
 
-/** Pre-built schema context from the same source array as the frontend canvas. */
-export const copilotCompressedSchemaContext = buildCompressedSchemaContext(sfmcDataViews);
+/** Core views included in the default Copilot prompt when no canvas tables are selected. */
+const COPILOT_DEFAULT_DETAIL_TABLE_NAMES = [
+  '_Sent',
+  '_Subscribers',
+  '_Job',
+  '_Open',
+] as const;
+
+function buildDefaultCopilotSchemaContext(): string {
+  const detailTables = COPILOT_DEFAULT_DETAIL_TABLE_NAMES.map((name) => TABLE_BY_NAME.get(name)).filter(
+    (table): table is DataViewTable => table !== undefined,
+  );
+
+  const detailSet = new Set<string>(COPILOT_DEFAULT_DETAIL_TABLE_NAMES);
+  const auxiliaryNames = ALL_COPILOT_WORKSPACE_TABLES.map((table) => table.name).filter(
+    (name) => !detailSet.has(name),
+  );
+
+  const sections = [
+    'Core Data Views (full field matrix — use for field definitions and join guidance):',
+    detailTables.map(buildDetailedTableContext).join('\n\n'),
+  ];
+
+  if (auxiliaryNames.length > 0) {
+    sections.push(
+      '',
+      'Other Available Tables (names only — user can select on canvas for full fields):',
+      auxiliaryNames.join(', '),
+    );
+  }
+
+  return sections.join('\n');
+}
+
+/** Pre-built schema context when no canvas tables are selected. */
+export const copilotCompressedSchemaContext = buildDefaultCopilotSchemaContext();
 
 /**
  * Parses and deduplicates active table names from the chat request body.
