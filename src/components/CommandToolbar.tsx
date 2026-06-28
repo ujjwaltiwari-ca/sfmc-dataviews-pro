@@ -84,7 +84,7 @@ export function CommandToolbar({
   };
 
   const densityToggleClass = (active: boolean) =>
-    `rounded-md px-2 py-1 text-[11px] font-semibold transition-colors sm:text-xs ${
+    `whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-semibold transition-colors sm:px-2.5 sm:text-xs ${
       active
         ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100'
         : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -126,8 +126,8 @@ export function CommandToolbar({
           />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative min-w-0 flex-1 sm:w-72 lg:w-96">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-2">
+          <div className="relative w-full sm:w-56 sm:shrink-0 md:w-64 lg:w-72 xl:w-80">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
               aria-hidden
@@ -157,9 +157,11 @@ export function CommandToolbar({
               type="button"
               className={densityToggleClass(canvasDensity === 'comfortable')}
               aria-pressed={canvasDensity === 'comfortable'}
+              title="Comfortable canvas density"
               onClick={() => onCanvasDensityChange('comfortable')}
             >
-              Comfortable
+              <span className="xl:hidden">Comfort</span>
+              <span className="hidden xl:inline">Comfortable</span>
             </button>
             <button
               type="button"

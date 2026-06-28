@@ -31,6 +31,7 @@ export type WorkspaceStateApi = {
   editorTab: SandboxEditorTab;
   setEditorTab: (tab: SandboxEditorTab) => void;
   initialTemplateSql: string | null;
+  initialSharedSql: string | null;
   /** Clears selections, sandbox, share URL params, and persisted workspace keys. */
   resetWorkspace: () => void;
 };
@@ -184,6 +185,7 @@ export function useWorkspaceState(): WorkspaceStateApi {
     editorTab: sandboxPreferences.editorTab,
     setEditorTab,
     initialTemplateSql: hydrated.initialTemplateSql,
+    initialSharedSql: hydrated.initialSharedSql,
     resetWorkspace,
   };
 }

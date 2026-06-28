@@ -248,6 +248,7 @@ function AppMain() {
     editorTab: sandboxEditorTab,
     setEditorTab: setSandboxEditorTab,
     initialTemplateSql,
+    initialSharedSql,
     resetWorkspace,
   } = workspace;
 
@@ -261,10 +262,14 @@ function AppMain() {
   const [authShellActive, setAuthShellActive] = useState(() => hasPersistedSupabaseSession());
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [whatsNewUnseen, setWhatsNewUnseen] = useState(() => !hasSeenWhatsNew());
-  const [sandboxSql, setSandboxSql] = useState(() => initialTemplateSql ?? '');
+  const [sandboxSql, setSandboxSql] = useState(
+    () => initialSharedSql ?? initialTemplateSql ?? '',
+  );
   const [sandboxDrawerHeight, setSandboxDrawerHeight] = useState(getDefaultSandboxHeight);
   const [templatesShortcutNonce, setTemplatesShortcutNonce] = useState(0);
-  const [copilotSqlActive, setCopilotSqlActive] = useState(false);
+  const [copilotSqlActive, setCopilotSqlActive] = useState(() =>
+    Boolean(initialSharedSql?.trim()),
+  );
   const relationLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activateAuthShell = useCallback(() => {
@@ -311,6 +316,25 @@ function AppMain() {
     () => dedupeTablesByName(getTablesForSegment(activeSegment)),
     [activeSegment],
   );
+
+  useEffect(() => {
+    if (!initialSharedSql?.trim()) {
+      return;
+    }
+    const tables = extractTablesFromSql(initialSharedSql);
+    if (tables.length > 0) {
+      setSelectedTableNames(tables);
+    }
+    setShowSandbox(true);
+    setIsSandboxExpanded(true);
+    setSandboxEditorTab('live');
+  }, [
+    initialSharedSql,
+    setIsSandboxExpanded,
+    setSandboxEditorTab,
+    setSelectedTableNames,
+    setShowSandbox,
+  ]);
 
   useEffect(() => {
     recordAppVisit();
@@ -450,6 +474,7 @@ function AppMain() {
       showSandbox,
       activeTemplateId,
       sandboxPreferences,
+      sandboxSql: sandboxSql.trim() ? sandboxSql : undefined,
     }),
     [
       activeSegment,
@@ -457,6 +482,7 @@ function AppMain() {
       showSandbox,
       activeTemplateId,
       sandboxPreferences,
+      sandboxSql,
     ],
   );
 

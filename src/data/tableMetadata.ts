@@ -73,6 +73,7 @@ export const TABLE_KNOWN_LIMITATIONS: Readonly<Record<string, readonly string[]>
     'JobID is populated only for send-type activities — null for Query, Script, and Import steps.',
     'ActivityType 300 indicates a SQL Query activity; check ActivityInstanceStatusDetails for errors.',
     'Data is retained for approximately 31 days.',
+    'When Pathfinder bridges to _Sent via JobID, verify in Query Studio that the ID matches the email send job — not a separate automation execution ID.',
   ],
   _SMSSubscriptionLog: [
     'SubscriptionDefinitionID joins to KeywordID on _SMSMessageTracking for keyword-level opt-in history.',

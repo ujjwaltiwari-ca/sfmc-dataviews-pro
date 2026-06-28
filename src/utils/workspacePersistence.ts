@@ -8,6 +8,7 @@ import {
 import type { SqlKeywordCase } from './sqlGenerator';
 import { SITE_ORIGIN } from './seoStatic.js';
 import { sanitizeNumericSqlLiteral } from './sqlSanitize';
+import { decodeShareSql, encodeShareSql } from './workspaceShareSql.js';
 import {
   migrateSandboxPreferences,
   SANDBOX_PREFS_VERSION,
@@ -32,6 +33,8 @@ export const WORKSPACE_URL_KEYS = {
   targetDeScaffolding: 'de',
   editorTab: 'tab',
   sandboxExpanded: 'sbe',
+  /** Base64url-encoded sandbox SQL for share links. */
+  sandboxSql: 'q',
 } as const;
 
 export const WORKSPACE_STORAGE_KEYS = {
@@ -70,6 +73,8 @@ export type WorkspaceHydration = {
   sandboxPreferences: SandboxPreferences;
   /** SQL to seed the sandbox when hydrating from a shared template link. */
   initialTemplateSql: string | null;
+  /** SQL from a shared workspace link (?q= base64url). */
+  initialSharedSql: string | null;
   /** How this snapshot was resolved on load. */
   source: WorkspaceHydrationSource;
 };
@@ -101,6 +106,8 @@ export type WorkspaceSnapshot = {
   showSandbox: boolean;
   activeTemplateId: string | null;
   sandboxPreferences: SandboxPreferences;
+  /** SQL in the sandbox editor — included in share links when encodable. */
+  sandboxSql?: string;
 };
 
 function readLocalStorageItem(key: string): string | null {
@@ -257,6 +264,7 @@ export function isDefaultWorkspaceSnapshot(snapshot: WorkspaceSnapshot): boolean
     snapshot.selectedTableNames.length === 0 &&
     snapshot.activeTemplateId === null &&
     !snapshot.showSandbox &&
+    !(snapshot.sandboxSql?.trim().length ?? 0) &&
     isDefaultSandboxPreferences(snapshot.sandboxPreferences)
   );
 }
@@ -298,6 +306,7 @@ export function hydrateDefaultWorkspaceState(): WorkspaceHydration {
     activeTemplateId: null,
     sandboxPreferences: { ...DEFAULT_SANDBOX_PREFERENCES },
     initialTemplateSql: null,
+    initialSharedSql: null,
     source: 'fresh-url',
   };
 }
@@ -452,6 +461,14 @@ export function hydrateWorkspaceState(
     resolvedEditorTab = 'templates';
   }
 
+  const sharedSqlFromUrl = searchParams.has(WORKSPACE_URL_KEYS.sandboxSql)
+    ? decodeShareSql(searchParams.get(WORKSPACE_URL_KEYS.sandboxSql))
+    : null;
+
+  if (sharedSqlFromUrl) {
+    resolvedEditorTab = 'live';
+  }
+
   const resolvedPreferences: SandboxPreferences = {
     ...sandboxPreferences,
     editorTab: resolvedEditorTab,
@@ -466,7 +483,10 @@ export function hydrateWorkspaceState(
     : undefined;
 
   const resolvedShowSandbox =
-    showSandbox || selectedTableNames.length > 0 || activeTemplateId !== null;
+    showSandbox ||
+    selectedTableNames.length > 0 ||
+    activeTemplateId !== null ||
+    Boolean(sharedSqlFromUrl);
 
   return {
     segment,
@@ -475,6 +495,7 @@ export function hydrateWorkspaceState(
     activeTemplateId,
     sandboxPreferences: resolvedPreferences,
     initialTemplateSql: template?.sql ?? null,
+    initialSharedSql: sharedSqlFromUrl,
     source: 'url-or-storage',
   };
 }
@@ -547,6 +568,11 @@ export function buildWorkspaceSearchParams(snapshot: WorkspaceSnapshot): URLSear
 
   if (prefs.isSandboxExpanded) {
     params.set(WORKSPACE_URL_KEYS.sandboxExpanded, '1');
+  }
+
+  const encodedSql = snapshot.sandboxSql ? encodeShareSql(snapshot.sandboxSql) : null;
+  if (encodedSql) {
+    params.set(WORKSPACE_URL_KEYS.sandboxSql, encodedSql);
   }
 
   return params;

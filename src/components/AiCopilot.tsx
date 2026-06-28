@@ -25,6 +25,10 @@ import {
 import { useAuth } from '../context/authContext.shared';
 import { sfmcDataViews } from '../data/sfmcSchema';
 import { logCopilotApiError } from '../utils/copilotFallback';
+import {
+  loadCopilotHistory,
+  saveCopilotHistory,
+} from '../utils/copilotHistory';
 import { lacksTrackingViewDateLookback } from '../utils/sqlGenerator';
 import { getSupabase } from '../utils/supabaseClient';
 import { AuthForm } from './AuthForm';
@@ -262,6 +266,7 @@ export function AiCopilot({
   const appliedMessageTimerRef = useRef<number | null>(null);
   const appliedBannerTimerRef = useRef<number | null>(null);
   const streamingAssistantIdRef = useRef<string | null>(null);
+  const loadedHistoryUserIdRef = useRef<string | null>(null);
 
   useFocusTrap(panelRef, isOpen);
 
@@ -279,11 +284,29 @@ export function AiCopilot({
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
+      loadedHistoryUserIdRef.current = null;
       setMessages([]);
       setError(null);
       setInput('');
+      return;
     }
+
+    if (loadedHistoryUserIdRef.current === user.id) {
+      return;
+    }
+
+    loadedHistoryUserIdRef.current = user.id;
+    const stored = loadCopilotHistory(user.id);
+    setMessages(
+      stored.map((entry) => ({
+        id: createMessageId(),
+        role: entry.role,
+        content: entry.content,
+      })),
+    );
+    setError(null);
+    setInput('');
   }, [user?.id, user]);
 
   useEffect(() => {
@@ -372,13 +395,17 @@ export function AiCopilot({
     }
 
     const finalizeAssistant = (content: string) => {
-      setMessages((previous) =>
-        previous.map((message) =>
+      setMessages((previous) => {
+        const next = previous.map((message) =>
           message.id === assistantId
             ? { ...message, content, isStreaming: false }
             : message,
-        ),
-      );
+        );
+        if (user?.id) {
+          saveCopilotHistory(user.id, toApiHistory(next));
+        }
+        return next;
+      });
     };
 
     const appendAssistantDelta = (accumulated: string) => {
@@ -467,6 +494,7 @@ export function AiCopilot({
     refreshUsage,
     applyKnownUsageCount,
     signOut,
+    user?.id,
   ]);
 
   const handleSubmit = (event: FormEvent) => {

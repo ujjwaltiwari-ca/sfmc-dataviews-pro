@@ -177,10 +177,11 @@ WHERE s.JobID = 'YOUR_JOB_ID_HERE'
 FROM _Click c
 WHERE c.JobID = 'YOUR_JOB_ID_HERE'
   AND c.EventDate >= DATEADD(day, -30, GETDATE())
-  AND c.SubscriberID NOT IN (
-    SELECT u.SubscriberID
+  AND NOT EXISTS (
+    SELECT 1
     FROM _Unsubscribe u
     WHERE u.JobID = c.JobID
+      AND u.SubscriberID = c.SubscriberID
   )`,
   },
   {
