@@ -59,6 +59,9 @@ export interface SqlUtilityFilterOptions {
   filterByCampaignJobId: boolean;
   campaignJobId: string;
   jobIdFilterAlias: string | null;
+  /** Tables in the resolved join graph — used for _Job.Category test-send filters. */
+  joinTables?: string[];
+  enterpriseBuMode?: boolean;
 }
 
 export interface SqlGenerationOptions {
@@ -1344,6 +1347,31 @@ export function getUniqueEventTablesInJoinGraph(joinTableNames: string[]): strin
 export const UNIQUE_EVENT_FILTER_INACTIVE_HINT =
   'Not used for _Job alone. Applies when _Open, _Click, _Bounce, _Complaint, or _Unsubscribe are in your query.';
 
+/** Documented _Job.Category value for preview and test send jobs. */
+export const TEST_SEND_JOB_CATEGORY = 'Test Send Emails';
+
+/** SQL fragment for excluding test sends when _Job is not already joined. */
+export const EXCLUDE_TEST_SENDS_EXISTS_SQL =
+  "EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')";
+
+export function sqlMatchesExcludeTestSendsFilter(sql: string): boolean {
+  return /Category\s*(!=|<>)\s*'Test Send Emails'/i.test(sql);
+}
+
+export function buildExcludeTestSendsPredicate(options: {
+  sentAlias: string;
+  jobAlias?: string | null;
+  enterpriseBuMode?: boolean;
+}): string {
+  const categoryLiteral = `'${TEST_SEND_JOB_CATEGORY}'`;
+  if (options.jobAlias) {
+    return `${options.jobAlias}.Category != ${categoryLiteral}`;
+  }
+  const jobSql = qualifySqlTableName(JOB_TABLE, options.enterpriseBuMode === true);
+  const jobAlias = tableToAlias(JOB_TABLE);
+  return `EXISTS (SELECT 1 FROM ${jobSql} ${jobAlias} WHERE ${jobAlias}.JobID = ${options.sentAlias}.JobID AND ${jobAlias}.Category != ${categoryLiteral})`;
+}
+
 function appendWherePredicates(baseSql: string, predicates: string[]): string {
   if (predicates.length === 0) {
     return baseSql;
@@ -1389,9 +1417,19 @@ export function applySqlUtilityFilters(
   }
 
   if (options.excludeTestSends) {
-    predicates.push(
-      filterAlias ? `${filterAlias}.TestStormObjID IS NULL` : 'TestStormObjID IS NULL',
-    );
+    const sentAlias =
+      filterAlias ??
+      (options.joinTables?.includes('_Sent') ? tableToAlias('_Sent') : null);
+    if (sentAlias) {
+      const jobAlias = options.joinTables?.includes('_Job') ? tableToAlias(JOB_TABLE) : null;
+      predicates.push(
+        buildExcludeTestSendsPredicate({
+          sentAlias,
+          jobAlias,
+          enterpriseBuMode: options.enterpriseBuMode,
+        }),
+      );
+    }
   }
 
   if (options.filterActiveSubscribersOnly) {
@@ -1539,7 +1577,7 @@ export function generateSfmcSql(
     userSelected,
     joinTables,
     tables,
-    ['EventDate', 'TestStormObjID'],
+    ['EventDate'],
   );
 
   return {

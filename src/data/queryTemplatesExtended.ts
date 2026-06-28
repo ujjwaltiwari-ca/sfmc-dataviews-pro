@@ -45,7 +45,7 @@ FROM (
     AND s.BatchID = c.BatchID
     AND s.SubscriberID = c.SubscriberID
   WHERE s.EventDate >= DATEADD(day, -30, GETDATE())
-    AND s.TestStormObjID IS NULL
+    AND EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')
   GROUP BY s.JobID
   HAVING COUNT(DISTINCT CASE WHEN o.IsUnique = 1 THEN o.SubscriberID END) > 0
 ) rates
@@ -68,7 +68,7 @@ WHERE sub.Status = 'active'
     FROM _Sent s
     WHERE s.SubscriberKey = sub.SubscriberKey
       AND s.EventDate >= DATEADD(day, -180, GETDATE())
-      AND s.TestStormObjID IS NULL
+      AND EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')
     GROUP BY s.SubscriberKey
     HAVING COUNT(DISTINCT s.JobID) >= 5
   )
@@ -120,7 +120,7 @@ LEFT JOIN _Click c
   AND s.BatchID = c.BatchID
   AND s.SubscriberID = c.SubscriberID
 WHERE s.EventDate >= DATEADD(day, -30, GETDATE())
-  AND s.TestStormObjID IS NULL
+  AND j.Category != 'Test Send Emails'
 GROUP BY j.JobID, j.EmailName
 ORDER BY Sent DESC`,
   },
@@ -140,7 +140,7 @@ LEFT JOIN _Bounce b
   AND s.BatchID = b.BatchID
   AND s.SubscriberID = b.SubscriberID
 WHERE s.EventDate >= DATEADD(day, -7, GETDATE())
-  AND s.TestStormObjID IS NULL
+  AND EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')
   AND b.SubscriberID IS NULL
 ORDER BY s.EventDate DESC`,
   },
@@ -324,7 +324,7 @@ ORDER BY sub.SubscriberKey`,
 FROM _Sent s
 JOIN _Job j ON s.JobID = j.JobID
 WHERE s.EventDate >= DATEADD(day, -30, GETDATE())
-  AND s.TestStormObjID IS NULL
+  AND j.Category != 'Test Send Emails'
 ORDER BY s.EventDate DESC`,
   },
   {
@@ -357,7 +357,7 @@ FROM (
     COUNT(DISTINCT s.JobID) AS SendCount
   FROM _Sent s
   WHERE s.EventDate >= DATEADD(day, -14, GETDATE())
-    AND s.TestStormObjID IS NULL
+    AND EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')
   GROUP BY s.SubscriberKey
   HAVING COUNT(DISTINCT s.JobID) >= 15
 ) sendCounts

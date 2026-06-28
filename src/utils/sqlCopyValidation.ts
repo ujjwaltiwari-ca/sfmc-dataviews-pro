@@ -1,4 +1,4 @@
-import { HEAVY_TRACKING_VIEW_NAMES } from './sqlGenerator';
+import { HEAVY_TRACKING_VIEW_NAMES, sqlMatchesExcludeTestSendsFilter } from './sqlGenerator';
 import { selectionIncludesSent } from './safeSqlDefaults';
 import type { SandboxPreferences } from './workspacePersistence';
 
@@ -19,7 +19,7 @@ function sqlHasDateLookback(sql: string): boolean {
 }
 
 function sqlExcludesTestSends(sql: string): boolean {
-  return /TestStormObjID\s+IS\s+NULL/i.test(sql);
+  return sqlMatchesExcludeTestSendsFilter(sql);
 }
 
 function joinUsesFourKeys(sql: string, left: string, right: string): boolean {
@@ -96,7 +96,9 @@ export function assessSqlCopyReadiness(input: {
     label: 'Test sends excluded',
     status: needsTestFilter ? (testOk ? 'pass' : 'warn') : 'na',
     detail:
-      needsTestFilter && !testOk ? 'Enable “Exclude test sends” or add TestStormObjID IS NULL' : undefined,
+      needsTestFilter && !testOk
+        ? 'Enable “Exclude test sends” or join _Job and filter Category != \'Test Send Emails\''
+        : undefined,
   });
 
   const hasSent = selectedTableNames.includes('_Sent');

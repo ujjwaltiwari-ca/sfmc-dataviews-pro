@@ -171,14 +171,15 @@
 </section>
 <section>
   <h2>Production sends only</h2>
-  <p>TestStormObjID is populated on preview and test send rows in _Sent. IS NULL keeps production deployments only — the same predicate the DataViews.pro sandbox utility injects.</p>
+  <p>Test and preview sends are tagged on _Job with Category = 'Test Send Emails'. Join _Job on JobID and exclude that category — the same pattern the DataViews.pro sandbox utility injects.</p>
   
   <pre><code>SELECT
   s.JobID,
   COUNT(DISTINCT s.SubscriberKey) AS ProductionSends
 FROM _Sent s
+JOIN _Job j ON s.JobID = j.JobID
 WHERE s.EventDate &gt;= DATEADD(day, -30, GETDATE())
-  AND s.TestStormObjID IS NULL
+  AND j.Category != 'Test Send Emails'
 GROUP BY s.JobID</code></pre>
 </section>
 <section>

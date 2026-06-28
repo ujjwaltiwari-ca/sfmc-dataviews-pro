@@ -40,10 +40,12 @@ import {
   applySqlUtilityFilters,
   applyTargetDeScaffolding,
   buildActiveSubscriberPredicate,
+  buildExcludeTestSendsPredicate,
   buildUniqueEventPredicate,
   generateSfmcSql,
   getUniqueEventTablesInJoinGraph,
   resolveFilterAlias,
+  tableToAlias,
   suggestBridgeTable,
   UNIQUE_EVENT_FILTER_INACTIVE_HINT,
   lacksTrackingViewDateLookback,
@@ -880,6 +882,8 @@ export function SqlGenerator({
           filterByCampaignJobId: campaignJobIdActive,
           campaignJobId,
           jobIdFilterAlias,
+          joinTables,
+          enterpriseBuMode,
         },
         filterAlias,
         keywordCase,
@@ -893,6 +897,8 @@ export function SqlGenerator({
       campaignJobIdActive,
       campaignJobId,
       jobIdFilterAlias,
+      joinTables,
+      enterpriseBuMode,
       filterAlias,
       keywordCase,
     ],
@@ -1569,9 +1575,11 @@ export function SqlGenerator({
                         id="exclude-test-sends"
                         label="Exclude test send records"
                         description={formatUtilityPreview(
-                          filterAlias
-                            ? `${filterAlias}.TestStormObjID IS NULL`
-                            : 'TestStormObjID IS NULL',
+                          buildExcludeTestSendsPredicate({
+                            sentAlias: filterAlias ?? 's',
+                            jobAlias: joinTables.includes('_Job') ? tableToAlias('_Job') : null,
+                            enterpriseBuMode,
+                          }),
                         )}
                         checked={excludeTestSends}
                         onChange={(value) => onSandboxPreferencesChange({ excludeTestSends: value })}

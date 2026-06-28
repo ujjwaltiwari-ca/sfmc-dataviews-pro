@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateSfmcSql } from './sqlGenerator.js';
+import { applySqlUtilityFilters, generateSfmcSql } from './sqlGenerator.js';
 
 describe('generateSfmcSql join rules', () => {
   it('joins tracking views on JobID, ListID, BatchID, and SubscriberID', () => {
@@ -97,6 +97,50 @@ describe('generateSfmcSql join rules', () => {
     expect(sql).toContain('smt.Mobile = ssl.MobileNumber');
     expect(sql).toContain('smt.Mobile = usms.MobileNumber');
     expect(sql).not.toContain('SubscriptionDefinitionID = smt.KeywordID');
+  });
+
+  it('applies _Job.Category when excluding test sends with _Job in the graph', () => {
+    const { sql } = generateSfmcSql(['_Sent', '_Job'], undefined, {
+      filterUniqueEvents: false,
+    });
+    const withFilters = applySqlUtilityFilters(
+      sql,
+      {
+        limitPast30Days: false,
+        excludeTestSends: true,
+        filterActiveSubscribersOnly: false,
+        filterByCampaignJobId: false,
+        campaignJobId: '',
+        jobIdFilterAlias: null,
+        joinTables: ['_Sent', '_Job'],
+      },
+      's',
+      'upper',
+    );
+    expect(withFilters).toContain("j.Category != 'Test Send Emails'");
+    expect(withFilters).not.toContain('TestStormObjID');
+  });
+
+  it('uses EXISTS on _Job when excluding test sends without _Job in the graph', () => {
+    const { sql, joinTables } = generateSfmcSql(['_Sent'], undefined, {
+      filterUniqueEvents: false,
+    });
+    const withFilters = applySqlUtilityFilters(
+      sql,
+      {
+        limitPast30Days: false,
+        excludeTestSends: true,
+        filterActiveSubscribersOnly: false,
+        filterByCampaignJobId: false,
+        campaignJobId: '',
+        jobIdFilterAlias: null,
+        joinTables,
+      },
+      's',
+      'upper',
+    );
+    expect(withFilters).toContain('EXISTS (SELECT 1 FROM _Job j');
+    expect(withFilters).toContain("j.Category != 'Test Send Emails'");
   });
 
 });

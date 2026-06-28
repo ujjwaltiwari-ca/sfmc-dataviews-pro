@@ -468,11 +468,12 @@ WHERE s.EventDate >= DATEADD(day, -14, GETDATE())
   s.JobID,
   COUNT(DISTINCT s.SubscriberKey) AS ProductionSends
 FROM _Sent s
+JOIN _Job j ON s.JobID = j.JobID
 WHERE s.EventDate >= DATEADD(day, -30, GETDATE())
-  AND s.TestStormObjID IS NULL
+  AND j.Category != 'Test Send Emails'
 GROUP BY s.JobID`,
         paragraphs: [
-          'TestStormObjID is populated on preview and test send rows in _Sent. IS NULL keeps production deployments only — the same predicate the DataViews.pro sandbox utility injects.',
+          "Test and preview sends are tagged on _Job with Category = 'Test Send Emails'. Join _Job on JobID and exclude that category — the same pattern the DataViews.pro sandbox utility injects.",
         ],
       },
       {
@@ -660,7 +661,7 @@ ORDER BY Sends DESC`,
         bullets: [
           'Filter EventDate on _Sent before joining — _Job is smaller but the join multiplies if _Sent is unbounded.',
           'Triggered sends populate TriggererSendDefinitionObjectID on both _Sent and _Job — use it for Journey attribution.',
-          'Exclude test sends with TestStormObjID IS NULL on _Sent when reporting production volume.',
+          "Exclude test sends with _Job.Category != 'Test Send Emails' when reporting production volume.",
         ],
       },
     ],

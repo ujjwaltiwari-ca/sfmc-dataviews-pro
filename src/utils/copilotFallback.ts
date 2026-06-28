@@ -109,6 +109,7 @@ function buildFallbackSql(query: string, tableNames: string[]): string | null {
         filterByCampaignJobId: false,
         campaignJobId: '',
         jobIdFilterAlias: generation.filterAlias,
+        joinTables: generation.joinTables,
       },
       generation.filterAlias,
       'upper',

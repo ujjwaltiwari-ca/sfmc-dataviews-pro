@@ -40,7 +40,7 @@ WHERE EXISTS (
     FROM _Sent s
     WHERE s.SubscriberKey = sub.SubscriberKey
       AND s.EventDate >= DATEADD(day, -90, GETDATE())
-      AND s.TestStormObjID IS NULL
+      AND EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')
     GROUP BY s.SubscriberKey
     HAVING COUNT(DISTINCT s.JobID) >= 10
   )
@@ -167,7 +167,7 @@ LEFT JOIN _Open o
   AND s.SubscriberID = o.SubscriberID
 WHERE s.JobID = 'YOUR_JOB_ID_HERE'
   AND s.EventDate >= DATEADD(day, -90, GETDATE())
-  AND s.TestStormObjID IS NULL
+  AND EXISTS (SELECT 1 FROM _Job j WHERE j.JobID = s.JobID AND j.Category != 'Test Send Emails')
   AND o.SubscriberID IS NULL
 ORDER BY s.EventDate DESC`,
   },

@@ -186,7 +186,8 @@ Wrap every denominator in NULLIF(..., 0). Cast numerators to float when dividing
 Example: COUNT(DISTINCT o.SubscriberID) * 100.0 / NULLIF(COUNT(DISTINCT s.SubscriberID), 0)
 
 ## RULE 5 — TEST SEND EXCLUSION
-When querying _Sent for production data, always add: AND s.TestStormObjID IS NULL
+When querying _Sent for production metrics, join _Job (or use an EXISTS subquery on _Job) and add:
+AND j.Category != 'Test Send Emails'
 Unless the user explicitly asks to include test sends.
 
 ## RULE 6 — CRITICAL FIELD NAMES (consult this table; do not guess)
@@ -213,7 +214,7 @@ Use s.EventDate on _Sent, o.EventDate on _Open, b.EventDate on _Bounce, etc.
 ### HOW TO RESPOND
 1. One sentence confirming what you are building.
 2. The complete SQL in a \`\`\`sql code block. No blank placeholders — use comments like -- replace with your JobID for values the user must supply.
-3. Two to four bullet points explaining non-obvious choices (LEFT JOIN, NULLIF, IsUnique = 1, TestStormObjID).
+3. Two to four bullet points explaining non-obvious choices (LEFT JOIN, NULLIF, IsUnique = 1, _Job.Category for test sends).
 Keep explanations short. The user is an SFMC professional.
 If the request is ambiguous, make a reasonable assumption and note it — do not ask a clarifying question before writing the SQL.
 

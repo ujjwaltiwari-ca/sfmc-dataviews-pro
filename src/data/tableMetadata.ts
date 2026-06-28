@@ -27,7 +27,7 @@ export const TABLE_RETENTION: Readonly<Record<string, string>> = {
 export const TABLE_KNOWN_LIMITATIONS: Readonly<Record<string, readonly string[]>> = {
   _Sent: [
     'EmailName is always null — JOIN _Job on JobID to get the email name.',
-    'Preview and test sends are included — use TestStormObjID IS NULL to exclude them from production metrics.',
+    "Preview and test sends are included — join _Job and filter Category != 'Test Send Emails' for production metrics.",
     'Data is retained for approximately 6 months.',
   ],
   _Open: [
@@ -132,7 +132,7 @@ export const TABLE_KNOWN_LIMITATIONS: Readonly<Record<string, readonly string[]>
   SendLog: [
     'SendLog is a Data Extension template, not a system Data View — structure must exist in your account.',
     'Composite key is JobID + ListID + BatchID + SubscriberKey — not SubscriberID.',
-    'IsTestSend flags test/preview rows on SendLog — use this field here, not on _Sent (which uses TestStormObjID IS NULL).',
+    'IsTestSend flags test/preview rows on SendLog — use this field on SendLog, not _Job.Category on _Sent.',
     'Preferred for triggered and Journey sends where _Sent lacks journey attribution fields.',
   ],
   _Subscribers: [

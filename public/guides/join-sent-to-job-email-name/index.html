@@ -186,7 +186,7 @@ ORDER BY Sends DESC</code></pre>
 <section>
   <h2>Practitioner tips</h2>
   
-  <ul><li>Filter EventDate on _Sent before joining — _Job is smaller but the join multiplies if _Sent is unbounded.</li><li>Triggered sends populate TriggererSendDefinitionObjectID on both _Sent and _Job — use it for Journey attribution.</li><li>Exclude test sends with TestStormObjID IS NULL on _Sent when reporting production volume.</li></ul>
+  <ul><li>Filter EventDate on _Sent before joining — _Job is smaller but the join multiplies if _Sent is unbounded.</li><li>Triggered sends populate TriggererSendDefinitionObjectID on both _Sent and _Job — use it for Journey attribution.</li><li>Exclude test sends with _Job.Category != 'Test Send Emails' when reporting production volume.</li></ul>
   
 </section>
       <div class="actions">
