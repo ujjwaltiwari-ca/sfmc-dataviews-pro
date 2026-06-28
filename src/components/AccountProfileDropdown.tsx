@@ -1,10 +1,23 @@
-import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { getRemainingCopilotQueries } from '../constants/copilotQuota';
 import { useAuth } from '../context/authContext.shared';
 
 type AccountProfileDropdownProps = {
   onSignedOut?: () => void;
+};
+
+type MenuPosition = {
+  top: number;
+  right: number;
 };
 
 function getProfileInitial(email: string | undefined): string {
@@ -20,10 +33,46 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
   const email = user?.email ?? '';
+
+  const updateMenuPosition = () => {
+    const button = buttonRef.current;
+    if (!button) {
+      return;
+    }
+
+    const rect = button.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + 8,
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setMenuPosition(null);
+      return;
+    }
+
+    updateMenuPosition();
+
+    const handleReposition = () => {
+      updateMenuPosition();
+    };
+
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -46,9 +95,10 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
       if (!(target instanceof Node)) {
         return;
       }
-      if (!containerRef.current?.contains(target)) {
-        setIsOpen(false);
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
       }
+      setIsOpen(false);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -57,7 +107,6 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
       }
     };
 
-    // Defer so the same pointer/click that opened the menu does not immediately close it.
     const attachTimer = window.setTimeout(() => {
       document.addEventListener('pointerdown', handlePointerDownOutside);
       document.addEventListener('keydown', handleKeyDown);
@@ -112,102 +161,114 @@ export function AccountProfileDropdown({ onSignedOut }: AccountProfileDropdownPr
         ? 'Sign in again or refresh if this persists'
         : null;
 
-  return (
-    <div ref={containerRef} className="relative z-50">
-      <button
-        type="button"
-        onClick={handleToggle}
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-controls={menuId}
-        className="relative z-50 inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50/80 py-1.5 pl-1.5 pr-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 ease-in-out hover:border-slate-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-      >
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 text-xs font-semibold text-white shadow-sm"
-          aria-hidden
-        >
-          {getProfileInitial(email)}
-        </span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-          aria-hidden
-        />
-        <span className="sr-only">Account menu for {email}</span>
-      </button>
-
-      {isOpen && (
-        <div
-          id={menuId}
-          role="menu"
-          className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-900"
-        >
-          <p
-            className="truncate text-sm font-medium text-slate-700 dark:text-slate-200"
-            title={email}
-          >
-            {email}
-          </p>
-
-          <div className="my-3 border-t border-slate-200/80 dark:border-slate-800" />
-
+  const menuPanel =
+    isOpen && menuPosition
+      ? createPortal(
           <div
-            className="rounded-lg border border-slate-200/70 bg-slate-50/60 p-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/40"
-            aria-label={
-              remainingQueries === null
-                ? 'Copilot query usage unavailable'
-                : `${remainingQueries} of ${dailyLimit} Copilot queries remaining today`
-            }
+            ref={menuRef}
+            id={menuId}
+            role="menu"
+            style={{ top: menuPosition.top, right: menuPosition.right }}
+            className="fixed z-[100] w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-900 dark:ring-white/10"
           >
             <p
-              className={`text-sm font-medium leading-snug ${
-                isAtDailyLimit
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : isLowQueries
-                    ? 'text-amber-700 dark:text-amber-400'
-                    : 'text-slate-700 dark:text-slate-200'
-              }`}
+              className="truncate text-sm font-medium text-slate-700 dark:text-slate-200"
+              title={email}
             >
-              {usageHeadline}
+              {email}
             </p>
-            {usageSubtext ? (
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{usageSubtext}</p>
-            ) : null}
-            <div
-              className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/60"
-              role="progressbar"
-              aria-valuenow={remainingQueries ?? 0}
-              aria-valuemin={0}
-              aria-valuemax={dailyLimit}
-              aria-label="Copilot queries remaining today"
-            >
-              <div
-                className={`h-full rounded-full transition-all duration-500 ease-out ${
-                  isAtDailyLimit
-                    ? 'bg-gradient-to-r from-rose-500 to-rose-600'
-                    : isLowQueries
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                      : 'bg-gradient-to-r from-cyan-500 to-indigo-500'
-                }`}
-                style={{ width: `${remainingQueries === null ? usagePercent : remainingPercent}%` }}
-              />
-            </div>
-          </div>
 
-          <button
-            type="button"
-            role="menuitem"
-            disabled={isSigningOut}
-            onClick={(event) => {
-              event.stopPropagation();
-              void handleSignOut();
-            }}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-in-out hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            <div className="my-3 border-t border-slate-200/80 dark:border-slate-800" />
+
+            <div
+              className="rounded-lg border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700/60 dark:bg-slate-800/80"
+              aria-label={
+                remainingQueries === null
+                  ? 'Copilot query usage unavailable'
+                  : `${remainingQueries} of ${dailyLimit} Copilot queries remaining today`
+              }
+            >
+              <p
+                className={`text-sm font-semibold leading-snug ${
+                  isAtDailyLimit
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : isLowQueries
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-slate-800 dark:text-slate-100'
+                }`}
+              >
+                {usageHeadline}
+              </p>
+              {usageSubtext ? (
+                <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">{usageSubtext}</p>
+              ) : null}
+              <div
+                className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+                role="progressbar"
+                aria-valuenow={remainingQueries ?? 0}
+                aria-valuemin={0}
+                aria-valuemax={dailyLimit}
+                aria-label="Copilot queries remaining today"
+              >
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                    isAtDailyLimit
+                      ? 'bg-gradient-to-r from-rose-500 to-rose-600'
+                      : isLowQueries
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                        : 'bg-gradient-to-r from-cyan-500 to-indigo-500'
+                  }`}
+                  style={{
+                    width: `${remainingQueries === null ? usagePercent : remainingPercent}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              role="menuitem"
+              disabled={isSigningOut}
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleSignOut();
+              }}
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 ease-in-out hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              {isSigningOut ? 'Signing out…' : 'Sign Out'}
+            </button>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      <div className="relative">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={handleToggle}
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
+          aria-controls={menuId}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50/80 py-1.5 pl-1.5 pr-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 ease-in-out hover:border-slate-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+        >
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 text-xs font-semibold text-white shadow-sm"
+            aria-hidden
           >
-            <LogOut className="h-4 w-4" aria-hidden />
-            {isSigningOut ? 'Signing out…' : 'Sign Out'}
-          </button>
-        </div>
-      )}
-    </div>
+            {getProfileInitial(email)}
+          </span>
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
+          <span className="sr-only">Account menu for {email}</span>
+        </button>
+      </div>
+      {menuPanel}
+    </>
   );
 }
